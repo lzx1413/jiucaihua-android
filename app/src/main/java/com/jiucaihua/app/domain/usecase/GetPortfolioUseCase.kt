@@ -1,5 +1,6 @@
 package com.jiucaihua.app.domain.usecase
 
+import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.FundQuote
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketType
@@ -171,6 +172,8 @@ class GetPortfolioUseCase @Inject constructor(
         val totalEarningsPercent = if (totalCost > 0) totalEarnings / totalCost * 100 else 0.0
         val todayEarnings = holdings.sumOf { calcTodayEarnings(it, stockQuotes[it.code], fundQuotes[it.code]) }
 
+        val categorySummaries = buildCategorySummaries(holdings, stockQuotes, fundQuotes)
+
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
         return PortfolioSummary(
@@ -180,8 +183,38 @@ class GetPortfolioUseCase @Inject constructor(
             totalEarningsPercent = totalEarningsPercent,
             todayEarnings = todayEarnings,
             holdings = holdings,
+            categorySummaries = categorySummaries,
             lastUpdateTime = timeFormat.format(Date()),
         )
+    }
+
+    private fun buildCategorySummaries(
+        holdings: List<Holding>,
+        stockQuotes: Map<String, StockQuote>,
+        fundQuotes: Map<String, FundQuote>,
+    ): List<CategorySummary> {
+        return MarketType.entries.mapNotNull { marketType ->
+            val typeHoldings = holdings.filter { it.marketType == marketType }
+            if (typeHoldings.isEmpty()) return@mapNotNull null
+
+            val marketValue = typeHoldings.sumOf { it.marketValueCNY }
+            val cost = typeHoldings.sumOf { calcCostCNY(it) }
+            val earnings = marketValue - cost
+            val earningsPercent = if (cost > 0) earnings / cost * 100 else 0.0
+            val todayEarnings = typeHoldings.sumOf {
+                calcTodayEarnings(it, stockQuotes[it.code], fundQuotes[it.code])
+            }
+
+            CategorySummary(
+                marketType = marketType,
+                totalMarketValue = marketValue,
+                totalCost = cost,
+                totalEarnings = earnings,
+                totalEarningsPercent = earningsPercent,
+                todayEarnings = todayEarnings,
+                holdings = typeHoldings,
+            )
+        }
     }
 
     private fun calcCostCNY(holding: Holding): Double {

@@ -2,6 +2,7 @@ package com.jiucaihua.app.presentation.portfolio
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.PortfolioSummary
@@ -164,16 +165,27 @@ class PortfolioViewModel @Inject constructor(
     }
 
     private fun applySorting(summary: PortfolioSummary, order: SortOrder): PortfolioSummary {
-        val sorted = when (order) {
-            SortOrder.DEFAULT -> summary.holdings
-            SortOrder.CHANGE_PERCENT_DESC -> summary.holdings.sortedByDescending { it.changePercent }
-            SortOrder.CHANGE_PERCENT_ASC -> summary.holdings.sortedBy { it.changePercent }
-            SortOrder.EARNINGS_DESC -> summary.holdings.sortedByDescending { it.earningsCNY }
-            SortOrder.EARNINGS_ASC -> summary.holdings.sortedBy { it.earningsCNY }
-            SortOrder.MARKET_VALUE_DESC -> summary.holdings.sortedByDescending { it.marketValueCNY }
-            SortOrder.MARKET_VALUE_ASC -> summary.holdings.sortedBy { it.marketValueCNY }
+        val sortFunction: (List<Holding>) -> List<Holding> = { holdings ->
+            when (order) {
+                SortOrder.DEFAULT -> holdings
+                SortOrder.CHANGE_PERCENT_DESC -> holdings.sortedByDescending { it.changePercent }
+                SortOrder.CHANGE_PERCENT_ASC -> holdings.sortedBy { it.changePercent }
+                SortOrder.EARNINGS_DESC -> holdings.sortedByDescending { it.earningsCNY }
+                SortOrder.EARNINGS_ASC -> holdings.sortedBy { it.earningsCNY }
+                SortOrder.MARKET_VALUE_DESC -> holdings.sortedByDescending { it.marketValueCNY }
+                SortOrder.MARKET_VALUE_ASC -> holdings.sortedBy { it.marketValueCNY }
+            }
         }
-        return summary.copy(holdings = sorted)
+
+        val sortedCategories = summary.categorySummaries.map { category ->
+            category.copy(holdings = sortFunction(category.holdings))
+        }
+        val sortedHoldings = sortFunction(summary.holdings)
+
+        return summary.copy(
+            holdings = sortedHoldings,
+            categorySummaries = sortedCategories,
+        )
     }
 
     override fun onCleared() {

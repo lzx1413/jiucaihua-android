@@ -16,7 +16,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
@@ -53,6 +53,7 @@ import com.jiucaihua.app.presentation.common.components.EmptyState
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 import com.jiucaihua.app.presentation.common.components.MarketStatusBadge
 import com.jiucaihua.app.presentation.detail.components.StockNewsSection
+import com.jiucaihua.app.presentation.portfolio.components.CategoryHoldingSection
 import com.jiucaihua.app.presentation.portfolio.components.HoldingListItem
 import com.jiucaihua.app.presentation.portfolio.components.PortfolioSummaryCard
 import com.jiucaihua.app.presentation.portfolio.components.SortSelector
@@ -114,6 +115,14 @@ fun PortfolioScreen(
                     }
                 },
                 actions = {
+                    if (selectedTabIndex == HoldingsTabIndex) {
+                        IconButton(onClick = onAddHolding) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "添加持仓",
+                            )
+                        }
+                    }
                     MarketStatusBadge(
                         sessions = uiState.marketSessions,
                         modifier = Modifier.padding(end = 4.dp),
@@ -164,19 +173,6 @@ fun PortfolioScreen(
                             )
                         },
                         label = { Text(label) },
-                    )
-                }
-            }
-        },
-        floatingActionButton = {
-            if (selectedTabIndex == HoldingsTabIndex) {
-                FloatingActionButton(
-                    onClick = onAddHolding,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "添加持仓"
                     )
                 }
             }
@@ -302,13 +298,13 @@ private fun HoldingsList(
             )
         }
         items(
-            items = summary.holdings,
-            key = { it.id }
-        ) { holding ->
-            HoldingListItem(
-                holding = holding,
-                onClick = { onHoldingClick(holding.code) },
-                onLongClick = { onHoldingLongClick(holding) },
+            items = summary.categorySummaries,
+            key = { it.marketType.name }
+        ) { categorySummary ->
+            CategoryHoldingSection(
+                categorySummary = categorySummary,
+                onHoldingClick = onHoldingClick,
+                onHoldingLongClick = onHoldingLongClick,
             )
         }
     }
