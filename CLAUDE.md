@@ -1,35 +1,35 @@
-# CLAUDE.md - 九财花开发指南
+# CLAUDE.md - Jiucaihua Development Guide
 
-## 项目
+## Project
 
-九财花 (Jiucaihua) 是一款个人投资管理 Android App，使用 Kotlin + Jetpack Compose 开发。
+Jiucaihua is a personal investment management Android app built with Kotlin + Jetpack Compose.
 
-## 架构
+## Architecture
 
 - Clean Architecture + MVVM
-- Hilt 依赖注入
-- Room 本地数据库
-- Retrofit 网络请求
+- Hilt for dependency injection
+- Room for local database
+- Retrofit for network requests
 
-## 工作流程
+## Development Rules
 
-1. **先提案再执行** - 每次任务先提案，确认后再执行
-2. **构建后测试** - 完成后安装到真机测试：
+1. **Propose before execute** - Always propose a solution before implementing changes
+2. **Build and test** - After completing changes, build and install to device:
    ```bash
    ./gradlew assembleDebug
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
-3. **结束前询问** - 完成或有疑问时，询问下一步
+3. **Ask before ending** - Use AskUserQuestion when finished or encountering issues
 
-## 文档
+## Documentation
 
-| 文档 | 内容 |
-|------|------|
-| `docs/quick-start.md` | 开发环境搭建 |
-| `docs/architecture-overview.md` | 架构说明 |
-| `docs/data-sources.md` | 数据源接口 |
-| `docs/ai-data-model.md` | AI Agent 数据规范 |
+| Document | Content |
+|----------|---------|
+| `docs/quick-start.md` | Development environment setup |
+| `docs/architecture-overview.md` | Architecture overview |
+| `docs/data-sources.md` | Data source interfaces |
+| `docs/ai-data-model.md` | AI Agent data model |
 
-## 参考
+## Reference
 
-`work_dirs/leek-fund` 是参考源码目录。
+`work_dirs/leek-fund` contains reference source code.
