@@ -102,6 +102,10 @@ dependencies {
     // Security (Phase 8+)
     implementation(libs.androidx.security.crypto)
 
+    // Image Loading (Coil 3)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -2,6 +2,7 @@ package com.jiucaihua.app.presentation.navigation
 
 sealed class Screen(val route: String) {
     data object Portfolio : Screen("portfolio")
+    data object Market : Screen("market")
     data object AddEditHolding : Screen("add_edit_holding?holdingId={holdingId}") {
         fun createRoute(holdingId: Long? = null): String {
             return if (holdingId != null) "add_edit_holding?holdingId=$holdingId"

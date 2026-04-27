@@ -68,6 +68,7 @@ class GetPortfolioUseCase @Inject constructor(
                         )
                     } else holding.copy(exchangeRate = hkdRate)
                 }
+                MarketType.US_STOCK -> holding
                 MarketType.FUND -> {
                     val fq = fundQuoteMap[holding.code]
                     if (fq != null) {
@@ -117,6 +118,7 @@ class GetPortfolioUseCase @Inject constructor(
                         )
                     } else holding.copy(exchangeRate = hkdRate)
                 }
+                MarketType.US_STOCK -> holding
                 MarketType.FUND -> {
                     val fq = fundQuoteMap[holding.code]
                     if (fq != null) {
@@ -237,6 +239,7 @@ class GetPortfolioUseCase @Inject constructor(
                 if (stockQuote == null) return 0.0
                 (stockQuote.price - stockQuote.yestClose) * holding.holdingShares * holding.exchangeRate
             }
+            MarketType.US_STOCK -> 0.0
             MarketType.FUND -> {
                 if (fundQuote == null) return 0.0
                 val dailyChangeRatio = fundQuote.dailyChangePercent / 100

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,8 @@ fun KLineChartView(
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f).toArgb()
 
+    val initialPosition = remember { (points.size - VISIBLE_COUNT).coerceAtLeast(0).toFloat() }
+
     AndroidView(
         modifier = modifier
             .fillMaxWidth()
@@ -51,6 +54,9 @@ fun KLineChartView(
                 isHighlightFullBarEnabled = false
                 setScaleEnabled(true)
                 setPinchZoom(true)
+                isDragEnabled = true
+                isDragDecelerationEnabled = true
+                dragDecelerationFrictionCoef = 0.92f
                 setDrawOrder(
                     arrayOf(
                         CombinedChart.DrawOrder.BAR,
@@ -92,6 +98,7 @@ fun KLineChartView(
                 }
 
                 setVisibleXRangeMaximum(VISIBLE_COUNT.toFloat())
+                setVisibleXRangeMinimum(20f)
                 isDoubleTapToZoomEnabled = false
             }
         },
@@ -146,8 +153,12 @@ fun KLineChartView(
             chart.axisLeft.axisMinimum = (priceMin - priceRange * 0.05).toFloat()
             chart.axisLeft.axisMaximum = (priceMax + priceRange * 0.05).toFloat()
 
+            chart.notifyDataSetChanged()
             chart.setVisibleXRangeMaximum(VISIBLE_COUNT.toFloat())
-            chart.moveViewToX((points.size - VISIBLE_COUNT).coerceAtLeast(0).toFloat())
+            chart.setVisibleXRangeMinimum(20f)
+            if (chart.viewPortHandler.contentWidth() <= 0f) {
+                chart.moveViewToX(initialPosition)
+            }
             chart.invalidate()
         }
     )

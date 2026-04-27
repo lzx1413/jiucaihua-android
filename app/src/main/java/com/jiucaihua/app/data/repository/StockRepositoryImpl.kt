@@ -2,16 +2,15 @@ package com.jiucaihua.app.data.repository
 
 import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.entity.StockCacheEntity
+import com.jiucaihua.app.data.parser.StockDataParser
 import com.jiucaihua.app.data.remote.api.SinaStockApi
 import com.jiucaihua.app.data.remote.api.TencentHKStockApi
 import com.jiucaihua.app.data.remote.api.TencentKLineApi
 import com.jiucaihua.app.domain.model.KLineData
 import com.jiucaihua.app.domain.model.KLinePeriod
-import com.jiucaihua.app.domain.model.KLinePoint
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.StockQuote
 import com.jiucaihua.app.domain.repository.StockRepository
-import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -70,7 +69,7 @@ class StockRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
-        val symbol = toTencentKLineSymbol(code)
+        val symbol = StockDataParser.toTencentKLineSymbol(code)
         val periodType = when (period) {
             KLinePeriod.DAILY -> "day"
             KLinePeriod.WEEKLY -> "week"
@@ -84,63 +83,7 @@ class StockRepositoryImpl @Inject constructor(
 
         val param = "$symbol,$periodType,$startDate,$endDate,$limit,qfq"
         val response = tencentKLineApi.getKLineData(param)
-        return parseTencentKLineResponse(code, symbol, period, response)
-    }
-
-    private fun toTencentKLineSymbol(code: String): String {
-        return when {
-            code.startsWith("hk") -> {
-                val suffix = code.removePrefix("hk")
-                if (suffix.all { it.isDigit() }) "hk${suffix.padStart(5, '0')}" else "hk${suffix.uppercase()}"
-            }
-            else -> code
-        }
-    }
-
-    private fun parseTencentKLineResponse(code: String, symbol: String, period: KLinePeriod, response: String): KLineData {
-        val json = JSONObject(response)
-        val data = json.optJSONObject("data") ?: return KLineData(code, "", period, emptyList())
-        val stockData = data.optJSONObject(symbol) ?: return KLineData(code, "", period, emptyList())
-
-        val dayKey = when (period) {
-            KLinePeriod.DAILY -> "qfqday"
-            KLinePeriod.WEEKLY -> "qfqweek"
-            KLinePeriod.MONTHLY -> "qfqmonth"
-        }
-        var klines = stockData.optJSONArray(dayKey)
-        if (klines == null) {
-            val fallbackKey = when (period) {
-                KLinePeriod.DAILY -> "day"
-                KLinePeriod.WEEKLY -> "week"
-                KLinePeriod.MONTHLY -> "month"
-            }
-            klines = stockData.optJSONArray(fallbackKey)
-        }
-
-        val name = stockData.optJSONObject("qt")?.let { qt ->
-            val qtArr = qt.optJSONArray(symbol)
-            qtArr?.optString(1, "") ?: ""
-        } ?: ""
-
-        val points = mutableListOf<KLinePoint>()
-        if (klines != null) {
-            for (i in 0 until klines.length()) {
-                val row = klines.optJSONArray(i) ?: continue
-                if (row.length() < 6) continue
-                points.add(
-                    KLinePoint(
-                        date = row.optString(0, ""),
-                        open = row.optString(1, "0").toDoubleOrNull() ?: 0.0,
-                        close = row.optString(2, "0").toDoubleOrNull() ?: 0.0,
-                        high = row.optString(3, "0").toDoubleOrNull() ?: 0.0,
-                        low = row.optString(4, "0").toDoubleOrNull() ?: 0.0,
-                        volume = row.optString(5, "0").toDoubleOrNull() ?: 0.0,
-                    )
-                )
-            }
-        }
-
-        return KLineData(code = code, name = name, period = period, points = points)
+        return StockDataParser.parseTencentKLineResponse(code, symbol, period, response)
     }
 
     private fun parseTencentHKResponse(response: String, codes: List<String>): List<StockQuote> {
@@ -162,38 +105,23 @@ class StockRepositoryImpl @Inject constructor(
         return results
     }
 
-    private fun parseTencentHKItem(code: String, arr: JSONArray): StockQuote? {
-        if (arr.length() < 38) return null
-
-        val name = arr.optString(1, "")
-        val price = arr.optString(3, "0").toDoubleOrNull() ?: 0.0
-        val yestClose = arr.optString(4, "0").toDoubleOrNull() ?: 0.0
-        val open = arr.optString(5, "0").toDoubleOrNull() ?: 0.0
-        val high = arr.optString(33, "0").toDoubleOrNull() ?: 0.0
-        val low = arr.optString(34, "0").toDoubleOrNull() ?: 0.0
-        val volume = arr.optString(36, "0").toDoubleOrNull() ?: 0.0
-        val amount = arr.optString(37, "0").toDoubleOrNull() ?: 0.0
-        val time = arr.optString(30, "")
-
-        if (price == 0.0 && yestClose == 0.0) return null
-
-        val actualPrice = if (price == 0.0) yestClose else price
-        val changeAmount = actualPrice - yestClose
-        val changePercent = if (yestClose > 0) changeAmount / yestClose * 100 else 0.0
+    private fun parseTencentHKItem(code: String, arr: org.json.JSONArray): StockQuote? {
+        val parsed = StockDataParser.parseTencentHKArray(arr)
+        if (parsed == null) return null
 
         return StockQuote(
             code = code,
-            name = name,
-            price = actualPrice,
-            yestClose = yestClose,
-            open = open,
-            high = high,
-            low = low,
-            volume = volume,
-            amount = amount,
-            changePercent = changePercent,
-            changeAmount = changeAmount,
-            time = time,
+            name = parsed.name,
+            price = parsed.price,
+            yestClose = parsed.yestClose,
+            open = parsed.open,
+            high = parsed.high,
+            low = parsed.low,
+            volume = parsed.volume,
+            amount = parsed.amount,
+            changePercent = parsed.changePercent,
+            changeAmount = parsed.changeAmount,
+            time = parsed.time,
             marketType = MarketType.HK_STOCK,
         )
     }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -48,7 +49,8 @@ import com.jiucaihua.app.domain.model.StockArticle
 import com.jiucaihua.app.presentation.ai.AiChatContent
 import com.jiucaihua.app.presentation.ai.AiChatViewModel
 import com.jiucaihua.app.presentation.ai.AiTabIcon
-import com.jiucaihua.app.presentation.ai.AiChatUiState
+import com.jiucaihua.app.presentation.market.MarketScreenContent
+import com.jiucaihua.app.presentation.market.MarketViewModel
 import com.jiucaihua.app.presentation.common.components.EmptyState
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 import com.jiucaihua.app.presentation.common.components.MarketStatusBadge
@@ -61,6 +63,7 @@ import com.jiucaihua.app.presentation.portfolio.components.SortSelector
 private const val HoldingsTabIndex = 0
 private const val NewsTabIndex = 1
 private const val AiTabIndex = 2
+private const val MarketTabIndex = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +74,7 @@ fun PortfolioScreen(
     onArticleClick: (StockArticle) -> Unit,
     onNavigateToAlerts: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToMarket: () -> Unit,
     viewModel: PortfolioViewModel = hiltViewModel(),
     aiViewModel: AiChatViewModel = hiltViewModel(),
 ) {
@@ -84,6 +88,7 @@ fun PortfolioScreen(
         "持仓" to Icons.Outlined.AccountBalanceWallet,
         "资讯" to Icons.AutoMirrored.Outlined.Article,
         "AI助手" to AiTabIcon,
+        "大盘" to Icons.Outlined.TrendingUp,
     )
 
     LaunchedEffect(uiState.error) {
@@ -212,6 +217,10 @@ fun PortfolioScreen(
                     onInputChange = aiViewModel::updateInput,
                     onSend = aiViewModel::sendMessage,
                 )
+
+                MarketTabIndex -> MarketTabContent(
+                    onIndexClick = onHoldingClick,
+                )
             }
         }
     }
@@ -328,4 +337,17 @@ private fun NewsTabContent(
             )
         }
     }
+}
+
+@Composable
+private fun MarketTabContent(
+    onIndexClick: (String) -> Unit,
+    marketViewModel: MarketViewModel = hiltViewModel(),
+) {
+    MarketScreenContent(
+        viewModel = marketViewModel,
+        onIndexClick = { index ->
+            onIndexClick(index.code)
+        },
+    )
 }

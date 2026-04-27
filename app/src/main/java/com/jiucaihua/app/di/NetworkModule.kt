@@ -1,5 +1,7 @@
 package com.jiucaihua.app.di
 
+import com.jiucaihua.app.data.remote.api.EastMoneyFundFlowApi
+import com.jiucaihua.app.data.remote.api.EastMoneyUSStockKLineApi
 import com.jiucaihua.app.data.remote.api.FundApi
 import com.jiucaihua.app.data.remote.api.HolidayApi
 import com.jiucaihua.app.data.remote.api.JiuYanApi
@@ -212,5 +214,28 @@ object NetworkModule {
     @Singleton
     fun provideJiuYanApi(@Named("jiuYan") retrofit: Retrofit): JiuYanApi {
         return retrofit.create(JiuYanApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("eastMoney")
+    fun provideEastMoneyRetrofit(@Named("default") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://push2.eastmoney.com/")
+            .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideEastMoneyFundFlowApi(@Named("eastMoney") retrofit: Retrofit): EastMoneyFundFlowApi {
+        return retrofit.create(EastMoneyFundFlowApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideEastMoneyUSStockKLineApi(@Named("eastMoney") retrofit: Retrofit): EastMoneyUSStockKLineApi {
+        return retrofit.create(EastMoneyUSStockKLineApi::class.java)
     }
 }

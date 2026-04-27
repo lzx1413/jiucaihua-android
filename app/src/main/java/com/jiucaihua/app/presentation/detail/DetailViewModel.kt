@@ -146,6 +146,8 @@ class DetailViewModel @Inject constructor(
                     )
                 }
             }
+            MarketType.US_STOCK -> {
+            }
             MarketType.FUND -> {
                 val quotes = fundRepository.getFundQuotes(listOf(code))
                 val fq = quotes.firstOrNull()

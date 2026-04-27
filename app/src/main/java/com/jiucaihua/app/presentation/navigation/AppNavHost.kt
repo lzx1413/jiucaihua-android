@@ -13,6 +13,7 @@ import com.jiucaihua.app.presentation.alerts.AlertsScreen
 import com.jiucaihua.app.presentation.article.ArticleDetailScreen
 import com.jiucaihua.app.presentation.detail.DetailScreen
 import com.jiucaihua.app.presentation.holdings.AddEditHoldingScreen
+import com.jiucaihua.app.presentation.market.MarketScreen
 import com.jiucaihua.app.presentation.portfolio.PortfolioScreen
 import com.jiucaihua.app.presentation.settings.SettingsScreen
 
@@ -48,6 +49,18 @@ fun AppNavHost() {
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToMarket = {
+                    navController.navigate(Screen.Market.route)
+                },
+            )
+        }
+
+        composable(Screen.Market.route) {
+            MarketScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onIndexClick = { index ->
+                    navController.navigate(Screen.Detail.createRoute(index.code))
                 },
             )
         }

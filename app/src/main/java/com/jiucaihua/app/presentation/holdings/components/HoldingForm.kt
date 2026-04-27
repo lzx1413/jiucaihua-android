@@ -76,6 +76,7 @@ fun HoldingForm(
                         when (state.marketType) {
                             MarketType.A_STOCK -> "输入代码或名称搜索，如 600519"
                             MarketType.HK_STOCK -> "输入代码或名称搜索，如 hk00700"
+                            MarketType.US_STOCK -> "输入代码或名称搜索"
                             MarketType.FUND -> "输入代码或名称搜索，如 110011"
                         }
                     )

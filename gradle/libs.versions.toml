@@ -23,6 +23,7 @@ junitExt = "1.2.1"
 espresso = "3.6.1"
 securityCrypto = "1.1.0-alpha06"
 kotlinxSerializationJson = "1.6.3"
+coil = "3.0.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -72,6 +73,10 @@ moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.re
 
 # Chart
 mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
+
+# Image Loading
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
 # HTML Parser
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
