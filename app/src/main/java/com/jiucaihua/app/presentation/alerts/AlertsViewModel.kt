@@ -1,0 +1,90 @@
+package com.jiucaihua.app.presentation.alerts
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.domain.model.AlertType
+import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.domain.model.PriceAlert
+import com.jiucaihua.app.domain.repository.AlertRepository
+import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class AlertsUiState(
+    val alerts: List<PriceAlert> = emptyList(),
+    val holdings: List<Holding> = emptyList(),
+    val isLoading: Boolean = true,
+    val showAddDialog: Boolean = false,
+)
+
+@HiltViewModel
+class AlertsViewModel @Inject constructor(
+    private val alertRepository: AlertRepository,
+    private val getPortfolioUseCase: GetPortfolioUseCase,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(AlertsUiState())
+    val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
+
+    init {
+        observeAlerts()
+        loadHoldings()
+    }
+
+    private fun observeAlerts() {
+        viewModelScope.launch {
+            alertRepository.getAllAlerts().collect { alerts ->
+                _uiState.value = _uiState.value.copy(
+                    alerts = alerts,
+                    isLoading = false,
+                )
+            }
+        }
+    }
+
+    private fun loadHoldings() {
+        viewModelScope.launch {
+            val holdings = getPortfolioUseCase.observeHoldings().first()
+            _uiState.value = _uiState.value.copy(holdings = holdings)
+        }
+    }
+
+    fun showAddDialog() {
+        _uiState.value = _uiState.value.copy(showAddDialog = true)
+    }
+
+    fun hideAddDialog() {
+        _uiState.value = _uiState.value.copy(showAddDialog = false)
+    }
+
+    fun addAlert(code: String, name: String, alertType: AlertType, threshold: Double) {
+        viewModelScope.launch {
+            alertRepository.addAlert(
+                PriceAlert(
+                    code = code,
+                    name = name,
+                    alertType = alertType,
+                    threshold = threshold,
+                )
+            )
+            _uiState.value = _uiState.value.copy(showAddDialog = false)
+        }
+    }
+
+    fun toggleAlert(id: Long, isEnabled: Boolean) {
+        viewModelScope.launch {
+            alertRepository.setAlertEnabled(id, isEnabled)
+        }
+    }
+
+    fun deleteAlert(id: Long) {
+        viewModelScope.launch {
+            alertRepository.deleteAlert(id)
+        }
+    }
+}
