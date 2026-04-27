@@ -18,6 +18,9 @@ interface HoldingDao {
     @Query("SELECT * FROM holdings ORDER BY updatedAt DESC")
     fun getAllHoldings(): Flow<List<HoldingEntity>>
 
+    @Query("SELECT * FROM holdings ORDER BY updatedAt DESC")
+    suspend fun getAllHoldingsOnce(): List<HoldingEntity>
+
     @Query("SELECT * FROM holdings WHERE id = :id")
     suspend fun getHoldingById(id: Long): HoldingEntity?
 
@@ -27,6 +30,9 @@ interface HoldingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHolding(holding: HoldingEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllHoldings(holdings: List<HoldingEntity>)
+
     @Update
     suspend fun updateHolding(holding: HoldingEntity)
 
@@ -35,4 +41,7 @@ interface HoldingDao {
 
     @Query("DELETE FROM holdings WHERE id = :id")
     suspend fun deleteHoldingById(id: Long)
+
+    @Query("DELETE FROM holdings")
+    suspend fun clearAllHoldings()
 }

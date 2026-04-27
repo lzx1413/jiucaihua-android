@@ -20,11 +20,17 @@ interface AlertDao {
     @Query("SELECT * FROM alerts WHERE isEnabled = 1")
     suspend fun getEnabledAlerts(): List<AlertEntity>
 
+    @Query("SELECT * FROM alerts ORDER BY createdAt DESC")
+    suspend fun getAllAlertsOnce(): List<AlertEntity>
+
     @Query("SELECT * FROM alerts WHERE id = :id")
     suspend fun getAlertById(id: Long): AlertEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAlert(alert: AlertEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllAlerts(alerts: List<AlertEntity>)
 
     @Update
     suspend fun updateAlert(alert: AlertEntity)
@@ -37,4 +43,7 @@ interface AlertDao {
 
     @Query("DELETE FROM alerts WHERE id = :id")
     suspend fun deleteAlertById(id: Long)
+
+    @Query("DELETE FROM alerts")
+    suspend fun clearAllAlerts()
 }
