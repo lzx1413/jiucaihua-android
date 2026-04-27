@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,8 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jiucaihua.app.domain.model.MarketType
+import com.jiucaihua.app.domain.model.SecuritySearchResult
 import com.jiucaihua.app.presentation.holdings.AddEditHoldingUiState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HoldingForm(
     state: AddEditHoldingUiState,
@@ -28,7 +34,8 @@ fun HoldingForm(
     onMarketTypeChange: (MarketType) -> Unit,
     onCostPriceChange: (String) -> Unit,
     onHoldingSharesChange: (String) -> Unit,
-    onSearchClick: () -> Unit,
+    onSelectResult: (SecuritySearchResult) -> Unit,
+    onDismissSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -37,20 +44,6 @@ fun HoldingForm(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        if (!state.isEditing) {
-            OutlinedButton(
-                onClick = onSearchClick,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("搜索证券并自动填充")
-            }
-            Text(
-                text = "支持按代码或名称搜索，选择后会自动填充代码、名称和市场类型。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
         Text(
             text = "市场类型",
             style = MaterialTheme.typography.labelLarge,
@@ -68,31 +61,66 @@ fun HoldingForm(
             }
         }
 
-        OutlinedTextField(
-            value = state.code,
-            onValueChange = onCodeChange,
-            label = { Text("证券代码") },
-            placeholder = {
-                Text(
-                    when (state.marketType) {
-                        MarketType.A_STOCK -> "如 sh600519"
-                        MarketType.HK_STOCK -> "如 hk00700"
-                        MarketType.FUND -> "如 110011"
-                    }
-                )
-            },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !state.isEditing,
-        )
+        val isDropdownVisible = state.searchExpanded && state.searchResults.isNotEmpty()
+
+        ExposedDropdownMenuBox(
+            expanded = isDropdownVisible,
+            onExpandedChange = { },
+        ) {
+            OutlinedTextField(
+                value = state.code,
+                onValueChange = onCodeChange,
+                label = { Text("证券代码") },
+                placeholder = {
+                    Text(
+                        when (state.marketType) {
+                            MarketType.A_STOCK -> "输入代码或名称搜索，如 600519"
+                            MarketType.HK_STOCK -> "输入代码或名称搜索，如 hk00700"
+                            MarketType.FUND -> "输入代码或名称搜索，如 110011"
+                        }
+                    )
+                },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = !state.isEditing),
+                enabled = !state.isEditing,
+                supportingText = if (state.isSearching) {
+                    { Text("搜索中...") }
+                } else if (state.searchError != null) {
+                    { Text(state.searchError) }
+                } else null,
+            )
+            ExposedDropdownMenu(
+                expanded = isDropdownVisible,
+                onDismissRequest = onDismissSearch,
+            ) {
+                state.searchResults.forEach { result ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(result.name)
+                                Text(
+                                    "${result.displayCode} · ${result.marketType.label}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                        onClick = { onSelectResult(result) },
+                    )
+                }
+            }
+        }
 
         OutlinedTextField(
             value = state.name,
             onValueChange = onNameChange,
             label = { Text("证券名称") },
-            placeholder = { Text("如 贵州茅台") },
+            placeholder = { Text("选择证券后自动填充") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            enabled = state.isEditing,
         )
 
         OutlinedTextField(

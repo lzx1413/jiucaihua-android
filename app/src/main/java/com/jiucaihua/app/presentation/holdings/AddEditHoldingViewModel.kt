@@ -29,9 +29,7 @@ data class AddEditHoldingUiState(
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null,
-    val isSearchSheetVisible: Boolean = false,
-    val searchQuery: String = "",
-    val searchFilter: MarketType? = null,
+    val searchExpanded: Boolean = false,
     val searchResults: List<SecuritySearchResult> = emptyList(),
     val isSearching: Boolean = false,
     val searchError: String? = null,
@@ -47,11 +45,6 @@ data class AddEditHoldingUiState(
         get() = code.isNotBlank() && name.isNotBlank() &&
                 (costPrice.toDoubleOrNull() ?: 0.0) > 0 &&
                 (holdingShares.toDoubleOrNull() ?: 0.0) > 0
-
-    val filteredSearchResults: List<SecuritySearchResult>
-        get() = searchFilter?.let { filter ->
-            searchResults.filter { it.marketType == filter }
-        } ?: searchResults
 }
 
 @HiltViewModel
@@ -97,7 +90,28 @@ class AddEditHoldingViewModel @Inject constructor(
     }
 
     fun onCodeChange(value: String) {
-        _uiState.update { it.copy(code = value) }
+        val query = value.trim()
+        if (query.isBlank()) {
+            searchJob?.cancel()
+            _uiState.update {
+                it.copy(
+                    code = value,
+                    name = "",
+                    searchError = null,
+                    searchResults = emptyList(),
+                    isSearching = false,
+                    searchExpanded = false,
+                )
+            }
+            return
+        }
+
+        _uiState.update { it.copy(code = value, name = "", searchError = null) }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(300)
+            performSearch(query)
+        }
     }
 
     fun onNameChange(value: String) {
@@ -120,65 +134,6 @@ class AddEditHoldingViewModel @Inject constructor(
         }
     }
 
-    fun showSearchSheet() {
-        if (_uiState.value.isEditing) return
-        searchJob?.cancel()
-        _uiState.update {
-            it.copy(
-                isSearchSheetVisible = true,
-                searchQuery = "",
-                searchFilter = null,
-                searchResults = emptyList(),
-                isSearching = false,
-                searchError = null,
-            )
-        }
-    }
-
-    fun dismissSearchSheet() {
-        searchJob?.cancel()
-        _uiState.update {
-            it.copy(
-                isSearchSheetVisible = false,
-                searchQuery = "",
-                searchFilter = null,
-                searchResults = emptyList(),
-                isSearching = false,
-                searchError = null,
-            )
-        }
-    }
-
-    fun onSearchQueryChange(value: String) {
-        _uiState.update { it.copy(searchQuery = value, searchError = null) }
-        val query = value.trim()
-        if (query.isBlank()) {
-            searchJob?.cancel()
-            _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
-            return
-        }
-
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            delay(300)
-            performSearch(query)
-        }
-    }
-
-    fun onSearchFilterChange(filter: MarketType?) {
-        _uiState.update { it.copy(searchFilter = filter) }
-    }
-
-    fun retrySearch() {
-        val query = _uiState.value.searchQuery.trim()
-        if (query.isBlank()) return
-
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            performSearch(query)
-        }
-    }
-
     fun applySearchResult(result: SecuritySearchResult) {
         searchJob?.cancel()
         _uiState.update {
@@ -186,9 +141,20 @@ class AddEditHoldingViewModel @Inject constructor(
                 code = result.code,
                 name = result.name,
                 marketType = result.marketType,
-                isSearchSheetVisible = false,
-                searchQuery = "",
-                searchFilter = null,
+            )
+        }
+        resetSearchState()
+    }
+
+    fun dismissSearch() {
+        searchJob?.cancel()
+        resetSearchState()
+    }
+
+    private fun resetSearchState() {
+        _uiState.update {
+            it.copy(
+                searchExpanded = false,
                 searchResults = emptyList(),
                 isSearching = false,
                 searchError = null,
@@ -197,28 +163,30 @@ class AddEditHoldingViewModel @Inject constructor(
     }
 
     private suspend fun performSearch(query: String) {
-        _uiState.update { it.copy(isSearching = true, searchError = null) }
+        _uiState.update { it.copy(isSearching = true, searchError = null, searchExpanded = true) }
         try {
             val results = securitySearchRepository.search(query)
             val currentState = _uiState.value
-            if (!currentState.isSearchSheetVisible || currentState.searchQuery.trim() != query) return
+            if (currentState.code.trim() != query) return
 
             _uiState.update {
                 it.copy(
                     searchResults = results,
                     isSearching = false,
                     searchError = null,
+                    searchExpanded = results.isNotEmpty(),
                 )
             }
         } catch (_: Exception) {
             val currentState = _uiState.value
-            if (!currentState.isSearchSheetVisible || currentState.searchQuery.trim() != query) return
+            if (currentState.code.trim() != query) return
 
             _uiState.update {
                 it.copy(
                     searchResults = emptyList(),
                     isSearching = false,
                     searchError = "搜索失败，请稍后重试",
+                    searchExpanded = false,
                 )
             }
         }

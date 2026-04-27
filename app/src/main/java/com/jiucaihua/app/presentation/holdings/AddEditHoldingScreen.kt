@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jiucaihua.app.presentation.holdings.components.HoldingForm
-import com.jiucaihua.app.presentation.holdings.components.SecuritySearchSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,26 +72,12 @@ fun AddEditHoldingScreen(
             onMarketTypeChange = viewModel::onMarketTypeChange,
             onCostPriceChange = viewModel::onCostPriceChange,
             onHoldingSharesChange = viewModel::onHoldingSharesChange,
-            onSearchClick = viewModel::showSearchSheet,
+            onSelectResult = viewModel::applySearchResult,
+            onDismissSearch = viewModel::dismissSearch,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState()),
-        )
-    }
-
-    if (uiState.isSearchSheetVisible) {
-        SecuritySearchSheet(
-            query = uiState.searchQuery,
-            selectedMarketType = uiState.searchFilter,
-            results = uiState.filteredSearchResults,
-            isSearching = uiState.isSearching,
-            error = uiState.searchError,
-            onQueryChange = viewModel::onSearchQueryChange,
-            onMarketTypeChange = viewModel::onSearchFilterChange,
-            onRetry = viewModel::retrySearch,
-            onSelect = viewModel::applySearchResult,
-            onDismiss = viewModel::dismissSearchSheet,
         )
     }
 }
