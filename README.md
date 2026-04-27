@@ -1,5 +1,7 @@
 # 九财花 (Jiucaihua)
 
+<img src="docs/icon.svg" width="120" height="120" alt="九财花图标">
+
 一款个人投资管理 Android App，帮助用户跟踪股票、基金持仓和实时行情。
 
 ## 功能
