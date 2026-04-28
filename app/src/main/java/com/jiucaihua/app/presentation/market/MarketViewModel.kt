@@ -2,15 +2,12 @@ package com.jiucaihua.app.presentation.market
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jiucaihua.app.domain.model.FundFlowData
-import com.jiucaihua.app.domain.model.KLineData
-import com.jiucaihua.app.domain.model.KLinePeriod
-import com.jiucaihua.app.domain.model.MarketIndex
-import com.jiucaihua.app.domain.model.MarketIndexCodes
+import com.jiucaihua.app.domain.model.MarketGroup
 import com.jiucaihua.app.domain.model.MarketTab
 import com.jiucaihua.app.domain.repository.MarketRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,15 +18,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class MarketUiState(
-    val currentTab: MarketTab = MarketTab.A_STOCK,
-    val indices: List<MarketIndex> = emptyList(),
-    val selectedIndex: MarketIndex? = null,
-    val kLineData: KLineData? = null,
-    val selectedPeriod: KLinePeriod = KLinePeriod.DAILY,
-    val fundFlowData: FundFlowData = FundFlowData(),
+    val groups: List<MarketGroup> = emptyList(),
     val isLoading: Boolean = true,
-    val isKLineLoading: Boolean = false,
-    val isFundFlowLoading: Boolean = false,
     val error: String? = null,
 )
 
@@ -42,7 +32,6 @@ class MarketViewModel @Inject constructor(
     val uiState: StateFlow<MarketUiState> = _uiState.asStateFlow()
 
     private var refreshJob: Job? = null
-    private var kLineJob: Job? = null
 
     init {
         loadData()
@@ -52,105 +41,25 @@ class MarketViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                loadIndices()
-                loadFundFlow()
-                loadKLine()
+                val (aIndices, hkIndices, usIndices, goldIndices) = kotlinx.coroutines.coroutineScope {
+                    val a = async { runCatching { marketRepository.getAStockIndices() }.getOrDefault(emptyList()) }
+                    val hk = async { runCatching { marketRepository.getHKStockIndices() }.getOrDefault(emptyList()) }
+                    val us = async { runCatching { marketRepository.getUSStockIndices() }.getOrDefault(emptyList()) }
+                    val gold = async { runCatching { marketRepository.getGoldIndices() }.getOrDefault(emptyList()) }
+                    FourResult(a.await(), hk.await(), us.await(), gold.await())
+                }
+
+                val groups = listOf(
+                    MarketGroup(MarketTab.A_STOCK, aIndices),
+                    MarketGroup(MarketTab.HK_STOCK, hkIndices),
+                    MarketGroup(MarketTab.US_STOCK, usIndices),
+                    MarketGroup(MarketTab.GOLD, goldIndices),
+                ).filter { it.indices.isNotEmpty() }
+
+                _uiState.update { it.copy(groups = groups, isLoading = false, error = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "数据加载失败: ${e.message}") }
-            } finally {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(error = "数据加载失败: ${e.message}", isLoading = false) }
             }
-        }
-    }
-
-    private suspend fun loadIndices() {
-        val indices = when (_uiState.value.currentTab) {
-            MarketTab.A_STOCK -> marketRepository.getAStockIndices()
-            MarketTab.HK_STOCK -> marketRepository.getHKStockIndices()
-            MarketTab.US_STOCK -> marketRepository.getUSStockIndices()
-        }
-
-        val selectedIndex = if (_uiState.value.selectedIndex == null) {
-            indices.firstOrNull()
-        } else {
-            indices.find { it.code == _uiState.value.selectedIndex!!.code } ?: indices.firstOrNull()
-        }
-
-        _uiState.update { it.copy(indices = indices, selectedIndex = selectedIndex) }
-    }
-
-    private suspend fun loadFundFlow() {
-        if (_uiState.value.currentTab != MarketTab.A_STOCK) {
-            _uiState.update { it.copy(fundFlowData = FundFlowData()) }
-            return
-        }
-
-        _uiState.update { it.copy(isFundFlowLoading = true) }
-        try {
-            val data = marketRepository.getFundFlowData()
-            _uiState.update { it.copy(fundFlowData = data, isFundFlowLoading = false) }
-        } catch (_: Exception) {
-            _uiState.update { it.copy(isFundFlowLoading = false) }
-        }
-    }
-
-    private suspend fun loadKLine() {
-        val selectedCode = _uiState.value.selectedIndex?.code
-        if (selectedCode == null) return
-
-        _uiState.update { it.copy(isKLineLoading = true) }
-        try {
-            val data = marketRepository.getIndexKLineData(selectedCode, _uiState.value.selectedPeriod)
-            _uiState.update { it.copy(kLineData = data, isKLineLoading = false) }
-        } catch (_: Exception) {
-            _uiState.update { it.copy(kLineData = null, isKLineLoading = false) }
-        }
-    }
-
-    fun selectTab(tab: MarketTab) {
-        if (tab == _uiState.value.currentTab) return
-
-        refreshJob?.cancel()
-        kLineJob?.cancel()
-
-        _uiState.update {
-            MarketUiState(
-                currentTab = tab,
-                selectedIndex = null,
-                isLoading = true,
-            )
-        }
-
-        viewModelScope.launch {
-            try {
-                loadIndices()
-                loadFundFlow()
-                loadKLine()
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = "数据加载失败: ${e.message}") }
-            } finally {
-                _uiState.update { it.copy(isLoading = false) }
-            }
-        }
-    }
-
-    fun selectIndex(index: MarketIndex) {
-        if (index.code == _uiState.value.selectedIndex?.code) return
-
-        _uiState.update { it.copy(selectedIndex = index, kLineData = null) }
-        kLineJob?.cancel()
-        kLineJob = viewModelScope.launch {
-            loadKLine()
-        }
-    }
-
-    fun selectPeriod(period: KLinePeriod) {
-        if (period == _uiState.value.selectedPeriod) return
-
-        _uiState.update { it.copy(selectedPeriod = period) }
-        kLineJob?.cancel()
-        kLineJob = viewModelScope.launch {
-            loadKLine()
         }
     }
 
@@ -160,10 +69,7 @@ class MarketViewModel @Inject constructor(
             while (isActive) {
                 delay(REFRESH_INTERVAL_MS)
                 try {
-                    loadIndices()
-                    if (_uiState.value.currentTab == MarketTab.A_STOCK) {
-                        loadFundFlow()
-                    }
+                    loadData()
                 } catch (_: Exception) {
                 }
             }
@@ -182,8 +88,9 @@ class MarketViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         refreshJob?.cancel()
-        kLineJob?.cancel()
     }
+
+    private data class FourResult<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
     companion object {
         private const val REFRESH_INTERVAL_MS = 15_000L

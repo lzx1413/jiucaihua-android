@@ -74,6 +74,7 @@ fun AddEditHoldingScreen(
             onHoldingSharesChange = viewModel::onHoldingSharesChange,
             onSelectResult = viewModel::applySearchResult,
             onDismissSearch = viewModel::dismissSearch,
+            onGoldPresetSelected = viewModel::selectGoldPreset,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)

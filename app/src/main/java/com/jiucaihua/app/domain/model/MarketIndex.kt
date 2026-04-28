@@ -16,10 +16,16 @@ data class MarketIndex(
     val marketType: MarketType,
 )
 
+data class MarketGroup(
+    val tab: MarketTab,
+    val indices: List<MarketIndex>,
+)
+
 enum class MarketTab(val label: String) {
     A_STOCK("A股"),
     HK_STOCK("港股"),
     US_STOCK("美股"),
+    GOLD("黄金"),
 }
 
 object MarketIndexCodes {
@@ -63,5 +69,26 @@ object MarketIndexCodes {
         "usr_dji" to "道琼斯",
         "usr_ixic" to "纳斯达克",
         "usr_inx" to "标普500",
+    )
+
+    val GOLD_INDICES = listOf(
+        "hf_XAU",       // 国际现货黄金
+        "hf_GC",        // COMEX黄金期货
+        "gds_AU9999",   // 上海金Au99.99
+        "gds_AUTD",     // 黄金延期(T+D)
+        "hf_XAG",       // 国际现货白银
+    )
+
+    val GOLD_NAMES = mapOf(
+        "hf_XAU" to "国际现货黄金",
+        "hf_GC" to "COMEX黄金",
+        "gds_AU9999" to "上海金Au99.99",
+        "gds_AUTD" to "黄金T+D",
+        "hf_XAG" to "国际现货白银",
+    )
+
+    val GOLD_HOLDING_PRESETS = listOf(
+        "gds_AU9999" to "上海金Au99.99",
+        "gds_AUTD" to "黄金T+D",
     )
 }

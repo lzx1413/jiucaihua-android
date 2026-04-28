@@ -36,18 +36,20 @@ class GetPortfolioUseCase @Inject constructor(
         val aStockCodes = holdings.filter { it.marketType == MarketType.A_STOCK }.map { it.code }
         val hkStockCodes = holdings.filter { it.marketType == MarketType.HK_STOCK }.map { it.code }
         val fundCodes = holdings.filter { it.marketType == MarketType.FUND }.map { it.code }
+        val goldCodes = holdings.filter { it.marketType == MarketType.GOLD }.map { it.code }
 
-        val (aQuotes, hkQuotes, fundQuotes, hkdRate) = coroutineScope {
+        val (aQuotes, hkQuotes, fundQuotes, goldQuotes, hkdRate) = coroutineScope {
             val aDeferred = async { fetchAStockQuotes(aStockCodes) }
             val hkDeferred = async { fetchHKStockQuotes(hkStockCodes) }
             val fundDeferred = async { fetchFundQuotes(fundCodes) }
+            val goldDeferred = async { fetchGoldQuotes(goldCodes) }
             val rateDeferred = async {
                 if (hkStockCodes.isNotEmpty()) exchangeRateRepository.getHkdToCnyRate() else 1.0
             }
-            QuadResult(aDeferred.await(), hkDeferred.await(), fundDeferred.await(), rateDeferred.await())
+            QuintResult(aDeferred.await(), hkDeferred.await(), fundDeferred.await(), goldDeferred.await(), rateDeferred.await())
         }
 
-        val stockQuotes = (aQuotes + hkQuotes).associateBy { it.code }
+        val stockQuotes = (aQuotes + hkQuotes + goldQuotes).associateBy { it.code }
         val fundQuoteMap = fundQuotes.associateBy { it.code }
 
         val updatedHoldings = holdings.map { holding ->
@@ -78,6 +80,12 @@ class GetPortfolioUseCase @Inject constructor(
                         )
                     } else holding
                 }
+                MarketType.GOLD -> {
+                    val quote = stockQuotes[holding.code]
+                    if (quote != null) {
+                        holding.copy(currentPrice = quote.price, changePercent = quote.changePercent)
+                    } else holding
+                }
             }
         }
 
@@ -91,8 +99,9 @@ class GetPortfolioUseCase @Inject constructor(
         val aStockCodes = holdings.filter { it.marketType == MarketType.A_STOCK }.map { it.code }
         val hkStockCodes = holdings.filter { it.marketType == MarketType.HK_STOCK }.map { it.code }
         val fundCodes = holdings.filter { it.marketType == MarketType.FUND }.map { it.code }
+        val goldCodes = holdings.filter { it.marketType == MarketType.GOLD }.map { it.code }
 
-        val allStockCodes = aStockCodes + hkStockCodes
+        val allStockCodes = aStockCodes + hkStockCodes + goldCodes
         val stockQuotes = stockRepository.getCachedQuotes(allStockCodes).associateBy { it.code }
         val fundQuoteMap = fundRepository.getCachedFundQuotes(fundCodes).associateBy { it.code }
 
@@ -128,6 +137,12 @@ class GetPortfolioUseCase @Inject constructor(
                         )
                     } else holding
                 }
+                MarketType.GOLD -> {
+                    val quote = stockQuotes[holding.code]
+                    if (quote != null) {
+                        holding.copy(currentPrice = quote.price, changePercent = quote.changePercent)
+                    } else holding
+                }
             }
         }
 
@@ -158,6 +173,15 @@ class GetPortfolioUseCase @Inject constructor(
             fundRepository.getFundQuotes(codes)
         } catch (_: Exception) {
             fundRepository.getCachedFundQuotes(codes)
+        }
+    }
+
+    private suspend fun fetchGoldQuotes(codes: List<String>): List<StockQuote> {
+        if (codes.isEmpty()) return emptyList()
+        return try {
+            stockRepository.getGoldQuotes(codes)
+        } catch (_: Exception) {
+            stockRepository.getCachedQuotes(codes)
         }
     }
 
@@ -245,8 +269,12 @@ class GetPortfolioUseCase @Inject constructor(
                 val dailyChangeRatio = fundQuote.dailyChangePercent / 100
                 holding.marketValueCNY * dailyChangeRatio
             }
+            MarketType.GOLD -> {
+                if (stockQuote == null) return 0.0
+                (stockQuote.price - stockQuote.yestClose) * holding.holdingShares * holding.exchangeRate
+            }
         }
     }
 
-    private data class QuadResult<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+    private data class QuintResult<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
 }

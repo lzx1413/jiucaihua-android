@@ -90,6 +90,11 @@ class AddEditHoldingViewModel @Inject constructor(
     }
 
     fun onCodeChange(value: String) {
+        if (_uiState.value.marketType == MarketType.GOLD) {
+            _uiState.update { it.copy(code = value) }
+            return
+        }
+
         val query = value.trim()
         if (query.isBlank()) {
             searchJob?.cancel()
@@ -144,6 +149,10 @@ class AddEditHoldingViewModel @Inject constructor(
             )
         }
         resetSearchState()
+    }
+
+    fun selectGoldPreset(code: String, name: String) {
+        _uiState.update { it.copy(code = code, name = name) }
     }
 
     fun dismissSearch() {

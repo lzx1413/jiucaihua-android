@@ -5,6 +5,7 @@ import com.jiucaihua.app.data.remote.api.EastMoneyUSStockKLineApi
 import com.jiucaihua.app.data.remote.api.FundApi
 import com.jiucaihua.app.data.remote.api.HolidayApi
 import com.jiucaihua.app.data.remote.api.JiuYanApi
+import com.jiucaihua.app.data.remote.api.SinaGoldKLineApi
 import com.jiucaihua.app.data.remote.api.SinaStockApi
 import com.jiucaihua.app.data.remote.api.TencentHKStockApi
 import com.jiucaihua.app.data.remote.api.TencentKLineApi
@@ -237,5 +238,22 @@ object NetworkModule {
     @Singleton
     fun provideEastMoneyUSStockKLineApi(@Named("eastMoney") retrofit: Retrofit): EastMoneyUSStockKLineApi {
         return retrofit.create(EastMoneyUSStockKLineApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("sinaFutures")
+    fun provideSinaFuturesRetrofit(@Named("default") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://stock2.finance.sina.com.cn/")
+            .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSinaGoldKLineApi(@Named("sinaFutures") retrofit: Retrofit): SinaGoldKLineApi {
+        return retrofit.create(SinaGoldKLineApi::class.java)
     }
 }

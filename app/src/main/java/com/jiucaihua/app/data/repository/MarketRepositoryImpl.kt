@@ -3,6 +3,7 @@ package com.jiucaihua.app.data.repository
 import com.jiucaihua.app.data.parser.StockDataParser
 import com.jiucaihua.app.data.remote.api.EastMoneyFundFlowApi
 import com.jiucaihua.app.data.remote.api.EastMoneyUSStockKLineApi
+import com.jiucaihua.app.data.remote.api.SinaGoldKLineApi
 import com.jiucaihua.app.data.remote.api.SinaStockApi
 import com.jiucaihua.app.data.remote.api.TencentHKStockApi
 import com.jiucaihua.app.data.remote.api.TencentKLineApi
@@ -26,6 +27,7 @@ import javax.inject.Singleton
 @Singleton
 class MarketRepositoryImpl @Inject constructor(
     private val sinaStockApi: SinaStockApi,
+    private val sinaGoldKLineApi: SinaGoldKLineApi,
     private val tencentHKStockApi: TencentHKStockApi,
     private val tencentKLineApi: TencentKLineApi,
     private val eastMoneyFundFlowApi: EastMoneyFundFlowApi,
@@ -61,7 +63,17 @@ class MarketRepositoryImpl @Inject constructor(
         return parseEastMoneyFundFlow(response)
     }
 
+    override suspend fun getGoldIndices(): List<MarketIndex> {
+        val codes = MarketIndexCodes.GOLD_INDICES
+        val url = "https://hq.sinajs.cn/list=${codes.joinToString(",")}"
+        val response = sinaStockApi.getStockQuotes(url)
+        return parseSinaGoldIndices(response, codes)
+    }
+
     override suspend fun getIndexKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
+        if (code.startsWith("hf_") || code.startsWith("gds_")) {
+            return getGoldKLineData(code, period)
+        }
         if (code.startsWith("usr_")) {
             return getUSStockKLineData(code, period, limit)
         }
@@ -107,6 +119,135 @@ class MarketRepositoryImpl @Inject constructor(
 
         val response = eastMoneyUSStockKLineApi.getUSStockKLineData(url)
         return parseEastMoneyUSStockKLineResponse(code, period, response)
+    }
+
+    private suspend fun getGoldKLineData(code: String, period: KLinePeriod): KLineData {
+        val name = MarketIndexCodes.GOLD_NAMES[code] ?: ""
+        val symbol = "au0"
+        val url = "https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20kline=/InnerFuturesNewService.getDailyKLine?symbol=$symbol&_=${System.currentTimeMillis()}"
+
+        return try {
+            val response = sinaGoldKLineApi.getGoldKLine(url)
+            parseSinaGoldKLineResponse(code, name, period, response)
+        } catch (_: Exception) {
+            KLineData(code, name, period, emptyList())
+        }
+    }
+
+    private fun parseSinaGoldKLineResponse(code: String, name: String, period: KLinePeriod, response: String): KLineData {
+        try {
+            val jsonStart = response.indexOf("([")
+            val jsonEnd = response.lastIndexOf("])")
+            if (jsonStart < 0 || jsonEnd < 0) return KLineData(code, name, period, emptyList())
+
+            val jsonStr = response.substring(jsonStart + 1, jsonEnd + 1)
+            val arr = org.json.JSONArray(jsonStr)
+
+            val points = mutableListOf<KLinePoint>()
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: continue
+                points.add(
+                    KLinePoint(
+                        date = item.optString("d", ""),
+                        open = item.optString("o", "0").toDoubleOrNull() ?: 0.0,
+                        close = item.optString("c", "0").toDoubleOrNull() ?: 0.0,
+                        high = item.optString("h", "0").toDoubleOrNull() ?: 0.0,
+                        low = item.optString("l", "0").toDoubleOrNull() ?: 0.0,
+                        volume = item.optString("v", "0").toDoubleOrNull() ?: 0.0,
+                    )
+                )
+            }
+
+            val filteredPoints = when (period) {
+                KLinePeriod.DAILY -> points.takeLast(120)
+                KLinePeriod.WEEKLY -> aggregateToWeekly(points).takeLast(120)
+                KLinePeriod.MONTHLY -> aggregateToMonthly(points).takeLast(120)
+            }
+
+            return KLineData(code = code, name = name, period = period, points = filteredPoints)
+        } catch (_: Exception) {
+            return KLineData(code, name, period, emptyList())
+        }
+    }
+
+    private fun aggregateToWeekly(dailyPoints: List<KLinePoint>): List<KLinePoint> {
+        if (dailyPoints.isEmpty()) return emptyList()
+        val weeks = mutableListOf<KLinePoint>()
+        var weekOpen = 0.0
+        var weekHigh = 0.0
+        var weekLow = Double.MAX_VALUE
+        var weekClose = 0.0
+        var weekVolume = 0.0
+        var weekDate = ""
+        var lastDayOfWeek = -1
+
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val cal = Calendar.getInstance()
+
+        for (point in dailyPoints) {
+            try { cal.time = dateFormat.parse(point.date) ?: continue } catch (_: Exception) { continue }
+            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+
+            if (lastDayOfWeek != -1 && dayOfWeek <= lastDayOfWeek && weekDate.isNotEmpty()) {
+                weeks.add(KLinePoint(weekDate, weekOpen, weekClose, weekHigh, weekLow, weekVolume))
+                weekOpen = 0.0
+                weekHigh = 0.0
+                weekLow = Double.MAX_VALUE
+                weekVolume = 0.0
+            }
+
+            if (weekOpen == 0.0) weekOpen = point.open
+            weekHigh = maxOf(weekHigh, point.high)
+            weekLow = minOf(weekLow, point.low)
+            weekClose = point.close
+            weekVolume += point.volume
+            weekDate = point.date
+            lastDayOfWeek = dayOfWeek
+        }
+
+        if (weekDate.isNotEmpty()) {
+            weeks.add(KLinePoint(weekDate, weekOpen, weekClose, weekHigh, weekLow, weekVolume))
+        }
+
+        return weeks
+    }
+
+    private fun aggregateToMonthly(dailyPoints: List<KLinePoint>): List<KLinePoint> {
+        if (dailyPoints.isEmpty()) return emptyList()
+        val months = mutableListOf<KLinePoint>()
+        var monthOpen = 0.0
+        var monthHigh = 0.0
+        var monthLow = Double.MAX_VALUE
+        var monthClose = 0.0
+        var monthVolume = 0.0
+        var monthDate = ""
+        var lastMonth = ""
+
+        for (point in dailyPoints) {
+            val currentMonth = point.date.substring(0, 7)
+
+            if (lastMonth.isNotEmpty() && currentMonth != lastMonth && monthDate.isNotEmpty()) {
+                months.add(KLinePoint(monthDate, monthOpen, monthClose, monthHigh, monthLow, monthVolume))
+                monthOpen = 0.0
+                monthHigh = 0.0
+                monthLow = Double.MAX_VALUE
+                monthVolume = 0.0
+            }
+
+            if (monthOpen == 0.0) monthOpen = point.open
+            monthHigh = maxOf(monthHigh, point.high)
+            monthLow = minOf(monthLow, point.low)
+            monthClose = point.close
+            monthVolume += point.volume
+            monthDate = point.date
+            lastMonth = currentMonth
+        }
+
+        if (monthDate.isNotEmpty()) {
+            months.add(KLinePoint(monthDate, monthOpen, monthClose, monthHigh, monthLow, monthVolume))
+        }
+
+        return months
     }
 
     private fun parseSinaAStockIndices(response: String, codes: List<String>): List<MarketIndex> {
@@ -388,5 +529,66 @@ class MarketRepositoryImpl @Inject constructor(
         } catch (_: Exception) {
             return KLineData(code, "", period, emptyList())
         }
+    }
+
+    private fun parseSinaGoldIndices(response: String, codes: List<String>): List<MarketIndex> {
+        val results = mutableListOf<MarketIndex>()
+        val lines = response.split(";\n").filter { it.isNotBlank() }
+
+        for (line in lines) {
+            try {
+                val index = parseSinaGoldLine(line)
+                if (index != null) {
+                    results.add(index)
+                }
+            } catch (_: Exception) {
+                continue
+            }
+        }
+
+        for (code in codes) {
+            if (results.none { it.code == code }) {
+                results.add(createPlaceholderIndex(code, MarketType.GOLD, MarketIndexCodes.GOLD_NAMES[code]))
+            }
+        }
+
+        return results.sortedBy { codes.indexOf(it.code) }
+    }
+
+    private fun parseSinaGoldLine(line: String): MarketIndex? {
+        val codePart = line.substringAfter("var hq_str_", "").substringBefore("=", "")
+        if (codePart.isBlank()) return null
+
+        val dataPart = line.substringAfter("=\"", "").trimEnd('"')
+        if (dataPart.isBlank()) return null
+
+        val params = dataPart.split(",")
+        if (params.size < 14) return null
+
+        val price = params[0].toDoubleOrNull() ?: 0.0
+        val high = params[4].toDoubleOrNull() ?: 0.0
+        val low = params[5].toDoubleOrNull() ?: 0.0
+        val time = params[6]
+        val yestClose = params[7].toDoubleOrNull() ?: 0.0
+        val open = params[8].toDoubleOrNull() ?: 0.0
+        val date = params[12]
+        val name = MarketIndexCodes.GOLD_NAMES[codePart] ?: params[13]
+
+        val changeAmount = if (yestClose > 0) price - yestClose else 0.0
+        val changePercent = if (yestClose > 0) changeAmount / yestClose * 100 else 0.0
+
+        return MarketIndex(
+            code = codePart,
+            name = name,
+            price = price,
+            yestClose = yestClose,
+            changePercent = changePercent,
+            changeAmount = changeAmount,
+            open = open,
+            high = high,
+            low = low,
+            time = "$date $time",
+            marketType = MarketType.GOLD,
+        )
     }
 }

@@ -18,9 +18,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.domain.model.MarketIndexCodes
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.SecuritySearchResult
 import com.jiucaihua.app.presentation.holdings.AddEditHoldingUiState
@@ -36,6 +41,7 @@ fun HoldingForm(
     onHoldingSharesChange: (String) -> Unit,
     onSelectResult: (SecuritySearchResult) -> Unit,
     onDismissSearch: () -> Unit,
+    onGoldPresetSelected: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -63,78 +69,132 @@ fun HoldingForm(
 
         val isDropdownVisible = state.searchExpanded && state.searchResults.isNotEmpty()
 
-        ExposedDropdownMenuBox(
-            expanded = isDropdownVisible,
-            onExpandedChange = { },
-        ) {
-            OutlinedTextField(
-                value = state.code,
-                onValueChange = onCodeChange,
-                label = { Text("证券代码") },
-                placeholder = {
-                    Text(
-                        when (state.marketType) {
-                            MarketType.A_STOCK -> "输入代码或名称搜索，如 600519"
-                            MarketType.HK_STOCK -> "输入代码或名称搜索，如 hk00700"
-                            MarketType.US_STOCK -> "输入代码或名称搜索"
-                            MarketType.FUND -> "输入代码或名称搜索，如 110011"
-                        }
-                    )
-                },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = !state.isEditing),
-                enabled = !state.isEditing,
-                supportingText = if (state.isSearching) {
-                    { Text("搜索中...") }
-                } else if (state.searchError != null) {
-                    { Text(state.searchError) }
-                } else null,
-            )
-            ExposedDropdownMenu(
-                expanded = isDropdownVisible,
-                onDismissRequest = onDismissSearch,
+        if (state.marketType == MarketType.GOLD) {
+            var goldExpanded by remember { mutableStateOf(false) }
+
+            ExposedDropdownMenuBox(
+                expanded = goldExpanded,
+                onExpandedChange = { if (!state.isEditing) goldExpanded = it },
             ) {
-                state.searchResults.forEach { result ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text(result.name)
-                                Text(
-                                    "${result.displayCode} · ${result.marketType.label}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                OutlinedTextField(
+                    value = if (state.code.isNotBlank()) "${state.name} (${state.code})" else "",
+                    onValueChange = {},
+                    label = { Text("黄金品种") },
+                    placeholder = { Text("请选择黄金品种") },
+                    readOnly = true,
+                    singleLine = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goldExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = !state.isEditing),
+                    enabled = !state.isEditing,
+                )
+                ExposedDropdownMenu(
+                    expanded = goldExpanded,
+                    onDismissRequest = { goldExpanded = false },
+                ) {
+                    MarketIndexCodes.GOLD_HOLDING_PRESETS.forEach { (code, name) ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(name)
+                                    Text(
+                                        code,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onGoldPresetSelected(code, name)
+                                goldExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        } else {
+            ExposedDropdownMenuBox(
+                expanded = isDropdownVisible,
+                onExpandedChange = { },
+            ) {
+                OutlinedTextField(
+                    value = state.code,
+                    onValueChange = onCodeChange,
+                    label = { Text("证券代码") },
+                    placeholder = {
+                        Text(
+                            when (state.marketType) {
+                                MarketType.A_STOCK -> "输入代码或名称搜索，如 600519"
+                                MarketType.HK_STOCK -> "输入代码或名称搜索，如 hk00700"
+                                MarketType.US_STOCK -> "输入代码或名称搜索"
+                                MarketType.FUND -> "输入代码或名称搜索，如 110011"
+                                MarketType.GOLD -> ""
                             }
-                        },
-                        onClick = { onSelectResult(result) },
-                    )
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = !state.isEditing),
+                    enabled = !state.isEditing,
+                    supportingText = if (state.isSearching) {
+                        { Text("搜索中...") }
+                    } else if (state.searchError != null) {
+                        { Text(state.searchError) }
+                    } else null,
+                )
+                ExposedDropdownMenu(
+                    expanded = isDropdownVisible,
+                    onDismissRequest = onDismissSearch,
+                ) {
+                    state.searchResults.forEach { result ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(result.name)
+                                    Text(
+                                        "${result.displayCode} · ${result.marketType.label}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
+                            onClick = { onSelectResult(result) },
+                        )
+                    }
                 }
             }
         }
 
-        OutlinedTextField(
-            value = state.name,
-            onValueChange = onNameChange,
-            label = { Text("证券名称") },
-            placeholder = { Text("选择证券后自动填充") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = state.isEditing,
-        )
+        if (state.marketType != MarketType.GOLD) {
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = onNameChange,
+                label = { Text("证券名称") },
+                placeholder = { Text("选择证券后自动填充") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = state.isEditing,
+            )
+        }
 
+        val costLabel = if (state.marketType == MarketType.GOLD) "成本价（元/克）" else "成本价"
         OutlinedTextField(
             value = state.costPrice,
             onValueChange = onCostPriceChange,
-            label = { Text("成本价") },
+            label = { Text(costLabel) },
             placeholder = { Text("0.00") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         )
 
-        val sharesLabel = if (state.marketType == MarketType.FUND) "持仓份额" else "持仓数量（股）"
+        val sharesLabel = when (state.marketType) {
+            MarketType.FUND -> "持仓份额"
+            MarketType.GOLD -> "持仓数量（克）"
+            else -> "持仓数量（股）"
+        }
         OutlinedTextField(
             value = state.holdingShares,
             onValueChange = onHoldingSharesChange,

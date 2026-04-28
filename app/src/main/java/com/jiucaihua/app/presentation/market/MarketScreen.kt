@@ -13,9 +13,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -26,14 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jiucaihua.app.domain.model.KLinePeriod
 import com.jiucaihua.app.domain.model.MarketIndex
-import com.jiucaihua.app.domain.model.MarketTab
 import com.jiucaihua.app.presentation.common.components.ErrorMessage
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
-import com.jiucaihua.app.presentation.detail.components.KLineChartView
-import com.jiucaihua.app.presentation.detail.components.PeriodSelector
-import com.jiucaihua.app.presentation.market.components.FundFlowCard
 import com.jiucaihua.app.presentation.market.components.IndexCardGrid
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,15 +71,24 @@ fun MarketScreen(
             )
         }
     ) { paddingValues ->
-        MarketScreenContent(
-            viewModel = viewModel,
-            onIndexClick = onIndexClick,
-            modifier = Modifier.padding(paddingValues),
-        )
+        when {
+            uiState.isLoading && uiState.groups.isEmpty() -> {
+                LoadingIndicator()
+            }
+            uiState.error != null && uiState.groups.isEmpty() -> {
+                ErrorMessage(message = uiState.error ?: "加载失败")
+            }
+            else -> {
+                MarketScreenContent(
+                    viewModel = viewModel,
+                    onIndexClick = onIndexClick,
+                    modifier = Modifier.padding(paddingValues),
+                )
+            }
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketScreenContent(
     viewModel: MarketViewModel,
@@ -95,75 +97,33 @@ fun MarketScreenContent(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        PrimaryTabRow(
-            selectedTabIndex = uiState.currentTab.ordinal,
-        ) {
-            MarketTab.entries.forEach { tab ->
-                Tab(
-                    selected = uiState.currentTab == tab,
-                    onClick = { viewModel.selectTab(tab) },
-                    text = { Text(tab.label) },
-                )
-            }
+    when {
+        uiState.isLoading && uiState.groups.isEmpty() -> {
+            LoadingIndicator()
         }
+        uiState.error != null && uiState.groups.isEmpty() -> {
+            ErrorMessage(message = uiState.error ?: "加载失败")
+        }
+        else -> {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                uiState.groups.forEach { group ->
+                    Text(
+                        text = group.tab.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                    )
 
-        when {
-            uiState.isLoading && uiState.indices.isEmpty() -> {
-                LoadingIndicator()
-            }
-            uiState.error != null && uiState.indices.isEmpty() -> {
-                ErrorMessage(message = uiState.error ?: "加载失败")
-            }
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                ) {
                     IndexCardGrid(
-                        indices = uiState.indices,
-                        selectedIndex = uiState.selectedIndex,
+                        indices = group.indices,
                         onIndexClick = { index ->
-                            viewModel.selectIndex(index)
                             onIndexClick?.invoke(index)
                         },
                     )
-
-                    if (uiState.selectedIndex != null && uiState.selectedIndex!!.price > 0) {
-                        PeriodSelector(
-                            selectedPeriod = uiState.selectedPeriod,
-                            onPeriodSelected = { viewModel.selectPeriod(it) },
-                        )
-
-                        if (uiState.isKLineLoading) {
-                            LoadingIndicator()
-                        } else {
-                            uiState.kLineData?.let { data ->
-                                if (data.points.isNotEmpty()) {
-                                    KLineChartView(kLineData = data)
-                                } else {
-                                    Text(
-                                        text = "暂无K线数据",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 32.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (uiState.currentTab == MarketTab.A_STOCK) {
-                        FundFlowCard(
-                            fundFlowData = uiState.fundFlowData,
-                            isLoading = uiState.isFundFlowLoading,
-                        )
-                    }
                 }
             }
         }

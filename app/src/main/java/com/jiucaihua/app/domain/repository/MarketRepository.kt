@@ -9,6 +9,7 @@ interface MarketRepository {
     suspend fun getAStockIndices(): List<MarketIndex>
     suspend fun getHKStockIndices(): List<MarketIndex>
     suspend fun getUSStockIndices(): List<MarketIndex>
+    suspend fun getGoldIndices(): List<MarketIndex>
     suspend fun getFundFlowData(): FundFlowData
     suspend fun getIndexKLineData(code: String, period: KLinePeriod, limit: Int = 120): KLineData
 }

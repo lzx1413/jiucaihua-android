@@ -84,6 +84,24 @@ class StockRepositoryImpl @Inject constructor(
         return quotes
     }
 
+    override suspend fun getGoldQuotes(codes: List<String>): List<StockQuote> {
+        if (codes.isEmpty()) return emptyList()
+
+        val goldCodes = codes.filter { it.startsWith("hf_") || it.startsWith("gds_") }
+        if (goldCodes.isEmpty()) return emptyList()
+
+        val url = "https://hq.sinajs.cn/list=${goldCodes.joinToString(",")}"
+        val response = sinaStockApi.getStockQuotes(url)
+        val quotes = parseSinaGoldResponse(response)
+
+        if (quotes.isNotEmpty()) {
+            val cacheEntities = quotes.map { it.toCacheEntity() }
+            stockCacheDao.insertAll(cacheEntities)
+        }
+
+        return quotes
+    }
+
     override suspend fun getCachedQuotes(codes: List<String>): List<StockQuote> {
         if (codes.isEmpty()) return emptyList()
         return stockCacheDao.getByCodes(codes).map { it.toDomain() }
@@ -261,6 +279,58 @@ class StockRepositoryImpl @Inject constructor(
                     changeAmount = changeAmount,
                     time = time,
                     marketType = MarketType.US_STOCK,
+                ))
+            } catch (_: Exception) {
+                continue
+            }
+        }
+
+        return results
+    }
+
+    private fun parseSinaGoldResponse(response: String): List<StockQuote> {
+        val results = mutableListOf<StockQuote>()
+        val lines = response.split(";\n").filter { it.isNotBlank() }
+
+        for (line in lines) {
+            try {
+                val codePart = line.substringAfter("var hq_str_", "").substringBefore("=", "")
+                if (codePart.isBlank()) continue
+
+                val dataPart = line.substringAfter("=\"", "").trimEnd('"')
+                if (dataPart.isBlank()) continue
+
+                val params = dataPart.split(",")
+                if (params.size < 14) continue
+
+                val price = params[0].toDoubleOrNull() ?: 0.0
+                val high = params[4].toDoubleOrNull() ?: 0.0
+                val low = params[5].toDoubleOrNull() ?: 0.0
+                val time = params[6]
+                val yestClose = params[7].toDoubleOrNull() ?: 0.0
+                val open = params[8].toDoubleOrNull() ?: 0.0
+                val date = params[12]
+                val name = MarketIndexCodes.GOLD_NAMES[codePart] ?: params[13]
+
+                if (price == 0.0) continue
+
+                val changeAmount = if (yestClose > 0) price - yestClose else 0.0
+                val changePercent = if (yestClose > 0) changeAmount / yestClose * 100 else 0.0
+
+                results.add(StockQuote(
+                    code = codePart,
+                    name = name,
+                    price = price,
+                    yestClose = yestClose,
+                    open = open,
+                    high = high,
+                    low = low,
+                    volume = 0.0,
+                    amount = 0.0,
+                    changePercent = changePercent,
+                    changeAmount = changeAmount,
+                    time = "$date $time",
+                    marketType = MarketType.GOLD,
                 ))
             } catch (_: Exception) {
                 continue
