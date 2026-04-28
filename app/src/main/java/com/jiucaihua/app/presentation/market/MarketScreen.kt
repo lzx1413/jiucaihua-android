@@ -29,14 +29,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jiucaihua.app.domain.model.KLinePeriod
 import com.jiucaihua.app.domain.model.MarketIndex
 import com.jiucaihua.app.domain.model.MarketTab
-import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.presentation.common.components.ErrorMessage
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 import com.jiucaihua.app.presentation.detail.components.KLineChartView
 import com.jiucaihua.app.presentation.detail.components.PeriodSelector
 import com.jiucaihua.app.presentation.market.components.FundFlowCard
 import com.jiucaihua.app.presentation.market.components.IndexCardGrid
-import com.jiucaihua.app.presentation.market.components.USStockKLineImageView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,29 +138,21 @@ fun MarketScreenContent(
                             onPeriodSelected = { viewModel.selectPeriod(it) },
                         )
 
-                        val selectedIndex = uiState.selectedIndex!!
-                        if (selectedIndex.marketType == MarketType.US_STOCK) {
-                            USStockKLineImageView(
-                                code = selectedIndex.code,
-                                period = uiState.selectedPeriod,
-                            )
+                        if (uiState.isKLineLoading) {
+                            LoadingIndicator()
                         } else {
-                            if (uiState.isKLineLoading) {
-                                LoadingIndicator()
-                            } else {
-                                uiState.kLineData?.let { data ->
-                                    if (data.points.isNotEmpty()) {
-                                        KLineChartView(kLineData = data)
-                                    } else {
-                                        Text(
-                                            text = "暂无K线数据",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 32.dp),
-                                        )
-                                    }
+                            uiState.kLineData?.let { data ->
+                                if (data.points.isNotEmpty()) {
+                                    KLineChartView(kLineData = data)
+                                } else {
+                                    Text(
+                                        text = "暂无K线数据",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 32.dp),
+                                    )
                                 }
                             }
                         }

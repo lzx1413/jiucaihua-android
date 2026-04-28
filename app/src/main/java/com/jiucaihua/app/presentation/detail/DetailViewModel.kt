@@ -147,6 +147,18 @@ class DetailViewModel @Inject constructor(
                 }
             }
             MarketType.US_STOCK -> {
+                val quotes = stockRepository.getUSStockQuotes(listOf(code))
+                val quote = quotes.firstOrNull()
+                if (quote != null) {
+                    _uiState.value = _uiState.value.copy(
+                        stockQuote = quote,
+                        name = quote.name,
+                        holding = _uiState.value.holding?.copy(
+                            currentPrice = quote.price,
+                            changePercent = quote.changePercent,
+                        ),
+                    )
+                }
             }
             MarketType.FUND -> {
                 val quotes = fundRepository.getFundQuotes(listOf(code))

@@ -8,6 +8,7 @@ import com.jiucaihua.app.data.remote.api.TencentHKStockApi
 import com.jiucaihua.app.data.remote.api.TencentKLineApi
 import com.jiucaihua.app.domain.model.KLineData
 import com.jiucaihua.app.domain.model.KLinePeriod
+import com.jiucaihua.app.domain.model.MarketIndexCodes
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.StockQuote
 import com.jiucaihua.app.domain.repository.StockRepository
@@ -54,6 +55,26 @@ class StockRepositoryImpl @Inject constructor(
         val url = "https://qt.gtimg.cn/q=$rCodes&fmt=json"
         val response = tencentHKStockApi.getHKStockQuotes(url)
         val quotes = parseTencentHKResponse(response, hkCodes)
+
+        if (quotes.isNotEmpty()) {
+            val cacheEntities = quotes.map { it.toCacheEntity() }
+            stockCacheDao.insertAll(cacheEntities)
+        }
+
+        return quotes
+    }
+
+    override suspend fun getUSStockQuotes(codes: List<String>): List<StockQuote> {
+        if (codes.isEmpty()) return emptyList()
+
+        val usCodes = codes.filter { it.startsWith("usr_") || it.startsWith("gb_") }
+        if (usCodes.isEmpty()) return emptyList()
+
+        val sinaCodes = usCodes.map { it.replace("usr_", "gb_") }
+        val url = "https://hq.sinajs.cn/list=${sinaCodes.joinToString(",")}"
+        val response = sinaStockApi.getStockQuotes(url)
+        val codeMapping = usCodes.associateBy { it.replace("usr_", "gb_") }
+        val quotes = parseSinaUSResponse(response, codeMapping)
 
         if (quotes.isNotEmpty()) {
             val cacheEntities = quotes.map { it.toCacheEntity() }
@@ -192,11 +213,72 @@ class StockRepositoryImpl @Inject constructor(
         )
     }
 
+    private fun parseSinaUSResponse(response: String, codeMapping: Map<String, String>): List<StockQuote> {
+        val results = mutableListOf<StockQuote>()
+        val lines = response.split(";\n").filter { it.isNotBlank() }
+
+        for (line in lines) {
+            try {
+                val gbCode = line.substringAfter("var hq_str_", "").substringBefore("=", "")
+                val originalCode = codeMapping[gbCode] ?: continue
+
+                val dataPart = line.substringAfter("=\"", "").trimEnd('"')
+                if (dataPart.isBlank()) continue
+
+                val params = dataPart.split(",")
+                if (params.size < 8) continue
+
+                val name = params[0]
+                val price = params[1].toDoubleOrNull() ?: 0.0
+                val changePercent = params[2].toDoubleOrNull() ?: 0.0
+                val time = if (params.size > 3) params[3] else ""
+                val changeAmount = if (params.size > 4) params[4].toDoubleOrNull() ?: 0.0 else 0.0
+                val open = if (params.size > 5) params[5].toDoubleOrNull() ?: 0.0 else 0.0
+                val high = if (params.size > 6) params[6].toDoubleOrNull() ?: 0.0 else 0.0
+                val low = if (params.size > 7) params[7].toDoubleOrNull() ?: 0.0 else 0.0
+
+                val yestClose = if (price != 0.0 && changeAmount != 0.0) {
+                    price - changeAmount
+                } else if (price != 0.0 && changePercent != 0.0) {
+                    price / (1 + changePercent / 100)
+                } else {
+                    0.0
+                }
+
+                if (price == 0.0) continue
+
+                results.add(StockQuote(
+                    code = originalCode,
+                    name = name.ifBlank { MarketIndexCodes.US_STOCK_NAMES[originalCode] ?: originalCode },
+                    price = price,
+                    yestClose = yestClose,
+                    open = open,
+                    high = high,
+                    low = low,
+                    volume = 0.0,
+                    amount = 0.0,
+                    changePercent = changePercent,
+                    changeAmount = changeAmount,
+                    time = time,
+                    marketType = MarketType.US_STOCK,
+                ))
+            } catch (_: Exception) {
+                continue
+            }
+        }
+
+        return results
+    }
+
     private fun StockQuote.toCacheEntity(): StockCacheEntity {
         return StockCacheEntity(
             code = code,
             name = name,
-            currency = if (marketType == MarketType.HK_STOCK) "HKD" else "CNY",
+            currency = when (marketType) {
+                MarketType.HK_STOCK -> "HKD"
+                MarketType.US_STOCK -> "USD"
+                else -> "CNY"
+            },
             price = price,
             yestClose = yestClose,
             open = open,

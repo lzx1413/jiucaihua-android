@@ -7,6 +7,7 @@ import com.jiucaihua.app.domain.model.StockQuote
 interface StockRepository {
     suspend fun getAStockQuotes(codes: List<String>): List<StockQuote>
     suspend fun getHKStockQuotes(codes: List<String>): List<StockQuote>
+    suspend fun getUSStockQuotes(codes: List<String>): List<StockQuote>
     suspend fun getCachedQuotes(codes: List<String>): List<StockQuote>
     suspend fun getKLineData(code: String, period: KLinePeriod, limit: Int = 120): KLineData
 }

@@ -98,11 +98,6 @@ class MarketViewModel @Inject constructor(
         val selectedCode = _uiState.value.selectedIndex?.code
         if (selectedCode == null) return
 
-        if (selectedCode.startsWith("usr_")) {
-            _uiState.update { it.copy(kLineData = null, isKLineLoading = false) }
-            return
-        }
-
         _uiState.update { it.copy(isKLineLoading = true) }
         try {
             val data = marketRepository.getIndexKLineData(selectedCode, _uiState.value.selectedPeriod)
