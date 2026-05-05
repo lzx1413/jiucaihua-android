@@ -13,6 +13,7 @@
 - **价格预警** - 设置价格阈值，推送通知提醒
 - **市场资讯** - 浏览市场新闻资讯
 - **AI助手** - 智能投资问答助手（支持多种 LLM）
+- **CETP Tool Provider** - 通过 ContentProvider 向兼容客户端暴露只读投资数据
 - **深色模式** - 支持跟随系统主题
 
 ## 技术栈
@@ -41,6 +42,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - [快速上手](docs/quick-start.md) - 开发环境搭建
 - [架构概览](docs/architecture-overview.md) - 项目架构说明
 - [数据源](docs/data-sources.md) - 行情数据接口
+- [Tool Provider](docs/tool-provider.md) - CETP 工具提供者接口
 - [FAQ](docs/faq.md) - 常见问题
 
 ## License

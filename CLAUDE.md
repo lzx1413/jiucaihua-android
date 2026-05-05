@@ -28,6 +28,7 @@ Jiucaihua is a personal investment management Android app built with Kotlin + Je
 | `docs/quick-start.md` | Development environment setup |
 | `docs/architecture-overview.md` | Architecture overview |
 | `docs/data-sources.md` | Data source interfaces |
+| `docs/tool-provider.md` | CETP Tool Provider protocol |
 | `docs/ai-data-model.md` | AI Agent data model |
 
 ## Reference

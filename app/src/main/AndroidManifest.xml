@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <permission
+        android:name="com.clawseed.permission.ACCESS_TOOLS"
+        android:protectionLevel="normal"
+        android:label="Access Jiucaihua CETP Tools" />
+
     <application
         android:name=".JiucaihuaApplication"
         android:allowBackup="true"
@@ -33,5 +38,25 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <provider
+            android:name=".cetp.CetpToolProvider"
+            android:authorities="com.jiucaihua.app.clawseed.tools"
+            android:exported="true"
+            android:permission="com.clawseed.permission.ACCESS_TOOLS" />
+
+        <service
+            android:name=".cetp.CetpDiscoveryService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.clawseed.action.TOOL_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="com.clawseed.tools.authority"
+                android:value="com.jiucaihua.app.clawseed.tools" />
+            <meta-data
+                android:name="com.clawseed.tools.version"
+                android:value="1" />
+        </service>
     </application>
 </manifest>
