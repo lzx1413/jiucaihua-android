@@ -14,6 +14,12 @@ data class Holding(
     val changePercent: Double = 0.0,
     val isSoldOut: Boolean = false,
 ) {
+    val dailyEarnings: Double
+        get() = marketValue * changePercent / 100
+
+    val dailyEarningsCNY: Double
+        get() = dailyEarnings * exchangeRate
+
     val earnings: Double
         get() = if (marketType == MarketType.FUND) {
             if (costPrice > 0) (currentPrice / costPrice) * holdingAmount - holdingAmount else 0.0
