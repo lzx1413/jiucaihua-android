@@ -87,7 +87,11 @@ class MarketRepositoryImpl @Inject constructor(
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val cal = Calendar.getInstance()
         val endDate = dateFormat.format(cal.time)
-        cal.add(Calendar.YEAR, -1)
+        when (period) {
+            KLinePeriod.DAILY -> cal.add(Calendar.YEAR, -1)
+            KLinePeriod.WEEKLY -> cal.add(Calendar.YEAR, -5)
+            KLinePeriod.MONTHLY -> cal.add(Calendar.YEAR, -10)
+        }
         val startDate = dateFormat.format(cal.time)
 
         val param = "$symbol,$periodType,$startDate,$endDate,$limit,qfq"
@@ -112,7 +116,11 @@ class MarketRepositoryImpl @Inject constructor(
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val cal = Calendar.getInstance()
         val endDate = dateFormat.format(cal.time)
-        cal.add(Calendar.YEAR, -1)
+        when (period) {
+            KLinePeriod.DAILY -> cal.add(Calendar.YEAR, -1)
+            KLinePeriod.WEEKLY -> cal.add(Calendar.YEAR, -5)
+            KLinePeriod.MONTHLY -> cal.add(Calendar.YEAR, -10)
+        }
         val startDate = dateFormat.format(cal.time)
 
         val url = "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=$secId&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=$klt&fqt=1&beg=$startDate&end=$endDate&ut=b2884a393a59ad64002292a3e90d46a5"

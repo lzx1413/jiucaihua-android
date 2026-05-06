@@ -117,7 +117,11 @@ class StockRepositoryImpl @Inject constructor(
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val cal = Calendar.getInstance()
         val endDate = dateFormat.format(cal.time)
-        cal.add(Calendar.YEAR, -1)
+        when (period) {
+            KLinePeriod.DAILY -> cal.add(Calendar.YEAR, -1)
+            KLinePeriod.WEEKLY -> cal.add(Calendar.YEAR, -5)
+            KLinePeriod.MONTHLY -> cal.add(Calendar.YEAR, -10)
+        }
         val startDate = dateFormat.format(cal.time)
 
         val param = "$symbol,$periodType,$startDate,$endDate,$limit,qfq"
