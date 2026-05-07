@@ -1,5 +1,6 @@
 package com.jiucaihua.app.presentation.portfolio
 
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jiucaihua.app.domain.model.Holding
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 data class PortfolioUiState(
     val summary: PortfolioSummary = PortfolioSummary(),
@@ -40,6 +42,7 @@ class PortfolioViewModel @Inject constructor(
     private val getPortfolioUseCase: GetPortfolioUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     private val newsRepository: NewsRepository,
+    @Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PortfolioUiState())
@@ -164,6 +167,11 @@ class PortfolioViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    fun setTotalPosition(value: Double) {
+        prefs.edit().putFloat(KEY_TOTAL_POSITION, value.toFloat()).apply()
+        refreshQuotes()
+    }
+
     private fun applySorting(summary: PortfolioSummary, order: SortOrder): PortfolioSummary {
         val sortFunction: (List<Holding>) -> List<Holding> = { holdings ->
             when (order) {
@@ -196,5 +204,6 @@ class PortfolioViewModel @Inject constructor(
     companion object {
         private const val REFRESH_INTERVAL_MS = 10_000L
         private const val SESSION_CHECK_INTERVAL_MS = 60_000L
+        private const val KEY_TOTAL_POSITION = "total_position"
     }
 }

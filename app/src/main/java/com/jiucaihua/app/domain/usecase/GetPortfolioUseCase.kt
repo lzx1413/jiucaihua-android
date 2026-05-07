@@ -1,5 +1,6 @@
 package com.jiucaihua.app.domain.usecase
 
+import android.content.SharedPreferences
 import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.FundQuote
 import com.jiucaihua.app.domain.model.Holding
@@ -18,12 +19,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import javax.inject.Named
 
 class GetPortfolioUseCase @Inject constructor(
     private val holdingRepository: HoldingRepository,
     private val stockRepository: StockRepository,
     private val fundRepository: FundRepository,
     private val exchangeRateRepository: ExchangeRateRepository,
+    @Named("appPrefs") private val prefs: SharedPreferences,
 ) {
     fun observeHoldings(): Flow<List<Holding>> {
         return holdingRepository.getActiveHoldings()
@@ -198,11 +201,16 @@ class GetPortfolioUseCase @Inject constructor(
         val totalEarningsPercent = if (totalCost > 0) totalEarnings / totalCost * 100 else 0.0
         val todayEarnings = holdings.sumOf { calcTodayEarnings(it, stockQuotes[it.code], fundQuotes[it.code]) }
 
+        val totalPosition = prefs.getFloat(KEY_TOTAL_POSITION, 0f).toDouble()
+        val cash = if (totalPosition > 0) totalPosition - totalCost else 0.0
+
         val categorySummaries = buildCategorySummaries(holdings, stockQuotes, fundQuotes)
 
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
         return PortfolioSummary(
+            totalPosition = totalPosition,
+            cash = cash,
             totalMarketValue = totalMarketValue,
             totalCost = totalCost,
             totalEarnings = totalEarnings,
@@ -277,4 +285,8 @@ class GetPortfolioUseCase @Inject constructor(
     }
 
     private data class QuintResult<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
+
+    companion object {
+        private const val KEY_TOTAL_POSITION = "total_position"
+    }
 }

@@ -203,6 +203,7 @@ fun PortfolioScreen(
                     onSortChanged = viewModel::setSortOrder,
                     onHoldingClick = onHoldingClick,
                     onHoldingLongClick = { holdingToDelete = it },
+                    onSetTotalPosition = viewModel::setTotalPosition,
                 )
 
                 NewsTabIndex -> NewsTabContent(
@@ -266,6 +267,7 @@ private fun HoldingsTabContent(
     onSortChanged: (SortOrder) -> Unit,
     onHoldingClick: (String) -> Unit,
     onHoldingLongClick: (Holding) -> Unit,
+    onSetTotalPosition: (Double) -> Unit,
 ) {
     when {
         uiState.isLoading -> {
@@ -283,6 +285,7 @@ private fun HoldingsTabContent(
                 onSortChanged = onSortChanged,
                 onHoldingClick = onHoldingClick,
                 onHoldingLongClick = onHoldingLongClick,
+                onSetTotalPosition = onSetTotalPosition,
             )
         }
     }
@@ -295,10 +298,14 @@ private fun HoldingsList(
     onSortChanged: (SortOrder) -> Unit,
     onHoldingClick: (String) -> Unit,
     onHoldingLongClick: (Holding) -> Unit,
+    onSetTotalPosition: (Double) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
-            PortfolioSummaryCard(summary = summary)
+            PortfolioSummaryCard(
+                summary = summary,
+                onSetTotalPosition = onSetTotalPosition,
+            )
         }
         item {
             SortSelector(

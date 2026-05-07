@@ -6,6 +6,9 @@ import com.jiucaihua.app.domain.model.MarketType
 data class PortfolioAnalysisSnapshot(
     val generatedAt: String,
     val baseCurrency: String = "CNY",
+    val totalPositionCny: Double,
+    val cashCny: Double,
+    val cashPercent: Double,
     val totalMarketValueCny: Double,
     val totalCostCny: Double,
     val totalUnrealizedPnlCny: Double,

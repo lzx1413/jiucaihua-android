@@ -41,6 +41,9 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
         }
         return PortfolioAnalysisSnapshot(
             generatedAt = timestampFormatter.format(Date()),
+            totalPositionCny = summary.totalPosition,
+            cashCny = summary.cash,
+            cashPercent = if (summary.totalPosition > 0) summary.cash / summary.totalPosition * 100 else 0.0,
             totalMarketValueCny = summary.totalMarketValue,
             totalCostCny = summary.totalCost,
             totalUnrealizedPnlCny = summary.totalEarnings,
