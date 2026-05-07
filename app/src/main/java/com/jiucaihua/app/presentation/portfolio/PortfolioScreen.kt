@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material3.AlertDialog
@@ -46,9 +47,7 @@ import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
 import com.jiucaihua.app.domain.model.StockArticle
-import com.jiucaihua.app.presentation.ai.AiChatContent
-import com.jiucaihua.app.presentation.ai.AiChatViewModel
-import com.jiucaihua.app.presentation.ai.AiTabIcon
+import com.jiucaihua.app.domain.model.WatchlistItem
 import com.jiucaihua.app.presentation.market.MarketScreenContent
 import com.jiucaihua.app.presentation.market.MarketViewModel
 import com.jiucaihua.app.presentation.common.components.EmptyState
@@ -59,10 +58,14 @@ import com.jiucaihua.app.presentation.portfolio.components.CategoryHoldingSectio
 import com.jiucaihua.app.presentation.portfolio.components.HoldingListItem
 import com.jiucaihua.app.presentation.portfolio.components.PortfolioSummaryCard
 import com.jiucaihua.app.presentation.portfolio.components.SortSelector
+import com.jiucaihua.app.presentation.watchlist.AddWatchlistDialog
+import com.jiucaihua.app.presentation.watchlist.WatchlistTabContent
+import com.jiucaihua.app.presentation.watchlist.WatchlistUiState
+import com.jiucaihua.app.presentation.watchlist.WatchlistViewModel
 
 private const val HoldingsTabIndex = 0
 private const val NewsTabIndex = 1
-private const val AiTabIndex = 2
+private const val WatchlistTabIndex = 2
 private const val MarketTabIndex = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,18 +79,19 @@ fun PortfolioScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToMarket: () -> Unit,
     viewModel: PortfolioViewModel = hiltViewModel(),
-    aiViewModel: AiChatViewModel = hiltViewModel(),
+    watchlistViewModel: WatchlistViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val aiUiState by aiViewModel.uiState.collectAsStateWithLifecycle()
+    val watchlistUiState by watchlistViewModel.uiState.collectAsStateWithLifecycle()
     var holdingToDelete by remember { mutableStateOf<Holding?>(null) }
+    var watchlistToDelete by remember { mutableStateOf<WatchlistItem?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var selectedTabIndex by rememberSaveable { mutableStateOf(HoldingsTabIndex) }
     val snackbarHostState = remember { SnackbarHostState() }
     val tabItems = listOf(
         "持仓" to Icons.Outlined.AccountBalanceWallet,
         "资讯" to Icons.AutoMirrored.Outlined.Article,
-        "AI助手" to AiTabIcon,
+        "自选" to Icons.Outlined.StarOutline,
         "大盘" to Icons.Outlined.TrendingUp,
     )
 
@@ -107,7 +111,7 @@ fun PortfolioScreen(
                         val subtitle = when (selectedTabIndex) {
                             HoldingsTabIndex -> uiState.summary.lastUpdateTime.takeIf { it != "--" }?.let { "更新于 $it" }
                             NewsTabIndex -> "市场资讯"
-                            AiTabIndex -> "智能问答"
+                            WatchlistTabIndex -> "自选行情"
                             else -> null
                         }
                         subtitle?.let {
@@ -125,6 +129,14 @@ fun PortfolioScreen(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "添加持仓",
+                            )
+                        }
+                    }
+                    if (selectedTabIndex == WatchlistTabIndex) {
+                        IconButton(onClick = watchlistViewModel::showAddDialog) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "添加自选",
                             )
                         }
                     }
@@ -213,10 +225,11 @@ fun PortfolioScreen(
                     onArticleClick = onArticleClick,
                 )
 
-                AiTabIndex -> AiChatContent(
-                    uiState = aiUiState,
-                    onInputChange = aiViewModel::updateInput,
-                    onSend = aiViewModel::sendMessage,
+                WatchlistTabIndex -> WatchlistTabContent(
+                    uiState = watchlistUiState,
+                    onAddClick = watchlistViewModel::showAddDialog,
+                    onItemClick = onHoldingClick,
+                    onItemLongClick = { watchlistToDelete = it },
                 )
 
                 MarketTabIndex -> MarketTabContent(
@@ -257,6 +270,38 @@ fun PortfolioScreen(
                     }
                 }
             }
+        )
+    }
+
+    watchlistToDelete?.let { item ->
+        AlertDialog(
+            onDismissRequest = { watchlistToDelete = null },
+            title = { Text("删除自选") },
+            text = { Text("确定要删除 ${item.name}(${item.code}) 吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        watchlistViewModel.removeWatchlistItem(item.id)
+                        watchlistToDelete = null
+                    }
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { watchlistToDelete = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (watchlistUiState.isAddDialogVisible) {
+        AddWatchlistDialog(
+            uiState = watchlistUiState,
+            onQueryChange = watchlistViewModel::onSearchQueryChange,
+            onResultClick = watchlistViewModel::addWatchlistItem,
+            onDismiss = watchlistViewModel::hideAddDialog,
         )
     }
 }

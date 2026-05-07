@@ -3,6 +3,8 @@ package com.jiucaihua.app.di
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.jiucaihua.app.data.local.AppDatabase
@@ -10,6 +12,7 @@ import com.jiucaihua.app.data.local.dao.AlertDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
+import com.jiucaihua.app.data.local.dao.WatchlistDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,7 +32,18 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "jiucaihua_database"
-        ).fallbackToDestructiveMigration().build()
+        )
+            .addMigrations(MIGRATION_4_5)
+            .fallbackToDestructiveMigration()
+            .build()
+    }
+
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `watchlist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `code` TEXT NOT NULL, `name` TEXT NOT NULL, `marketType` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)"
+            )
+        }
     }
 
     @Provides
@@ -50,6 +64,11 @@ object AppModule {
     @Provides
     fun provideAlertDao(database: AppDatabase): AlertDao {
         return database.alertDao()
+    }
+
+    @Provides
+    fun provideWatchlistDao(database: AppDatabase): WatchlistDao {
+        return database.watchlistDao()
     }
 
     @Provides

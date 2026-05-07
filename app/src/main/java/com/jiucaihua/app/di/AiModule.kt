@@ -15,6 +15,7 @@ import com.jiucaihua.app.ai.tool.GetMarketIndicesTool
 import com.jiucaihua.app.ai.tool.GetMarketNewsTool
 import com.jiucaihua.app.ai.tool.GetMarketStatusTool
 import com.jiucaihua.app.ai.tool.GetPortfolioAnalysisTool
+import com.jiucaihua.app.ai.tool.GetWatchlistTool
 import com.jiucaihua.app.ai.tool.SearchSecuritiesTool
 import com.jiucaihua.app.ai.tool.ToolExecutor
 import dagger.Binds
@@ -100,5 +101,11 @@ abstract class AiModule {
     @IntoSet
     abstract fun bindGetMarketStatusTool(
         tool: GetMarketStatusTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetWatchlistTool(
+        tool: GetWatchlistTool,
     ): ToolExecutor
 }

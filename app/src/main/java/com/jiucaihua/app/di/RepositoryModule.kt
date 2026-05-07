@@ -9,6 +9,7 @@ import com.jiucaihua.app.data.repository.MarketRepositoryImpl
 import com.jiucaihua.app.data.repository.NewsRepositoryImpl
 import com.jiucaihua.app.data.repository.SecuritySearchRepositoryImpl
 import com.jiucaihua.app.data.repository.StockRepositoryImpl
+import com.jiucaihua.app.data.repository.WatchlistRepositoryImpl
 import com.jiucaihua.app.domain.repository.AlertRepository
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.FundRepository
@@ -18,6 +19,7 @@ import com.jiucaihua.app.domain.repository.MarketRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
 import com.jiucaihua.app.domain.repository.StockRepository
+import com.jiucaihua.app.domain.repository.WatchlistRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -81,4 +83,10 @@ abstract class RepositoryModule {
     abstract fun bindMarketRepository(
         impl: MarketRepositoryImpl
     ): MarketRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWatchlistRepository(
+        impl: WatchlistRepositoryImpl
+    ): WatchlistRepository
 }

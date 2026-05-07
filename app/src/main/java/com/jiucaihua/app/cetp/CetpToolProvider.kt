@@ -103,6 +103,7 @@ class CetpToolProvider : ContentProvider() {
                 put(JSONObject().put("name", "news").put("description", "市场资讯"))
                 put(JSONObject().put("name", "alerts").put("description", "价格预警"))
                 put(JSONObject().put("name", "search").put("description", "证券搜索"))
+                put(JSONObject().put("name", "watchlist").put("description", "自选证券列表"))
             })
         }
         return successBundle(data.toString())
@@ -154,6 +155,7 @@ class CetpToolProvider : ContentProvider() {
             "get_fund_flow",
             "search_securities",
             "get_market_status",
+            "get_watchlist",
         )
     }
 }

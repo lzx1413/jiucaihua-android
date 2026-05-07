@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 fun EmptyState(
     modifier: Modifier = Modifier,
     message: String = "暂无持仓",
-    hint: String = "点击右下角 + 添加持仓"
+    hint: String = "点击上方 + 添加持仓"
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
