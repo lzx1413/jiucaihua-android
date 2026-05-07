@@ -198,21 +198,21 @@ class GetPortfolioUseCase @Inject constructor(
         val totalMarketValue = holdings.sumOf { it.marketValueCNY }
         val totalCost = holdings.sumOf { calcCostCNY(it) }
         val totalEarnings = totalMarketValue - totalCost
-        val totalEarningsPercent = if (totalCost > 0) totalEarnings / totalCost * 100 else 0.0
         val todayEarnings = holdings.sumOf { calcTodayEarnings(it, stockQuotes[it.code], fundQuotes[it.code]) }
 
-        val totalPosition = prefs.getFloat(KEY_TOTAL_POSITION, 0f).toDouble()
-        val cash = if (totalPosition > 0) totalPosition - totalCost else 0.0
+        val cash = prefs.getFloat(KEY_CASH, 0f).toDouble()
+        val totalInvestment = totalCost + cash
+        val totalEarningsPercent = if (totalInvestment > 0) totalEarnings / totalInvestment * 100 else 0.0
 
         val categorySummaries = buildCategorySummaries(holdings, stockQuotes, fundQuotes)
 
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
         return PortfolioSummary(
-            totalPosition = totalPosition,
             cash = cash,
             totalMarketValue = totalMarketValue,
             totalCost = totalCost,
+            totalInvestment = totalInvestment,
             totalEarnings = totalEarnings,
             totalEarningsPercent = totalEarningsPercent,
             todayEarnings = todayEarnings,
@@ -287,6 +287,6 @@ class GetPortfolioUseCase @Inject constructor(
     private data class QuintResult<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
 
     companion object {
-        private const val KEY_TOTAL_POSITION = "total_position"
+        private const val KEY_CASH = "cash"
     }
 }
