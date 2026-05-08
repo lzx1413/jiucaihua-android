@@ -11,6 +11,15 @@ Jiucaihua is a personal investment management Android app built with Kotlin + Je
 - Room for local database
 - Retrofit for network requests
 
+## Key Modules
+
+- **Portfolio** - Holdings management with real-time quotes (A-share, HK, US, fund)
+- **News** - Multi-source aggregation (6 channels: CLS, XuanGuBao, WallstreetCN, Jin10, EastMoney, STCN), topic-based filtering via `NewsTopic` enum
+- **Watchlist** - Followed securities with quick quote view
+- **Market** - Market indices overview with K-line and fund flow
+- **AI** - LLM-powered assistant with tool calling (portfolio analysis, K-line, news, alerts, what-if)
+- **Alerts** - Price threshold monitoring with push notifications
+
 ## Development Rules
 
 1. **Propose before execute** - Always propose a solution before implementing changes

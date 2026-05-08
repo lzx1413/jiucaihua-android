@@ -333,34 +333,173 @@ curl "https://timor.tech/api/holiday/info/2025-05-01"
 
 **接口地址**：
 ```
-GET https://app.jiuyangongshe.com/jystock-app/api/v2/article/search
+POST https://app.jiuyangongshe.com/jystock-app/api/v2/article/search
 ```
 
 **请求参数**：
 | 参数 | 说明 | 示例 |
 |------|------|------|
 | keyword | 股票名称 | 贵州茅台 |
-| pageSize | 返回条数 | 10 |
+| limit | 返回条数 | 10 |
+| order | 排序 | 1 |
+| type | 类型 | 1 |
+
+**认证方式**：Token 从百度统计 ETag 获取，每次请求需携带 `timestamp` 和 `token` 头。
+
+**项目实现**：`data/remote/api/JiuYanApi.kt`
+
+### 7.2 证券时报（人民财讯）- A股快讯
+
+**接口地址**：
+```
+GET https://www.stcn.com/article/list.html?type=kx
+```
+
+**解析方式**：Jsoup 网页抓取，返回 JSON 格式快讯列表，每条快讯需额外请求详情页获取完整内容。
+
+**返回字段**：`id`, `title`, `content`, `source`, `time`（epoch毫秒）, `isRed`（利好标记）
+
+**项目实现**：`data/repository/NewsRepositoryImpl.kt`（`fetchStcnNews`）
+
+### 7.3 选股宝 - A股快讯
+
+**接口地址**：
+```
+GET https://baoer-api.xuangubao.com.cn/api/v6/message/newsflash
+```
+
+**请求参数**：
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| limit | 返回条数 | 20 |
+| subj_ids | 主题分类ID | 9,10,723,35,469 |
+| platform | 平台 | pcweb |
+
+**返回格式**：
+```json
+{
+  "code": 20000,
+  "data": {
+    "messages": [
+      { "id": 1, "title": "...", "summary": "...", "impact": 1, "created_at": 1715000000 }
+    ]
+  }
+}
+```
+
+**impact 取值**：1=利好，-1=利空，0=中性
+
+**项目实现**：`data/remote/api/XuanGuBaoNewsApi.kt`
+
+### 7.4 财联社 - A股实时快讯
+
+**接口地址**：
+```
+GET https://www.cls.cn/nodeapi/telegraphList
+```
+
+**请求参数**：
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| app | 应用标识 | CailianpressWeb |
+| os | 平台 | web |
+| sv | 版本 | 7.7.5 |
+| rn | 返回条数 | 20 |
+| sign | 签名 | 计算得出 |
+
+**签名算法**：参数按 key 排序 → URL 编码 → SHA-1 → MD5，实现见 `data/remote/util/ClsSignHelper.kt`
+
+**返回格式**：
+```json
+{
+  "data": {
+    "roll_data": [
+      { "id": 1, "ctime": 1715000000, "title": "...", "brief": "...", "content": "...", "is_ad": false }
+    ]
+  }
+}
+```
+
+**项目实现**：`data/remote/api/ClsNewsApi.kt`
+
+### 7.5 华尔街见闻 - 国际财经
+
+**接口地址**：
+```
+GET https://api-one.wallstcn.com/apiv1/content/lives
+```
+
+**请求参数**：
+| 参数 | 说明 | 可选值 |
+|------|------|--------|
+| channel | 频道 | global-channel, a-stock-channel, us-stock-channel, forex-channel, commodity-channel |
+| client | 客户端 | pc |
+| limit | 返回条数 | 20 |
+| cursor | 分页游标 | 0 |
+
+**无需认证**。返回 `data.items` 数组，含 `content_text`, `content_short`, `display_time`, `resource_type` 等字段。
+
+**项目实现**：`data/remote/api/WallstreetCnApi.kt`
+
+### 7.6 金十数据 - 宏观/期货
+
+**接口地址**：
+```
+GET https://flash-api.jin10.com/get_flash_list
+```
+
+**请求参数**：
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| channel | 频道 | -8200 |
+| vip | VIP | 1 |
+
+**请求头**：需携带 `x-app-id: bVBF4FyRTn5NJF5n` 和 `x-version: 1.0.0`
 
 **返回格式**：
 ```json
 {
   "data": [
-    {
-      "title": "茅台一季度业绩分析",
-      "content": "...",
-      "create_time": "2025-04-26"
-    }
+    { "type": 0, "id": 1, "time": "2025-05-08 14:30:00", "data": { "content": "..." }, "important": false }
   ]
 }
 ```
 
-**项目实现**：`data/remote/api/JiuYanApi.kt`
+`type=0` 为快讯，`type=1` 为经济数据。广告内容通过正则过滤。
 
-### 7.2 市场资讯
+**项目实现**：`data/remote/api/Jin10Api.kt`
 
-项目使用内部接口获取市场快讯，具体实现见：
-- `data/repository/NewsRepositoryImpl.kt`
+### 7.7 东方财富 - 综合快讯
+
+**接口地址**：
+```
+GET https://newsapi.eastmoney.com/kuaixun
+```
+
+**请求参数**：
+| 参数 | 说明 | 可选值 |
+|------|------|--------|
+| type | 快讯分类 | 101=焦点, 102=7x24全球, 103=上市公司, 105=全球股市, 106=商品, 107=外汇 |
+| pagesize | 返回条数 | 20 |
+| pageindex | 页码 | 1 |
+
+**无需认证**。不传 `callback` 参数返回纯 JSON；传入则返回 JSONP。
+
+**返回字段**：`id`, `title`, `digest`, `content`, `showtime`, `source`, `url`
+
+**项目实现**：`data/remote/api/EastMoneyNewsApi.kt`
+
+### 7.8 新闻聚合策略
+
+`NewsRepositoryImpl` 通过 `coroutineScope + async` 并行抓取 6 个市场新闻源，每个源独立 try-catch 容错，合并后按时间降序排列。支持通过 `NewsTopic` 枚举按主题筛选相关源：
+
+| NewsTopic | 对应源 |
+|-----------|--------|
+| A_STOCK | 财联社、选股宝、东方财富、证券时报 |
+| GLOBAL | 华尔街见闻、金十 |
+| FUTURES | 金十、东方财富 |
+| US_STOCK | 华尔街见闻 |
+| FOREX | 华尔街见闻、金十 |
 
 ---
 
@@ -401,4 +540,5 @@ GET https://app.jiuyangongshe.com/jystock-app/api/v2/article/search
 
 | 日期 | 更新内容 |
 |------|----------|
+| 2025-05-08 | 新增5个新闻源文档（选股宝/财联社/华尔街见闻/金十/东方财富），补充聚合策略说明 |
 | 2025-04-26 | 初始版本，完整记录各数据源接口 |
