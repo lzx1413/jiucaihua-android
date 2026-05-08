@@ -1,15 +1,19 @@
 package com.jiucaihua.app.di
 
+import com.jiucaihua.app.data.remote.api.ClsNewsApi
 import com.jiucaihua.app.data.remote.api.EastMoneyFundFlowApi
+import com.jiucaihua.app.data.remote.api.EastMoneyNewsApi
 import com.jiucaihua.app.data.remote.api.EastMoneyUSStockKLineApi
 import com.jiucaihua.app.data.remote.api.FundApi
 import com.jiucaihua.app.data.remote.api.HolidayApi
+import com.jiucaihua.app.data.remote.api.Jin10Api
 import com.jiucaihua.app.data.remote.api.JiuYanApi
 import com.jiucaihua.app.data.remote.api.SinaGoldKLineApi
 import com.jiucaihua.app.data.remote.api.SinaStockApi
 import com.jiucaihua.app.data.remote.api.TencentHKStockApi
 import com.jiucaihua.app.data.remote.api.TencentKLineApi
 import com.jiucaihua.app.data.remote.api.TencentSearchApi
+import com.jiucaihua.app.data.remote.api.WallstreetCnApi
 import com.jiucaihua.app.data.remote.api.XuanGuBaoNewsApi
 import com.jiucaihua.app.data.remote.interceptor.GBKResponseInterceptor
 import com.jiucaihua.app.data.remote.interceptor.RandomUserAgentInterceptor
@@ -255,5 +259,73 @@ object NetworkModule {
     @Singleton
     fun provideSinaGoldKLineApi(@Named("sinaFutures") retrofit: Retrofit): SinaGoldKLineApi {
         return retrofit.create(SinaGoldKLineApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("cls")
+    fun provideClsRetrofit(@Named("default") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://www.cls.cn/")
+            .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideClsNewsApi(@Named("cls") retrofit: Retrofit): ClsNewsApi {
+        return retrofit.create(ClsNewsApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("wallstreetCn")
+    fun provideWallstreetCnRetrofit(@Named("default") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api-one.wallstcn.com/")
+            .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideWallstreetCnApi(@Named("wallstreetCn") retrofit: Retrofit): WallstreetCnApi {
+        return retrofit.create(WallstreetCnApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("jin10")
+    fun provideJin10Retrofit(@Named("default") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://flash-api.jin10.com/")
+            .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideJin10Api(@Named("jin10") retrofit: Retrofit): Jin10Api {
+        return retrofit.create(Jin10Api::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("eastMoneyNews")
+    fun provideEastMoneyNewsRetrofit(@Named("default") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://newsapi.eastmoney.com/")
+            .client(okHttpClient)
+            .addConverterFactory(ScalarsConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideEastMoneyNewsApi(@Named("eastMoneyNews") retrofit: Retrofit): EastMoneyNewsApi {
+        return retrofit.create(EastMoneyNewsApi::class.java)
     }
 }

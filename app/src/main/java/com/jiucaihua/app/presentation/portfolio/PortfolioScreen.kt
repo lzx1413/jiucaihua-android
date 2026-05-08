@@ -1,11 +1,14 @@
 package com.jiucaihua.app.presentation.portfolio
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -18,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
 import com.jiucaihua.app.domain.model.StockArticle
@@ -220,6 +225,8 @@ fun PortfolioScreen(
 
                 NewsTabIndex -> NewsTabContent(
                     articles = uiState.marketNews,
+                    selectedSource = uiState.selectedNewsSource,
+                    onSourceSelected = viewModel::setSelectedNewsSource,
                     isLoading = uiState.isNewsLoading,
                     error = uiState.newsError,
                     onArticleClick = onArticleClick,
@@ -374,18 +381,50 @@ private fun HoldingsList(
 @Composable
 private fun NewsTabContent(
     articles: List<StockArticle>,
+    selectedSource: NewsSource?,
+    onSourceSelected: (NewsSource?) -> Unit,
     isLoading: Boolean,
     error: String?,
     onArticleClick: (StockArticle) -> Unit,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item {
-            StockNewsSection(
-                title = "市场资讯",
-                articles = articles,
-                isLoading = isLoading,
-                error = error,
-                onArticleClick = onArticleClick,
+    Column(modifier = Modifier.fillMaxSize()) {
+        NewsSourceFilterRow(
+            selectedSource = selectedSource,
+            onSourceSelected = onSourceSelected,
+        )
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item {
+                val filtered = if (selectedSource == null) articles
+                    else articles.filter { it.sourceType == selectedSource }
+                StockNewsSection(
+                    title = "市场资讯",
+                    articles = filtered,
+                    isLoading = isLoading,
+                    error = error,
+                    onArticleClick = onArticleClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewsSourceFilterRow(
+    selectedSource: NewsSource?,
+    onSourceSelected: (NewsSource?) -> Unit,
+) {
+    val sources = listOf<NewsSource?>(null) + NewsSource.entries.filter { it != NewsSource.JIUYAN }
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(sources) { source ->
+            FilterChip(
+                selected = selectedSource == source,
+                onClick = { onSourceSelected(source) },
+                label = { Text(source?.displayName ?: "全部") },
             )
         }
     }

@@ -7,4 +7,6 @@ data class StockArticle(
     val source: String,
     val time: String,
     val articleId: String? = null,
+    val sourceType: NewsSource = NewsSource.JIUYAN,
+    val impact: String = "",
 )

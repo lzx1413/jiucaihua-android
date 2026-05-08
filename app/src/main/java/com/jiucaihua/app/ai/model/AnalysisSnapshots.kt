@@ -66,6 +66,7 @@ data class NewsSnapshot(
     val summary: String,
     val source: String,
     val time: String,
+    val sourceType: String = "",
 )
 
 enum class DataSource {

@@ -118,6 +118,7 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
             summary = summary,
             source = source,
             time = time,
+            sourceType = sourceType.displayName,
         )
     }
 
@@ -197,6 +198,7 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
                     summary = it.summary,
                     source = it.source,
                     time = it.time,
+                    sourceType = it.sourceType.displayName,
                 )
             },
             dataFreshness = DataFreshness(

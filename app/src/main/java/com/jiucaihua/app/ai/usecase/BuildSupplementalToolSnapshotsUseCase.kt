@@ -11,6 +11,7 @@ import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.KLineData
 import com.jiucaihua.app.domain.model.KLinePeriod
 import com.jiucaihua.app.domain.model.MarketType
+import com.jiucaihua.app.domain.model.NewsTopic
 import com.jiucaihua.app.domain.model.PriceAlert
 import com.jiucaihua.app.domain.model.StockArticle
 import com.jiucaihua.app.domain.repository.AlertRepository
@@ -73,13 +74,19 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
 class BuildMarketNewsDigestUseCase @Inject constructor(
     private val newsRepository: NewsRepository,
 ) {
-    suspend operator fun invoke(limit: Int): MarketNewsDigest {
-        val items = newsRepository.getMarketNews(limit).map {
+    suspend operator fun invoke(limit: Int, topic: NewsTopic? = null): MarketNewsDigest {
+        val newsList = if (topic != null) {
+            newsRepository.getMarketNews(topic, limit)
+        } else {
+            newsRepository.getMarketNews(limit)
+        }
+        val items = newsList.map {
             NewsSnapshot(
                 title = it.title,
                 summary = it.summary,
                 source = it.source,
                 time = it.time,
+                sourceType = it.sourceType.displayName,
             )
         }
         return MarketNewsDigest(

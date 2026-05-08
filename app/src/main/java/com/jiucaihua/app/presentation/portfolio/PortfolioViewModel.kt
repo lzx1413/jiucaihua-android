@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
+import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
 import com.jiucaihua.app.domain.model.StockArticle
@@ -29,6 +30,7 @@ data class PortfolioUiState(
     val sortOrder: SortOrder = SortOrder.DEFAULT,
     val marketSessions: Map<MarketType, MarketSession> = emptyMap(),
     val marketNews: List<StockArticle> = emptyList(),
+    val selectedNewsSource: NewsSource? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val isNewsLoading: Boolean = false,
@@ -83,13 +85,15 @@ class PortfolioViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isNewsLoading = true, newsError = null)
             try {
-                val articles = newsRepository.getMarketNews(limit = 6).map {
+                val articles = newsRepository.getMarketNews(limit = 30).map {
                     StockArticle(
                         title = it.title,
                         summary = it.summary,
                         content = it.content,
                         source = it.source,
                         time = it.time,
+                        sourceType = it.sourceType,
+                        impact = it.impact,
                     )
                 }
                 _uiState.value = _uiState.value.copy(
@@ -105,6 +109,10 @@ class PortfolioViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun setSelectedNewsSource(source: NewsSource?) {
+        _uiState.value = _uiState.value.copy(selectedNewsSource = source)
     }
 
     private fun startAutoRefresh() {
