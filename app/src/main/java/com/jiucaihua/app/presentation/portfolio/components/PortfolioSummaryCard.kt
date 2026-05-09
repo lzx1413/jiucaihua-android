@@ -29,31 +29,65 @@ import com.jiucaihua.app.presentation.theme.RiseRed
 fun PortfolioSummaryCard(
     summary: PortfolioSummary,
     onSetCash: (Double) -> Unit = {},
+    onSetLossCompensation: (Double) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var showDialog by remember { mutableStateOf(false) }
-    var inputText by remember { mutableStateOf("") }
+    var showCashDialog by remember { mutableStateOf(false) }
+    var cashInputText by remember { mutableStateOf("") }
+    var showLossDialog by remember { mutableStateOf(false) }
+    var lossInputText by remember { mutableStateOf("") }
 
-    if (showDialog) {
+    if (showCashDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { showCashDialog = false },
             title = { Text("设置现金") },
             text = {
                 OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
+                    value = cashInputText,
+                    onValueChange = { cashInputText = it },
                     label = { Text("现金金额（元）") },
                     singleLine = true,
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
-                    inputText.toDoubleOrNull()?.let { onSetCash(it) }
-                    showDialog = false
+                    cashInputText.toDoubleOrNull()?.let { onSetCash(it) }
+                    showCashDialog = false
                 }) { Text("确定") }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("取消") }
+                TextButton(onClick = { showCashDialog = false }) { Text("取消") }
+            }
+        )
+    }
+
+    if (showLossDialog) {
+        AlertDialog(
+            onDismissRequest = { showLossDialog = false },
+            title = { Text("亏损补偿") },
+            text = {
+                Column {
+                    Text(
+                        text = "填写历史已实现亏损总额，用于计算累计收益",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = lossInputText,
+                        onValueChange = { lossInputText = it },
+                        label = { Text("亏损金额（元）") },
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    lossInputText.toDoubleOrNull()?.let { onSetLossCompensation(it) }
+                    showLossDialog = false
+                }) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLossDialog = false }) { Text("取消") }
             }
         )
     }
@@ -88,7 +122,7 @@ fun PortfolioSummaryCard(
             ) {
                 Column {
                     Text(
-                        text = "总收益",
+                        text = "持仓收益",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -105,6 +139,31 @@ fun PortfolioSummaryCard(
                         color = earningsColor
                     )
                 }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "累计收益",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    val cumulativeColor = when {
+                        summary.cumulativeEarnings > 0 -> RiseRed
+                        summary.cumulativeEarnings < 0 -> FallGreen
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                    Text(
+                        text = if (totalAssets > 0) {
+                            "${formatSignedMoney(summary.cumulativeEarnings)} (${formatPercent(summary.cumulativeEarningsPercent)})"
+                        } else "--",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = cumulativeColor
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Column {
                     Text(
                         text = "今日",
@@ -157,8 +216,30 @@ fun PortfolioSummaryCard(
                         style = MaterialTheme.typography.titleMedium,
                         color = if (summary.cash > 0) cashColor else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable {
-                            inputText = if (summary.cash > 0) summary.cash.toLong().toString() else ""
-                            showDialog = true
+                            cashInputText = if (summary.cash > 0) summary.cash.toLong().toString() else ""
+                            showCashDialog = true
+                        }
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "亏损补偿",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (summary.lossCompensation > 0) formatMoney(summary.lossCompensation) else "点击设置",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (summary.lossCompensation > 0) RiseRed else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            lossInputText = if (summary.lossCompensation > 0) summary.lossCompensation.toLong().toString() else ""
+                            showLossDialog = true
                         }
                     )
                 }

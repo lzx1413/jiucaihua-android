@@ -221,6 +221,7 @@ fun PortfolioScreen(
                     onHoldingClick = onHoldingClick,
                     onHoldingLongClick = { holdingToDelete = it },
                     onSetCash = viewModel::setCash,
+                    onSetLossCompensation = viewModel::setLossCompensation,
                 )
 
                 NewsTabIndex -> NewsTabContent(
@@ -320,6 +321,7 @@ private fun HoldingsTabContent(
     onHoldingClick: (String) -> Unit,
     onHoldingLongClick: (Holding) -> Unit,
     onSetCash: (Double) -> Unit,
+    onSetLossCompensation: (Double) -> Unit,
 ) {
     when {
         uiState.isLoading -> {
@@ -338,6 +340,7 @@ private fun HoldingsTabContent(
                 onHoldingClick = onHoldingClick,
                 onHoldingLongClick = onHoldingLongClick,
                 onSetCash = onSetCash,
+                onSetLossCompensation = onSetLossCompensation,
             )
         }
     }
@@ -351,12 +354,14 @@ private fun HoldingsList(
     onHoldingClick: (String) -> Unit,
     onHoldingLongClick: (Holding) -> Unit,
     onSetCash: (Double) -> Unit,
+    onSetLossCompensation: (Double) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             PortfolioSummaryCard(
                 summary = summary,
                 onSetCash = onSetCash,
+                onSetLossCompensation = onSetLossCompensation,
             )
         }
         item {

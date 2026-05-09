@@ -180,6 +180,11 @@ class PortfolioViewModel @Inject constructor(
         refreshQuotes()
     }
 
+    fun setLossCompensation(value: Double) {
+        prefs.edit().putFloat(KEY_LOSS_COMPENSATION, value.toFloat()).apply()
+        refreshQuotes()
+    }
+
     private fun applySorting(summary: PortfolioSummary, order: SortOrder): PortfolioSummary {
         val sortFunction: (List<Holding>) -> List<Holding> = { holdings ->
             when (order) {
@@ -213,5 +218,6 @@ class PortfolioViewModel @Inject constructor(
         private const val REFRESH_INTERVAL_MS = 10_000L
         private const val SESSION_CHECK_INTERVAL_MS = 60_000L
         private const val KEY_CASH = "cash"
+        private const val KEY_LOSS_COMPENSATION = "loss_compensation"
     }
 }

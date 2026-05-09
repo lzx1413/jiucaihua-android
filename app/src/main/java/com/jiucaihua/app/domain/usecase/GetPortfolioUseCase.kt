@@ -201,8 +201,11 @@ class GetPortfolioUseCase @Inject constructor(
         val todayEarnings = holdings.sumOf { calcTodayEarnings(it, stockQuotes[it.code], fundQuotes[it.code]) }
 
         val cash = prefs.getFloat(KEY_CASH, 0f).toDouble()
+        val lossCompensation = prefs.getFloat(KEY_LOSS_COMPENSATION, 0f).toDouble()
         val totalInvestment = totalCost + cash
         val totalEarningsPercent = if (totalInvestment > 0) totalEarnings / totalInvestment * 100 else 0.0
+        val cumulativeEarnings = totalEarnings - lossCompensation
+        val cumulativeEarningsPercent = if (totalInvestment > 0) cumulativeEarnings / totalInvestment * 100 else 0.0
 
         val categorySummaries = buildCategorySummaries(holdings, stockQuotes, fundQuotes)
 
@@ -210,11 +213,14 @@ class GetPortfolioUseCase @Inject constructor(
 
         return PortfolioSummary(
             cash = cash,
+            lossCompensation = lossCompensation,
             totalMarketValue = totalMarketValue,
             totalCost = totalCost,
             totalInvestment = totalInvestment,
             totalEarnings = totalEarnings,
             totalEarningsPercent = totalEarningsPercent,
+            cumulativeEarnings = cumulativeEarnings,
+            cumulativeEarningsPercent = cumulativeEarningsPercent,
             todayEarnings = todayEarnings,
             holdings = holdings,
             categorySummaries = categorySummaries,
@@ -288,5 +294,6 @@ class GetPortfolioUseCase @Inject constructor(
 
     companion object {
         private const val KEY_CASH = "cash"
+        private const val KEY_LOSS_COMPENSATION = "loss_compensation"
     }
 }

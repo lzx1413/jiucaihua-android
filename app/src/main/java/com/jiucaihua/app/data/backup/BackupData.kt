@@ -22,6 +22,8 @@ data class AppSettingsBackup(
     val refreshIntervalSeconds: Int = 10,
     val isDarkMode: Boolean? = null,
     val alertsEnabled: Boolean = true,
+    val cash: Float = 0f,
+    val lossCompensation: Float = 0f,
 )
 
 @Serializable
