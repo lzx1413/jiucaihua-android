@@ -7,6 +7,8 @@ import com.jiucaihua.app.ai.orchestrator.OpenAiCompatibleLlmAgentClient
 import com.jiucaihua.app.ai.provider.AiProviderService
 import com.jiucaihua.app.ai.provider.DefaultAiProviderService
 import com.jiucaihua.app.ai.tool.CalculateWhatIfTool
+import com.jiucaihua.app.ai.tool.CreateAlertTool
+import com.jiucaihua.app.ai.tool.DeleteAlertTool
 import com.jiucaihua.app.ai.tool.GetAlertsTool
 import com.jiucaihua.app.ai.tool.GetFundFlowTool
 import com.jiucaihua.app.ai.tool.GetHoldingAnalysisTool
@@ -107,5 +109,17 @@ abstract class AiModule {
     @IntoSet
     abstract fun bindGetWatchlistTool(
         tool: GetWatchlistTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindCreateAlertTool(
+        tool: CreateAlertTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindDeleteAlertTool(
+        tool: DeleteAlertTool,
     ): ToolExecutor
 }

@@ -82,8 +82,19 @@ class CetpToolProvider : ContentProvider() {
             }
             val content = result.content
             val json = if (content != null) {
-                val adapter = moshi.adapter<Any>(content::class.java)
-                adapter.indent("  ").toJson(content) ?: "null"
+                when (content) {
+                    is Map<*, *> -> {
+                        val obj = JSONObject()
+                        for ((key, value) in content) {
+                            obj.put(key.toString(), value ?: JSONObject.NULL)
+                        }
+                        obj.toString(2)
+                    }
+                    else -> {
+                        val adapter = moshi.adapter<Any>(content::class.java)
+                        adapter.indent("  ").toJson(content) ?: "null"
+                    }
+                }
             } else {
                 "null"
             }
@@ -150,6 +161,8 @@ class CetpToolProvider : ContentProvider() {
             "get_kline_data",
             "get_market_news",
             "get_alerts",
+            "create_alert",
+            "delete_alert",
             "calculate_what_if",
             "get_market_indices",
             "get_fund_flow",
