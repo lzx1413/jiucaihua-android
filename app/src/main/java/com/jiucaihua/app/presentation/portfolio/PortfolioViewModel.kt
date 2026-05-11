@@ -8,6 +8,7 @@ import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
+import com.jiucaihua.app.domain.model.NewsTopic
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
 import com.jiucaihua.app.domain.repository.NewsRepository
@@ -106,7 +107,10 @@ class PortfolioViewModel @Inject constructor(
 
     private fun refreshNews() {
         viewModelScope.launch {
-            newsRepository.refreshNews()
+            val topic = _uiState.value.selectedNewsSource?.let { source ->
+                NewsTopic.entries.find { source in it.sources }
+            }
+            newsRepository.refreshNews(topic)
         }
     }
 

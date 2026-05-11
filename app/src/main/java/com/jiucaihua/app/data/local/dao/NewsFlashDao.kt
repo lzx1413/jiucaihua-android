@@ -13,6 +13,9 @@ interface NewsFlashDao {
     @Query("SELECT * FROM news_flash WHERE epochMillis > :cutoff ORDER BY epochMillis DESC")
     fun getAll(cutoff: Long): Flow<List<NewsFlashEntity>>
 
+    @Query("SELECT * FROM news_flash WHERE epochMillis > :cutoff ORDER BY epochMillis DESC")
+    suspend fun getAllOnce(cutoff: Long): List<NewsFlashEntity>
+
     @Query("SELECT * FROM news_flash WHERE sourceType = :sourceType AND epochMillis > :cutoff ORDER BY epochMillis DESC")
     fun getBySourceType(sourceType: String, cutoff: Long): Flow<List<NewsFlashEntity>>
 

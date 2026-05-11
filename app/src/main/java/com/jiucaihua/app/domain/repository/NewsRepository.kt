@@ -12,5 +12,5 @@ interface NewsRepository {
     suspend fun getStockNews(stockName: String, limit: Int = 10): List<StockArticle>
     fun observeAllNews(): Flow<List<NewsFlash>>
     fun observeNewsBySource(source: NewsSource): Flow<List<NewsFlash>>
-    suspend fun refreshNews()
+    suspend fun refreshNews(topic: NewsTopic? = null)
 }

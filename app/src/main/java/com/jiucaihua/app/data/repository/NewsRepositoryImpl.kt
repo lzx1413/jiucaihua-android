@@ -44,7 +44,7 @@ class NewsRepositoryImpl @Inject constructor(
 ) : NewsRepository {
 
     override suspend fun getMarketNews(limit: Int): List<NewsFlash> = withContext(Dispatchers.IO) {
-        coroutineScope {
+        val freshNews = coroutineScope {
             val stcnDeferred = async { fetchStcnNews() }
             val xgbDeferred = async { fetchXuanGuBaoNews() }
             val clsDeferred = async { fetchClsNews() }
@@ -52,7 +52,7 @@ class NewsRepositoryImpl @Inject constructor(
             val jin10Deferred = async { fetchJin10News() }
             val eastDeferred = async { fetchEastMoneyNews() }
 
-            val allNews = listOf(
+            listOf(
                 stcnDeferred.await(),
                 xgbDeferred.await(),
                 clsDeferred.await(),
@@ -60,26 +60,38 @@ class NewsRepositoryImpl @Inject constructor(
                 jin10Deferred.await(),
                 eastDeferred.await(),
             ).flatten()
-
-            allNews
-                .filter { it.epochMillis > System.currentTimeMillis() - TWENTY_FOUR_HOURS }
-                .sortedByDescending { it.epochMillis }
-                .take(limit)
         }
+
+        // upsert fresh data to cache
+        newsFlashDao.insertAll(freshNews.map { it.toEntity() })
+
+        // merge cached + fresh by unique (newsId, sourceType), then filter & sort
+        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+        newsFlashDao.getAllOnce(cutoff)
+            .map { it.toDomain() }
+            .sortedByDescending { it.epochMillis }
+            .take(limit)
     }
 
     override suspend fun getMarketNews(topic: NewsTopic, limit: Int): List<NewsFlash> = withContext(Dispatchers.IO) {
-        coroutineScope {
+        val freshNews = coroutineScope {
             val deferredResults = topic.sources.map { source ->
                 async { fetchBySource(source) }
             }
-            deferredResults
-                .map { it.await() }
-                .flatten()
-                .filter { it.epochMillis > System.currentTimeMillis() - TWENTY_FOUR_HOURS }
-                .sortedByDescending { it.epochMillis }
-                .take(limit)
+            deferredResults.map { it.await() }.flatten()
         }
+
+        // upsert fresh data to cache
+        newsFlashDao.insertAll(freshNews.map { it.toEntity() })
+
+        // merge cached + fresh by topic's sources
+        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+        val sourceNames = topic.sources.map { it.name }.toSet()
+        newsFlashDao.getAllOnce(cutoff)
+            .filter { it.sourceType in sourceNames }
+            .map { it.toDomain() }
+            .sortedByDescending { it.epochMillis }
+            .take(limit)
     }
 
     override suspend fun getStockNews(stockName: String, limit: Int): List<StockArticle> {
@@ -535,24 +547,13 @@ class NewsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun refreshNews() {
+    override suspend fun refreshNews(topic: NewsTopic?) {
+        val sources = topic?.sources ?: NewsSource.entries.filter { it != NewsSource.JIUYAN }
         val allNews = withContext(Dispatchers.IO) {
             coroutineScope {
-                val stcnDeferred = async { fetchStcnNews() }
-                val xgbDeferred = async { fetchXuanGuBaoNews() }
-                val clsDeferred = async { fetchClsNews() }
-                val wscnDeferred = async { fetchWallstreetCnNews() }
-                val jin10Deferred = async { fetchJin10News() }
-                val eastDeferred = async { fetchEastMoneyNews() }
-
-                listOf(
-                    stcnDeferred.await(),
-                    xgbDeferred.await(),
-                    clsDeferred.await(),
-                    wscnDeferred.await(),
-                    jin10Deferred.await(),
-                    eastDeferred.await(),
-                ).flatten()
+                sources.map { source -> async { fetchBySource(source) } }
+                    .map { it.await() }
+                    .flatten()
             }
         }
         val entities = allNews.map { it.toEntity() }
