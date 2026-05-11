@@ -48,10 +48,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
-import com.jiucaihua.app.domain.model.StockArticle
 import com.jiucaihua.app.domain.model.WatchlistItem
 import com.jiucaihua.app.presentation.market.MarketScreenContent
 import com.jiucaihua.app.presentation.market.MarketViewModel
@@ -79,7 +79,7 @@ fun PortfolioScreen(
     onAddHolding: () -> Unit,
     onEditHolding: (Long) -> Unit,
     onHoldingClick: (String) -> Unit,
-    onArticleClick: (StockArticle) -> Unit,
+    onArticleClick: (NewsFlash) -> Unit,
     onNavigateToAlerts: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToMarket: () -> Unit,
@@ -385,12 +385,12 @@ private fun HoldingsList(
 
 @Composable
 private fun NewsTabContent(
-    articles: List<StockArticle>,
+    articles: List<NewsFlash>,
     selectedSource: NewsSource?,
     onSourceSelected: (NewsSource?) -> Unit,
     isLoading: Boolean,
     error: String?,
-    onArticleClick: (StockArticle) -> Unit,
+    onArticleClick: (NewsFlash) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         NewsSourceFilterRow(

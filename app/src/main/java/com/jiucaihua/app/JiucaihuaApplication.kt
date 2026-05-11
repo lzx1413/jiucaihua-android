@@ -12,6 +12,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.jiucaihua.app.worker.AlertCheckWorker
+import com.jiucaihua.app.worker.NewsSyncWorker
 import com.jiucaihua.app.worker.QuoteRefreshWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
@@ -33,6 +34,7 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
         createNotificationChannels()
         scheduleQuoteRefresh()
         scheduleAlertCheck()
+        scheduleNewsSync()
     }
 
     private fun createNotificationChannels() {
@@ -75,6 +77,22 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             AlertCheckWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
+    }
+
+    private fun scheduleNewsSync() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = PeriodicWorkRequestBuilder<NewsSyncWorker>(
+            15, TimeUnit.MINUTES,
+        ).setConstraints(constraints).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            NewsSyncWorker.WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request,
         )

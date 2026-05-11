@@ -25,16 +25,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
-import com.jiucaihua.app.domain.model.StockArticle
 
 @Composable
 fun StockNewsSection(
     title: String = "资讯",
-    articles: List<StockArticle>,
+    articles: List<NewsFlash>,
     isLoading: Boolean,
     error: String?,
-    onArticleClick: (StockArticle) -> Unit,
+    onArticleClick: (NewsFlash) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -104,7 +104,7 @@ fun StockNewsSection(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StockArticleItem(
-    article: StockArticle,
+    article: NewsFlash,
     onClick: () -> Unit,
 ) {
     Column(

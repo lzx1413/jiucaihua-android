@@ -6,10 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
+import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
-import com.jiucaihua.app.domain.model.StockArticle
 import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
@@ -20,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,7 +30,7 @@ data class PortfolioUiState(
     val summary: PortfolioSummary = PortfolioSummary(),
     val sortOrder: SortOrder = SortOrder.DEFAULT,
     val marketSessions: Map<MarketType, MarketSession> = emptyMap(),
-    val marketNews: List<StockArticle> = emptyList(),
+    val marketNews: List<NewsFlash> = emptyList(),
     val selectedNewsSource: NewsSource? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -52,10 +53,13 @@ class PortfolioViewModel @Inject constructor(
 
     private var refreshJob: Job? = null
 
+    private var newsJob: Job? = null
+
     init {
         loadCachedData()
         observeHoldings()
-        loadMarketNews()
+        observeMarketNews()
+        refreshNews()
         startAutoRefresh()
     }
 
@@ -81,38 +85,34 @@ class PortfolioViewModel @Inject constructor(
         }
     }
 
-    private fun loadMarketNews() {
-        viewModelScope.launch {
+    private fun observeMarketNews() {
+        newsJob?.cancel()
+        newsJob = viewModelScope.launch {
+            val flow = if (_uiState.value.selectedNewsSource != null) {
+                newsRepository.observeNewsBySource(_uiState.value.selectedNewsSource!!)
+            } else {
+                newsRepository.observeAllNews()
+            }
             _uiState.value = _uiState.value.copy(isNewsLoading = true, newsError = null)
-            try {
-                val articles = newsRepository.getMarketNews(limit = 30).map {
-                    StockArticle(
-                        title = it.title,
-                        summary = it.summary,
-                        content = it.content,
-                        source = it.source,
-                        time = it.time,
-                        sourceType = it.sourceType,
-                        impact = it.impact,
-                    )
-                }
+            flow.collect { newsList ->
                 _uiState.value = _uiState.value.copy(
-                    marketNews = articles,
+                    marketNews = newsList,
                     isNewsLoading = false,
-                    newsError = null,
-                )
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    marketNews = emptyList(),
-                    isNewsLoading = false,
-                    newsError = "暂无资讯",
+                    newsError = if (newsList.isEmpty()) "暂无资讯" else null,
                 )
             }
         }
     }
 
+    private fun refreshNews() {
+        viewModelScope.launch {
+            newsRepository.refreshNews()
+        }
+    }
+
     fun setSelectedNewsSource(source: NewsSource?) {
         _uiState.value = _uiState.value.copy(selectedNewsSource = source)
+        observeMarketNews()
     }
 
     private fun startAutoRefresh() {
@@ -212,6 +212,7 @@ class PortfolioViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         refreshJob?.cancel()
+        newsJob?.cancel()
     }
 
     companion object {

@@ -1,5 +1,7 @@
 package com.jiucaihua.app.data.repository
 
+import com.jiucaihua.app.data.local.dao.NewsFlashDao
+import com.jiucaihua.app.data.local.entity.NewsFlashEntity
 import com.jiucaihua.app.data.remote.api.ClsNewsApi
 import com.jiucaihua.app.data.remote.api.EastMoneyNewsApi
 import com.jiucaihua.app.data.remote.api.Jin10Api
@@ -16,6 +18,8 @@ import com.jiucaihua.app.domain.repository.NewsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -36,16 +40,17 @@ class NewsRepositoryImpl @Inject constructor(
     private val wallstreetCnApi: WallstreetCnApi,
     private val jin10Api: Jin10Api,
     private val eastMoneyNewsApi: EastMoneyNewsApi,
+    private val newsFlashDao: NewsFlashDao,
 ) : NewsRepository {
 
     override suspend fun getMarketNews(limit: Int): List<NewsFlash> = withContext(Dispatchers.IO) {
         coroutineScope {
-            val stcnDeferred = async { fetchStcnNews(limit) }
-            val xgbDeferred = async { fetchXuanGuBaoNews(limit) }
-            val clsDeferred = async { fetchClsNews(limit) }
-            val wscnDeferred = async { fetchWallstreetCnNews(limit) }
-            val jin10Deferred = async { fetchJin10News(limit) }
-            val eastDeferred = async { fetchEastMoneyNews(limit) }
+            val stcnDeferred = async { fetchStcnNews() }
+            val xgbDeferred = async { fetchXuanGuBaoNews() }
+            val clsDeferred = async { fetchClsNews() }
+            val wscnDeferred = async { fetchWallstreetCnNews() }
+            val jin10Deferred = async { fetchJin10News() }
+            val eastDeferred = async { fetchEastMoneyNews() }
 
             val allNews = listOf(
                 stcnDeferred.await(),
@@ -57,7 +62,8 @@ class NewsRepositoryImpl @Inject constructor(
             ).flatten()
 
             allNews
-                .sortedByDescending { it.time }
+                .filter { it.epochMillis > System.currentTimeMillis() - TWENTY_FOUR_HOURS }
+                .sortedByDescending { it.epochMillis }
                 .take(limit)
         }
     }
@@ -65,12 +71,13 @@ class NewsRepositoryImpl @Inject constructor(
     override suspend fun getMarketNews(topic: NewsTopic, limit: Int): List<NewsFlash> = withContext(Dispatchers.IO) {
         coroutineScope {
             val deferredResults = topic.sources.map { source ->
-                async { fetchBySource(source, limit) }
+                async { fetchBySource(source) }
             }
             deferredResults
                 .map { it.await() }
                 .flatten()
-                .sortedByDescending { it.time }
+                .filter { it.epochMillis > System.currentTimeMillis() - TWENTY_FOUR_HOURS }
+                .sortedByDescending { it.epochMillis }
                 .take(limit)
         }
     }
@@ -114,7 +121,7 @@ class NewsRepositoryImpl @Inject constructor(
 
     // --- STCN (证券时报/人民财讯) ---
 
-    private suspend fun fetchStcnNews(limit: Int): List<NewsFlash> {
+    private suspend fun fetchStcnNews(): List<NewsFlash> {
         return try {
             val response = Jsoup.connect(STCN_LIST_URL)
                 .ignoreContentType(true)
@@ -125,25 +132,26 @@ class NewsRepositoryImpl @Inject constructor(
                 .timeout(10_000)
                 .execute()
                 .body()
-            parseStcnMarketNewsResponse(response, limit)
+            parseStcnMarketNewsResponse(response)
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    private fun parseStcnMarketNewsResponse(response: String, limit: Int): List<NewsFlash> {
+    private fun parseStcnMarketNewsResponse(response: String): List<NewsFlash> {
         val root = JSONObject(response)
         if (root.optInt("state") != 1) return emptyList()
 
         val items = root.optJSONArray("data") ?: return emptyList()
         return buildList {
-            for (index in 0 until minOf(items.length(), limit)) {
+            for (index in 0 until items.length()) {
                 val item = items.optJSONObject(index) ?: continue
                 val title = item.optString("title").trim()
                 val summary = normalizeText(item.optString("content"))
                 if (title.isBlank() || summary.isBlank()) continue
                 val detailUrl = item.optString("url").toAbsoluteStcnUrl()
                 val detail = fetchStcnDetail(detailUrl)
+                val epochMillis = item.optLong("time")
                 add(
                     NewsFlash(
                         id = item.optLong("id"),
@@ -152,8 +160,9 @@ class NewsRepositoryImpl @Inject constructor(
                         content = detail.content.ifBlank { summary },
                         impact = if (item.optInt("isRed") == 1) "利好" else "",
                         source = detail.source.ifBlank { item.optString("source").trim().ifBlank { STCN_SOURCE } },
-                        time = formatEpochMillis(item.optLong("time")),
+                        time = formatEpochMillis(epochMillis),
                         sourceType = NewsSource.STCN,
+                        epochMillis = epochMillis,
                     )
                 )
             }
@@ -185,25 +194,25 @@ class NewsRepositoryImpl @Inject constructor(
 
     // --- XuanGuBao (选股宝) ---
 
-    private suspend fun fetchXuanGuBaoNews(limit: Int): List<NewsFlash> {
+    private suspend fun fetchXuanGuBaoNews(): List<NewsFlash> {
         return try {
             val response = xuanGuBaoNewsApi.getNewsFlash(
-                limit = limit,
+                limit = FETCH_LIMIT,
                 subjectIds = XGB_SUBJECT_IDS,
             )
-            parseXuanGuBaoResponse(response, limit)
+            parseXuanGuBaoResponse(response)
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    private fun parseXuanGuBaoResponse(response: String, limit: Int): List<NewsFlash> {
+    private fun parseXuanGuBaoResponse(response: String): List<NewsFlash> {
         val root = JSONObject(response)
         if (root.optInt("code") != 20000) return emptyList()
 
         val messages = root.optJSONObject("data")?.optJSONArray("messages") ?: return emptyList()
         return buildList {
-            for (index in 0 until minOf(messages.length(), limit)) {
+            for (index in 0 until messages.length()) {
                 val item = messages.optJSONObject(index) ?: continue
                 val title = item.optString("title").trim()
                 val summary = normalizeText(item.optString("summary"))
@@ -213,6 +222,7 @@ class NewsRepositoryImpl @Inject constructor(
                     -1 -> "利空"
                     else -> ""
                 }
+                val epochMillis = item.optLong("created_at") * 1000
                 add(
                     NewsFlash(
                         id = item.optLong("id"),
@@ -223,6 +233,7 @@ class NewsRepositoryImpl @Inject constructor(
                         source = XGB_SOURCE,
                         time = formatEpochSeconds(item.optLong("created_at")),
                         sourceType = NewsSource.XUANGUBAO,
+                        epochMillis = epochMillis,
                     )
                 )
             }
@@ -231,13 +242,13 @@ class NewsRepositoryImpl @Inject constructor(
 
     // --- CLS (财联社) ---
 
-    private suspend fun fetchClsNews(limit: Int): List<NewsFlash> {
+    private suspend fun fetchClsNews(): List<NewsFlash> {
         return try {
             val params = mapOf(
                 "app" to "CailianpressWeb",
                 "os" to "web",
                 "sv" to "7.7.5",
-                "rn" to limit.toString(),
+                "rn" to FETCH_LIMIT.toString(),
             )
             val sign = ClsSignHelper.calculateSign(params)
             val queryString = params.entries.joinToString("&") {
@@ -251,17 +262,17 @@ class NewsRepositoryImpl @Inject constructor(
                     "Referer" to "https://www.cls.cn/telegraph",
                 ),
             )
-            parseClsResponse(response, limit)
+            parseClsResponse(response)
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    private fun parseClsResponse(response: String, limit: Int): List<NewsFlash> {
+    private fun parseClsResponse(response: String): List<NewsFlash> {
         val root = JSONObject(response)
         val rollData = root.optJSONObject("data")?.optJSONArray("roll_data") ?: return emptyList()
         return buildList {
-            for (index in 0 until minOf(rollData.length(), limit)) {
+            for (index in 0 until rollData.length()) {
                 val item = rollData.optJSONObject(index) ?: continue
                 if (item.optInt("is_ad") == 1) continue
                 val title = item.optString("title").trim()
@@ -269,6 +280,7 @@ class NewsRepositoryImpl @Inject constructor(
                 val content = normalizeText(item.optString("content"))
                 if (title.isBlank() && brief.isBlank()) continue
                 val displayTitle = title.ifBlank { brief }
+                val epochMillis = item.optLong("ctime") * 1000
                 add(
                     NewsFlash(
                         id = item.optLong("id"),
@@ -279,6 +291,7 @@ class NewsRepositoryImpl @Inject constructor(
                         source = CLS_SOURCE,
                         time = formatEpochSeconds(item.optLong("ctime")),
                         sourceType = NewsSource.CLS,
+                        epochMillis = epochMillis,
                     )
                 )
             }
@@ -287,43 +300,59 @@ class NewsRepositoryImpl @Inject constructor(
 
     // --- WallstreetCN (华尔街见闻) ---
 
-    private suspend fun fetchWallstreetCnNews(limit: Int): List<NewsFlash> {
+    private suspend fun fetchWallstreetCnNews(): List<NewsFlash> {
+        val all = mutableListOf<NewsFlash>()
+        var cursor = "0"
+        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+        repeat(3) {
+            val result = fetchWallstreetCnPage(cursor) ?: return@repeat
+            all.addAll(result.news)
+            if (result.news.isEmpty() || result.news.last().epochMillis <= cutoff) return@repeat
+            cursor = result.nextCursor ?: return@repeat
+        }
+        return all
+    }
+
+    private data class WscnPageResult(val news: List<NewsFlash>, val nextCursor: String?)
+
+    private suspend fun fetchWallstreetCnPage(cursor: String): WscnPageResult? {
         return try {
             val response = wallstreetCnApi.getLives(
                 channel = "global-channel",
-                limit = limit,
+                limit = FETCH_LIMIT,
+                cursor = cursor,
             )
-            parseWallstreetCnResponse(response, limit)
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun parseWallstreetCnResponse(response: String, limit: Int): List<NewsFlash> {
-        val root = JSONObject(response)
-        val items = root.optJSONObject("data")?.optJSONArray("items") ?: return emptyList()
-        return buildList {
-            for (index in 0 until minOf(items.length(), limit)) {
-                val item = items.optJSONObject(index) ?: continue
-                val resourceType = item.optString("resource_type")
-                if (resourceType == "theme" || resourceType == "ad") continue
-                val contentText = normalizeText(item.optString("content_text"))
-                val contentShort = normalizeText(item.optString("content_short"))
-                if (contentText.isBlank()) continue
-                val title = extractWscnTitle(contentText)
-                add(
-                    NewsFlash(
-                        id = item.optLong("id"),
-                        title = title,
-                        summary = abbreviate(contentShort.ifBlank { contentText }, 140),
-                        content = contentText,
-                        impact = "",
-                        source = WSCN_SOURCE,
-                        time = formatEpochSeconds(item.optLong("display_time")),
-                        sourceType = NewsSource.WALLSTREETCN,
+            val root = JSONObject(response)
+            val items = root.optJSONObject("data")?.optJSONArray("items") ?: return WscnPageResult(emptyList(), null)
+            val nextCursor = root.optJSONObject("data")?.optString("next_cursor")?.takeIf { it.isNotBlank() }
+            val news = buildList {
+                for (index in 0 until items.length()) {
+                    val item = items.optJSONObject(index) ?: continue
+                    val resourceType = item.optString("resource_type")
+                    if (resourceType == "theme" || resourceType == "ad") continue
+                    val contentText = normalizeText(item.optString("content_text"))
+                    val contentShort = normalizeText(item.optString("content_short"))
+                    if (contentText.isBlank()) continue
+                    val title = extractWscnTitle(contentText)
+                    val epochMillis = item.optLong("display_time") * 1000
+                    add(
+                        NewsFlash(
+                            id = item.optLong("id"),
+                            title = title,
+                            summary = abbreviate(contentShort.ifBlank { contentText }, 140),
+                            content = contentText,
+                            impact = "",
+                            source = WSCN_SOURCE,
+                            time = formatEpochSeconds(item.optLong("display_time")),
+                            sourceType = NewsSource.WALLSTREETCN,
+                            epochMillis = epochMillis,
+                        )
                     )
-                )
+                }
             }
+            WscnPageResult(news, nextCursor)
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -335,7 +364,7 @@ class NewsRepositoryImpl @Inject constructor(
 
     // --- Jin10 (金十数据) ---
 
-    private suspend fun fetchJin10News(limit: Int): List<NewsFlash> {
+    private suspend fun fetchJin10News(): List<NewsFlash> {
         return try {
             val response = jin10Api.getFlashList(
                 headers = mapOf(
@@ -343,22 +372,23 @@ class NewsRepositoryImpl @Inject constructor(
                     "x-version" to JIN10_VERSION,
                 ),
             )
-            parseJin10Response(response, limit)
+            parseJin10Response(response)
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    private fun parseJin10Response(response: String, limit: Int): List<NewsFlash> {
+    private fun parseJin10Response(response: String): List<NewsFlash> {
         val root = JSONObject(response)
         val data = root.optJSONArray("data") ?: return emptyList()
         return buildList {
-            for (index in 0 until minOf(data.length(), limit)) {
+            for (index in 0 until data.length()) {
                 val item = data.optJSONObject(index) ?: continue
                 val type = item.optInt("type")
                 val innerData = item.optJSONObject("data") ?: continue
                 val id = item.optLong("id")
                 val time = item.optString("time").trim()
+                val epochMillis = parseJin10EpochMillis(time)
 
                 if (type == 0) {
                     val content = normalizeText(innerData.optString("content"))
@@ -375,6 +405,7 @@ class NewsRepositoryImpl @Inject constructor(
                             source = JIN10_SOURCE,
                             time = formatJin10Time(time),
                             sourceType = NewsSource.JIN10,
+                            epochMillis = epochMillis,
                         )
                     )
                 } else if (type == 1) {
@@ -395,6 +426,7 @@ class NewsRepositoryImpl @Inject constructor(
                             source = JIN10_SOURCE,
                             time = formatJin10Time(time),
                             sourceType = NewsSource.JIN10,
+                            epochMillis = epochMillis,
                         )
                     )
                 }
@@ -414,27 +446,40 @@ class NewsRepositoryImpl @Inject constructor(
 
     // --- East Money (东方财富) ---
 
-    private suspend fun fetchEastMoneyNews(limit: Int): List<NewsFlash> {
+    private suspend fun fetchEastMoneyNews(): List<NewsFlash> {
+        val all = mutableListOf<NewsFlash>()
+        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+        for (page in 1..3) {
+            val result = fetchEastMoneyPage(page)
+            if (result.isEmpty()) break
+            all.addAll(result)
+            if (result.last().epochMillis <= cutoff) break
+        }
+        return all
+    }
+
+    private suspend fun fetchEastMoneyPage(page: Int): List<NewsFlash> {
         return try {
-            val url = "https://newsapi.eastmoney.com/kuaixun?type=102&pagesize=$limit&pageindex=1"
+            val url = "https://newsapi.eastmoney.com/kuaixun?type=102&pagesize=$FETCH_LIMIT&pageindex=$page"
             val response = eastMoneyNewsApi.getKuaixun(url)
-            parseEastMoneyNewsResponse(response, limit)
+            parseEastMoneyNewsResponse(response)
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    private fun parseEastMoneyNewsResponse(response: String, limit: Int): List<NewsFlash> {
+    private fun parseEastMoneyNewsResponse(response: String): List<NewsFlash> {
         val jsonStr = stripJsonp(response)
         val root = JSONObject(jsonStr)
         val data = root.optJSONArray("data") ?: return emptyList()
         return buildList {
-            for (index in 0 until minOf(data.length(), limit)) {
+            for (index in 0 until data.length()) {
                 val item = data.optJSONObject(index) ?: continue
                 val title = item.optString("title").trim()
                 val digest = normalizeText(item.optString("digest"))
                 val content = normalizeText(item.optString("content"))
                 if (title.isBlank()) continue
+                val epochMillis = parseEastMoneyEpochMillis(item.optString("showtime").trim())
                 add(
                     NewsFlash(
                         id = item.optString("id").hashCode().toLong(),
@@ -445,6 +490,7 @@ class NewsRepositoryImpl @Inject constructor(
                         source = item.optString("source").trim().ifBlank { EASTMONEY_SOURCE },
                         time = item.optString("showtime").trim(),
                         sourceType = NewsSource.EASTMONEY,
+                        epochMillis = epochMillis,
                     )
                 )
             }
@@ -461,16 +507,86 @@ class NewsRepositoryImpl @Inject constructor(
         return trimmed
     }
 
-    private suspend fun fetchBySource(source: NewsSource, limit: Int): List<NewsFlash> {
+    private suspend fun fetchBySource(source: NewsSource): List<NewsFlash> {
         return when (source) {
-            NewsSource.STCN -> fetchStcnNews(limit)
-            NewsSource.XUANGUBAO -> fetchXuanGuBaoNews(limit)
-            NewsSource.CLS -> fetchClsNews(limit)
-            NewsSource.WALLSTREETCN -> fetchWallstreetCnNews(limit)
-            NewsSource.JIN10 -> fetchJin10News(limit)
-            NewsSource.EASTMONEY -> fetchEastMoneyNews(limit)
+            NewsSource.STCN -> fetchStcnNews()
+            NewsSource.XUANGUBAO -> fetchXuanGuBaoNews()
+            NewsSource.CLS -> fetchClsNews()
+            NewsSource.WALLSTREETCN -> fetchWallstreetCnNews()
+            NewsSource.JIN10 -> fetchJin10News()
+            NewsSource.EASTMONEY -> fetchEastMoneyNews()
             NewsSource.JIUYAN -> emptyList()
         }
+    }
+
+    // --- Local cache ---
+
+    override fun observeAllNews(): Flow<List<NewsFlash>> {
+        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+        return newsFlashDao.getAll(cutoff).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun observeNewsBySource(source: NewsSource): Flow<List<NewsFlash>> {
+        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+        return newsFlashDao.getBySourceType(source.name, cutoff).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun refreshNews() {
+        val allNews = withContext(Dispatchers.IO) {
+            coroutineScope {
+                val stcnDeferred = async { fetchStcnNews() }
+                val xgbDeferred = async { fetchXuanGuBaoNews() }
+                val clsDeferred = async { fetchClsNews() }
+                val wscnDeferred = async { fetchWallstreetCnNews() }
+                val jin10Deferred = async { fetchJin10News() }
+                val eastDeferred = async { fetchEastMoneyNews() }
+
+                listOf(
+                    stcnDeferred.await(),
+                    xgbDeferred.await(),
+                    clsDeferred.await(),
+                    wscnDeferred.await(),
+                    jin10Deferred.await(),
+                    eastDeferred.await(),
+                ).flatten()
+            }
+        }
+        val entities = allNews.map { it.toEntity() }
+        newsFlashDao.insertAll(entities)
+        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+        newsFlashDao.deleteOlderThan(cutoff)
+    }
+
+    private fun NewsFlashEntity.toDomain(): NewsFlash {
+        return NewsFlash(
+            id = newsId,
+            title = title,
+            summary = summary,
+            content = content,
+            impact = impact,
+            source = source,
+            time = time,
+            sourceType = NewsSource.valueOf(sourceType),
+            epochMillis = epochMillis,
+        )
+    }
+
+    private fun NewsFlash.toEntity(): NewsFlashEntity {
+        return NewsFlashEntity(
+            newsId = id,
+            title = title,
+            summary = summary,
+            content = content,
+            impact = impact,
+            source = source,
+            time = time,
+            sourceType = sourceType.name,
+            epochMillis = epochMillis,
+        )
     }
 
     // --- JiuYan (韭研公社) stock news ---
@@ -574,6 +690,28 @@ class NewsRepositoryImpl @Inject constructor(
         }
     }
 
+    private fun parseJin10EpochMillis(time: String): Long {
+        if (time.isBlank()) return 0L
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            val localDateTime = java.time.LocalDateTime.parse(time, formatter)
+            localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun parseEastMoneyEpochMillis(time: String): Long {
+        if (time.isBlank()) return 0L
+        return try {
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            val localDateTime = java.time.LocalDateTime.parse(time, formatter)
+            localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
     private data class StcnDetail(
         val title: String = "",
         val content: String = "",
@@ -603,5 +741,7 @@ class NewsRepositoryImpl @Inject constructor(
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val TIME_FORMATTER = DateTimeFormatter.ofPattern("MM-dd HH:mm")
         private val WHITESPACE_REGEX = Regex("\\s+")
+        private const val TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000L
+        private const val FETCH_LIMIT = 100
     }
 }

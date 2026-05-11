@@ -11,6 +11,7 @@ import com.jiucaihua.app.data.local.AppDatabase
 import com.jiucaihua.app.data.local.dao.AlertDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
 import dagger.Module
@@ -33,7 +34,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -42,6 +43,17 @@ object AppModule {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 "CREATE TABLE IF NOT EXISTS `watchlist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `code` TEXT NOT NULL, `name` TEXT NOT NULL, `marketType` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)"
+            )
+        }
+    }
+
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `news_flash` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `newsId` INTEGER NOT NULL, `title` TEXT NOT NULL, `summary` TEXT NOT NULL, `content` TEXT NOT NULL, `impact` TEXT NOT NULL, `source` TEXT NOT NULL, `time` TEXT NOT NULL, `sourceType` TEXT NOT NULL, `epochMillis` INTEGER NOT NULL, `fetchedAt` INTEGER NOT NULL)"
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_news_flash_newsId_sourceType` ON `news_flash` (`newsId`, `sourceType`)"
             )
         }
     }
@@ -69,6 +81,11 @@ object AppModule {
     @Provides
     fun provideWatchlistDao(database: AppDatabase): WatchlistDao {
         return database.watchlistDao()
+    }
+
+    @Provides
+    fun provideNewsFlashDao(database: AppDatabase): NewsFlashDao {
+        return database.newsFlashDao()
     }
 
     @Provides
