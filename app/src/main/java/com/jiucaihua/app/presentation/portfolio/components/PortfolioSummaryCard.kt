@@ -34,20 +34,39 @@ fun PortfolioSummaryCard(
 ) {
     var showCashDialog by remember { mutableStateOf(false) }
     var cashInputText by remember { mutableStateOf("") }
+    var cashDiffText by remember { mutableStateOf("") }
     var showLossDialog by remember { mutableStateOf(false) }
     var lossInputText by remember { mutableStateOf("") }
 
     if (showCashDialog) {
+        val currentCash = summary.cash
+        val diffValue = cashDiffText.toDoubleOrNull() ?: 0.0
+        val computedCash = currentCash + diffValue
+        if (diffValue != 0.0) {
+            cashInputText = computedCash.toLong().toString()
+        }
+
         AlertDialog(
             onDismissRequest = { showCashDialog = false },
             title = { Text("设置现金") },
             text = {
-                OutlinedTextField(
-                    value = cashInputText,
-                    onValueChange = { cashInputText = it },
-                    label = { Text("现金金额（元）") },
-                    singleLine = true,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = cashInputText,
+                        onValueChange = {
+                            cashInputText = it
+                            cashDiffText = ""
+                        },
+                        label = { Text("现金金额（元）") },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = cashDiffText,
+                        onValueChange = { cashDiffText = it },
+                        label = { Text("增减金额（可正可负）") },
+                        singleLine = true,
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -206,15 +225,10 @@ fun PortfolioSummaryCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    val cashColor = when {
-                        summary.cash > 0 -> FallGreen
-                        summary.cash < 0 -> RiseRed
-                        else -> MaterialTheme.colorScheme.onSurface
-                    }
                     Text(
                         text = if (summary.cash > 0) formatMoney(summary.cash) else "点击设置",
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (summary.cash > 0) cashColor else MaterialTheme.colorScheme.primary,
+                        color = if (summary.cash > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable {
                             cashInputText = if (summary.cash > 0) summary.cash.toLong().toString() else ""
                             showCashDialog = true
@@ -236,7 +250,7 @@ fun PortfolioSummaryCard(
                     Text(
                         text = if (summary.lossCompensation > 0) formatMoney(summary.lossCompensation) else "点击设置",
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (summary.lossCompensation > 0) RiseRed else MaterialTheme.colorScheme.primary,
+                        color = if (summary.lossCompensation > 0) FallGreen else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable {
                             lossInputText = if (summary.lossCompensation > 0) summary.lossCompensation.toLong().toString() else ""
                             showLossDialog = true

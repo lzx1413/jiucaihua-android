@@ -1,5 +1,6 @@
 package com.jiucaihua.app.presentation.holdings
 
+import android.content.SharedPreferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 data class AddEditHoldingUiState(
     val isEditing: Boolean = false,
@@ -52,9 +54,11 @@ class AddEditHoldingViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val manageHoldingUseCase: ManageHoldingUseCase,
     private val securitySearchRepository: SecuritySearchRepository,
+    @Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
     private val holdingId: Long = savedStateHandle.get<Long>("holdingId") ?: -1L
+    private var originalHoldingAmount: Double = 0.0
     private var searchJob: Job? = null
 
     private val _uiState = MutableStateFlow(AddEditHoldingUiState())
@@ -71,6 +75,7 @@ class AddEditHoldingViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val holding = manageHoldingUseCase.getHoldingById(id)
             if (holding != null) {
+                originalHoldingAmount = holding.holdingAmount
                 _uiState.update {
                     it.copy(
                         isEditing = true,
@@ -171,6 +176,11 @@ class AddEditHoldingViewModel @Inject constructor(
         }
     }
 
+    private fun adjustCash(diff: Double) {
+        val current = prefs.getFloat(KEY_CASH, 0f).toDouble()
+        prefs.edit().putFloat(KEY_CASH, (current + diff).toFloat()).apply()
+    }
+
     private suspend fun performSearch(query: String) {
         _uiState.update { it.copy(isSearching = true, searchError = null, searchExpanded = true) }
         try {
@@ -220,10 +230,17 @@ class AddEditHoldingViewModel @Inject constructor(
             )
             if (state.isEditing) {
                 manageHoldingUseCase.updateHolding(holding)
+                val diff = state.holdingAmount - originalHoldingAmount
+                if (diff != 0.0) adjustCash(-diff)
             } else {
                 manageHoldingUseCase.addHolding(holding)
+                adjustCash(-state.holdingAmount)
             }
             _uiState.update { it.copy(isLoading = false, isSaved = true) }
         }
+    }
+
+    companion object {
+        private const val KEY_CASH = "cash"
     }
 }
