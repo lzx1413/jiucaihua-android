@@ -36,6 +36,7 @@ data class PortfolioUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val isNewsLoading: Boolean = false,
+    val isNewsRefreshing: Boolean = false,
     val error: String? = null,
     val newsError: String? = null,
 )
@@ -105,12 +106,17 @@ class PortfolioViewModel @Inject constructor(
         }
     }
 
-    private fun refreshNews() {
+    fun refreshNews() {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isNewsRefreshing = true)
             val topic = _uiState.value.selectedNewsSource?.let { source ->
                 NewsTopic.entries.find { source in it.sources }
             }
-            newsRepository.refreshNews(topic)
+            try {
+                newsRepository.refreshNews(topic)
+            } finally {
+                _uiState.value = _uiState.value.copy(isNewsRefreshing = false)
+            }
         }
     }
 
