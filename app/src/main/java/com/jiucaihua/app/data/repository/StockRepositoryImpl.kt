@@ -3,11 +3,13 @@ package com.jiucaihua.app.data.repository
 import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.entity.StockCacheEntity
 import com.jiucaihua.app.data.parser.StockDataParser
+import com.jiucaihua.app.data.remote.api.SinaGoldKLineApi
 import com.jiucaihua.app.data.remote.api.SinaStockApi
 import com.jiucaihua.app.data.remote.api.TencentHKStockApi
 import com.jiucaihua.app.data.remote.api.TencentKLineApi
 import com.jiucaihua.app.domain.model.KLineData
 import com.jiucaihua.app.domain.model.KLinePeriod
+import com.jiucaihua.app.domain.model.KLinePoint
 import com.jiucaihua.app.domain.model.MarketIndexCodes
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.StockQuote
@@ -24,6 +26,7 @@ class StockRepositoryImpl @Inject constructor(
     private val sinaStockApi: SinaStockApi,
     private val tencentHKStockApi: TencentHKStockApi,
     private val tencentKLineApi: TencentKLineApi,
+    private val sinaGoldKLineApi: SinaGoldKLineApi,
     private val stockCacheDao: StockCacheDao,
 ) : StockRepository {
 
@@ -108,6 +111,13 @@ class StockRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
+        if (code.startsWith("usr_")) {
+            return getUSStockKLineData(code, period, limit)
+        }
+        if (code.startsWith("hf_") || code.startsWith("gds_")) {
+            return getGoldKLineData(code, period)
+        }
+
         val symbol = StockDataParser.toTencentKLineSymbol(code)
         val periodType = when (period) {
             KLinePeriod.DAILY -> "day"
@@ -127,6 +137,157 @@ class StockRepositoryImpl @Inject constructor(
         val param = "$symbol,$periodType,$startDate,$endDate,$limit,qfq"
         val response = tencentKLineApi.getKLineData(param)
         return StockDataParser.parseTencentKLineResponse(code, symbol, period, response)
+    }
+
+    private suspend fun getUSStockKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
+        val symbol = "us.${code.removePrefix("usr_").uppercase()}"
+        val periodType = when (period) {
+            KLinePeriod.DAILY -> "day"
+            KLinePeriod.WEEKLY -> "week"
+            KLinePeriod.MONTHLY -> "month"
+        }
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val cal = Calendar.getInstance()
+        val endDate = dateFormat.format(cal.time)
+        when (period) {
+            KLinePeriod.DAILY -> cal.add(Calendar.YEAR, -1)
+            KLinePeriod.WEEKLY -> cal.add(Calendar.YEAR, -5)
+            KLinePeriod.MONTHLY -> cal.add(Calendar.YEAR, -10)
+        }
+        val startDate = dateFormat.format(cal.time)
+
+        val param = "$symbol,$periodType,$startDate,$endDate,$limit,qfq"
+        val response = tencentKLineApi.getKLineData(param)
+        return StockDataParser.parseTencentKLineResponse(code, symbol, period, response)
+    }
+
+    private suspend fun getGoldKLineData(code: String, period: KLinePeriod): KLineData {
+        val name = MarketIndexCodes.GOLD_NAMES[code] ?: ""
+        val symbol = "au0"
+        val url = "https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20kline=/InnerFuturesNewService.getDailyKLine?symbol=$symbol&_=${System.currentTimeMillis()}"
+
+        return try {
+            val response = sinaGoldKLineApi.getGoldKLine(url)
+            parseSinaGoldKLineResponse(code, name, period, response)
+        } catch (_: Exception) {
+            KLineData(code, name, period, emptyList())
+        }
+    }
+
+    private fun parseSinaGoldKLineResponse(code: String, name: String, period: KLinePeriod, response: String): KLineData {
+        try {
+            val jsonStart = response.indexOf("([")
+            val jsonEnd = response.lastIndexOf("])")
+            if (jsonStart < 0 || jsonEnd < 0) return KLineData(code, name, period, emptyList())
+
+            val jsonStr = response.substring(jsonStart + 1, jsonEnd + 1)
+            val arr = org.json.JSONArray(jsonStr)
+
+            val points = mutableListOf<KLinePoint>()
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: continue
+                points.add(
+                    KLinePoint(
+                        date = item.optString("d", ""),
+                        open = item.optString("o", "0").toDoubleOrNull() ?: 0.0,
+                        close = item.optString("c", "0").toDoubleOrNull() ?: 0.0,
+                        high = item.optString("h", "0").toDoubleOrNull() ?: 0.0,
+                        low = item.optString("l", "0").toDoubleOrNull() ?: 0.0,
+                        volume = item.optString("v", "0").toDoubleOrNull() ?: 0.0,
+                    )
+                )
+            }
+
+            val filteredPoints = when (period) {
+                KLinePeriod.DAILY -> points.takeLast(120)
+                KLinePeriod.WEEKLY -> aggregateToWeekly(points).takeLast(120)
+                KLinePeriod.MONTHLY -> aggregateToMonthly(points).takeLast(120)
+            }
+
+            return KLineData(code = code, name = name, period = period, points = filteredPoints)
+        } catch (_: Exception) {
+            return KLineData(code, name, period, emptyList())
+        }
+    }
+
+    private fun aggregateToWeekly(dailyPoints: List<KLinePoint>): List<KLinePoint> {
+        if (dailyPoints.isEmpty()) return emptyList()
+        val weeks = mutableListOf<KLinePoint>()
+        var weekOpen = 0.0
+        var weekHigh = 0.0
+        var weekLow = Double.MAX_VALUE
+        var weekClose = 0.0
+        var weekVolume = 0.0
+        var weekDate = ""
+        var lastDayOfWeek = -1
+
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val cal = Calendar.getInstance()
+
+        for (point in dailyPoints) {
+            try { cal.time = dateFormat.parse(point.date) ?: continue } catch (_: Exception) { continue }
+            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+
+            if (lastDayOfWeek != -1 && dayOfWeek <= lastDayOfWeek && weekDate.isNotEmpty()) {
+                weeks.add(KLinePoint(weekDate, weekOpen, weekClose, weekHigh, weekLow, weekVolume))
+                weekOpen = 0.0
+                weekHigh = 0.0
+                weekLow = Double.MAX_VALUE
+                weekVolume = 0.0
+            }
+
+            if (weekOpen == 0.0) weekOpen = point.open
+            weekHigh = maxOf(weekHigh, point.high)
+            weekLow = minOf(weekLow, point.low)
+            weekClose = point.close
+            weekVolume += point.volume
+            weekDate = point.date
+            lastDayOfWeek = dayOfWeek
+        }
+
+        if (weekDate.isNotEmpty()) {
+            weeks.add(KLinePoint(weekDate, weekOpen, weekClose, weekHigh, weekLow, weekVolume))
+        }
+
+        return weeks
+    }
+
+    private fun aggregateToMonthly(dailyPoints: List<KLinePoint>): List<KLinePoint> {
+        if (dailyPoints.isEmpty()) return emptyList()
+        val months = mutableListOf<KLinePoint>()
+        var monthOpen = 0.0
+        var monthHigh = 0.0
+        var monthLow = Double.MAX_VALUE
+        var monthClose = 0.0
+        var monthVolume = 0.0
+        var monthDate = ""
+        var lastMonth = ""
+
+        for (point in dailyPoints) {
+            val currentMonth = point.date.substring(0, 7)
+
+            if (lastMonth.isNotEmpty() && currentMonth != lastMonth && monthDate.isNotEmpty()) {
+                months.add(KLinePoint(monthDate, monthOpen, monthClose, monthHigh, monthLow, monthVolume))
+                monthOpen = 0.0
+                monthHigh = 0.0
+                monthLow = Double.MAX_VALUE
+                monthVolume = 0.0
+            }
+
+            if (monthOpen == 0.0) monthOpen = point.open
+            monthHigh = maxOf(monthHigh, point.high)
+            monthLow = minOf(monthLow, point.low)
+            monthClose = point.close
+            monthVolume += point.volume
+            monthDate = point.date
+            lastMonth = currentMonth
+        }
+
+        if (monthDate.isNotEmpty()) {
+            months.add(KLinePoint(monthDate, monthOpen, monthClose, monthHigh, monthLow, monthVolume))
+        }
+
+        return months
     }
 
     private fun parseTencentHKResponse(response: String, codes: List<String>): List<StockQuote> {

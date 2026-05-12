@@ -2,7 +2,6 @@ package com.jiucaihua.app.data.repository
 
 import com.jiucaihua.app.data.parser.StockDataParser
 import com.jiucaihua.app.data.remote.api.EastMoneyFundFlowApi
-import com.jiucaihua.app.data.remote.api.EastMoneyUSStockKLineApi
 import com.jiucaihua.app.data.remote.api.SinaGoldKLineApi
 import com.jiucaihua.app.data.remote.api.SinaStockApi
 import com.jiucaihua.app.data.remote.api.TencentHKStockApi
@@ -31,7 +30,6 @@ class MarketRepositoryImpl @Inject constructor(
     private val tencentHKStockApi: TencentHKStockApi,
     private val tencentKLineApi: TencentKLineApi,
     private val eastMoneyFundFlowApi: EastMoneyFundFlowApi,
-    private val eastMoneyUSStockKLineApi: EastMoneyUSStockKLineApi,
 ) : MarketRepository {
 
     override suspend fun getAStockIndices(): List<MarketIndex> {
@@ -100,19 +98,12 @@ class MarketRepositoryImpl @Inject constructor(
     }
 
     private suspend fun getUSStockKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
-        val secId = when (code) {
-            "usr_dji" -> "105.DJI"
-            "usr_ixic" -> "105.IXIC"
-            "usr_inx" -> "105.INX"
-            else -> "105.${code.removePrefix("usr_").uppercase()}"
+        val symbol = "us.${code.removePrefix("usr_").uppercase()}"
+        val periodType = when (period) {
+            KLinePeriod.DAILY -> "day"
+            KLinePeriod.WEEKLY -> "week"
+            KLinePeriod.MONTHLY -> "month"
         }
-
-        val klt = when (period) {
-            KLinePeriod.DAILY -> 101
-            KLinePeriod.WEEKLY -> 102
-            KLinePeriod.MONTHLY -> 103
-        }
-
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val cal = Calendar.getInstance()
         val endDate = dateFormat.format(cal.time)
@@ -123,10 +114,9 @@ class MarketRepositoryImpl @Inject constructor(
         }
         val startDate = dateFormat.format(cal.time)
 
-        val url = "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=$secId&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=$klt&fqt=1&beg=$startDate&end=$endDate&ut=b2884a393a59ad64002292a3e90d46a5"
-
-        val response = eastMoneyUSStockKLineApi.getUSStockKLineData(url)
-        return parseEastMoneyUSStockKLineResponse(code, period, response)
+        val param = "$symbol,$periodType,$startDate,$endDate,$limit,qfq"
+        val response = tencentKLineApi.getKLineData(param)
+        return StockDataParser.parseTencentKLineResponse(code, symbol, period, response)
     }
 
     private suspend fun getGoldKLineData(code: String, period: KLinePeriod): KLineData {
@@ -502,40 +492,6 @@ class MarketRepositoryImpl @Inject constructor(
             )
         } catch (_: Exception) {
             return FundFlowData()
-        }
-    }
-
-    private fun parseEastMoneyUSStockKLineResponse(code: String, period: KLinePeriod, response: String): KLineData {
-        try {
-            val json = JSONObject(response)
-            val data = json.optJSONObject("data") ?: return KLineData(code, "", period, emptyList())
-            val klines = data.optJSONArray("klines") ?: return KLineData(code, "", period, emptyList())
-
-            val name = MarketIndexCodes.US_STOCK_NAMES[code] ?: ""
-
-            val points = mutableListOf<KLinePoint>()
-            for (i in 0 until klines.length()) {
-                val rowStr = klines.optString(i, "")
-                if (rowStr.isBlank()) continue
-
-                val parts = rowStr.split(",")
-                if (parts.size < 6) continue
-
-                points.add(
-                    KLinePoint(
-                        date = parts[0],
-                        open = parts[1].toDoubleOrNull() ?: 0.0,
-                        close = parts[2].toDoubleOrNull() ?: 0.0,
-                        high = parts[3].toDoubleOrNull() ?: 0.0,
-                        low = parts[4].toDoubleOrNull() ?: 0.0,
-                        volume = parts[5].toDoubleOrNull() ?: 0.0,
-                    )
-                )
-            }
-
-            return KLineData(code = code, name = name, period = period, points = points)
-        } catch (_: Exception) {
-            return KLineData(code, "", period, emptyList())
         }
     }
 
