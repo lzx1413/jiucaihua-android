@@ -28,6 +28,7 @@ data class HoldingAnalysisSnapshot(
     val name: String,
     val marketType: MarketType,
     val currency: String,
+    val exchangeRate: Double,
     val positionUnits: Double,
     val unitLabel: String,
     val costBasisCny: Double,
