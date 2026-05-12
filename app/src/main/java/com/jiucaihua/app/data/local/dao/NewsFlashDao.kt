@@ -19,6 +19,9 @@ interface NewsFlashDao {
     @Query("SELECT * FROM news_flash WHERE sourceType = :sourceType AND epochMillis > :cutoff ORDER BY epochMillis DESC")
     fun getBySourceType(sourceType: String, cutoff: Long): Flow<List<NewsFlashEntity>>
 
+    @Query("SELECT * FROM news_flash WHERE epochMillis > :cutoff AND (title LIKE :query OR content LIKE :query OR summary LIKE :query) ORDER BY epochMillis DESC")
+    suspend fun searchOnce(query: String, cutoff: Long): List<NewsFlashEntity>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(news: List<NewsFlashEntity>)
 

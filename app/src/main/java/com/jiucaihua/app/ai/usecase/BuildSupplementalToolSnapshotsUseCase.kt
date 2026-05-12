@@ -74,8 +74,10 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
 class BuildMarketNewsDigestUseCase @Inject constructor(
     private val newsRepository: NewsRepository,
 ) {
-    suspend operator fun invoke(limit: Int, topic: NewsTopic? = null): MarketNewsDigest {
-        val newsList = if (topic != null) {
+    suspend operator fun invoke(limit: Int, topic: NewsTopic? = null, query: String? = null): MarketNewsDigest {
+        val newsList = if (!query.isNullOrBlank()) {
+            newsRepository.searchNews(query, topic, limit)
+        } else if (topic != null) {
             newsRepository.getMarketNews(topic, limit)
         } else {
             newsRepository.getMarketNews(limit)

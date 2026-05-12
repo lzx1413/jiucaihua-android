@@ -531,6 +531,25 @@ class NewsRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun searchNews(query: String, topic: NewsTopic?, limit: Int): List<NewsFlash> =
+        withContext(Dispatchers.IO) {
+            if (query.isBlank()) return@withContext emptyList()
+            val likeQuery = "%${query.trim()}%"
+            val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+            val results = newsFlashDao.searchOnce(likeQuery, cutoff)
+            results
+                .let { entities ->
+                    if (topic != null) {
+                        val sourceNames = topic.sources.map { it.name }.toSet()
+                        entities.filter { it.sourceType in sourceNames }
+                    } else {
+                        entities
+                    }
+                }
+                .map { it.toDomain() }
+                .take(limit)
+        }
+
     // --- Local cache ---
 
     override fun observeAllNews(): Flow<List<NewsFlash>> {

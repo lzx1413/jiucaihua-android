@@ -13,4 +13,5 @@ interface NewsRepository {
     fun observeAllNews(): Flow<List<NewsFlash>>
     fun observeNewsBySource(source: NewsSource): Flow<List<NewsFlash>>
     suspend fun refreshNews(topic: NewsTopic? = null)
+    suspend fun searchNews(query: String, topic: NewsTopic? = null, limit: Int = 20): List<NewsFlash>
 }

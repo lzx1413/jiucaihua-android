@@ -18,6 +18,10 @@ class GetMarketNewsTool @Inject constructor(
                     "description" to "新闻主题筛选：A_STOCK=A股，GLOBAL=国际宏观，FUTURES=期货商品，US_STOCK=美股，FOREX=外汇。不传则返回所有主题的混合资讯。",
                     "enum" to NewsTopic.entries.map { it.name },
                 ),
+                "query" to mapOf(
+                    "type" to "string",
+                    "description" to "搜索关键词，在标题和内容中匹配。例如\"降息\"、\"特斯拉\"、\"AI\"等，用于精准查找相关资讯。",
+                ),
                 "limit" to mapOf(
                     "type" to "integer",
                     "description" to "返回的资讯条数，默认 10",
@@ -33,6 +37,7 @@ class GetMarketNewsTool @Inject constructor(
         val topic = topicName?.let { name ->
             NewsTopic.entries.find { it.name == name }
         }
-        return ToolResult(buildMarketNewsDigestUseCase(limit, topic))
+        val query = arguments["query"] as? String
+        return ToolResult(buildMarketNewsDigestUseCase(limit, topic, query))
     }
 }
