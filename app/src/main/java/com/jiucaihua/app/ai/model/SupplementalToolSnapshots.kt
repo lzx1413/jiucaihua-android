@@ -21,6 +21,19 @@ data class KLinePointSnapshot(
     val low: Double,
     val volume: Double,
     val changePercent: Double,
+    val ma5: Double? = null,
+    val ma20: Double? = null,
+    val ma60: Double? = null,
+    val volumeRatio: Double? = null,
+    val dif: Double? = null,
+    val dea: Double? = null,
+    val macd: Double? = null,
+    val rsi6: Double? = null,
+    val rsi12: Double? = null,
+    val rsi24: Double? = null,
+    val bollUpper: Double? = null,
+    val bollMiddle: Double? = null,
+    val bollLower: Double? = null,
 )
 
 data class MarketNewsDigest(

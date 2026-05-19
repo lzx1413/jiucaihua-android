@@ -9,7 +9,7 @@ class GetKLineDataTool @Inject constructor(
 ) : ToolExecutor {
     override val definition: ToolDefinition = ToolDefinition(
         name = "get_kline_data",
-        description = "获取指定标的的 K 线快照，包含周期、最新点位、最高最低价和完整点位序列。",
+        description = "获取指定标的的 K 线快照，包含周期、最新点位、最高最低价和完整点位序列。每个点位包含OHLCV、均线(MA5/MA20/MA60)、量比、MACD(DIF/DEA/柱)、RSI(6/12/24)和布林带(上/中/下轨)。",
         inputSchema = mapOf(
             "type" to "object",
             "properties" to mapOf(

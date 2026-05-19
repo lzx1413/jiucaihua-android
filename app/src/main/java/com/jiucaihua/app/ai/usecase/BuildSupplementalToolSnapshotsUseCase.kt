@@ -46,19 +46,58 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
         val latestPoint = points.lastOrNull()
         val highs = points.map { it.high }
         val lows = points.map { it.low }
+        val ma5 = TechnicalIndicators.calculateMA(points, 5)
+        val ma20 = TechnicalIndicators.calculateMA(points, 20)
+        val ma60 = TechnicalIndicators.calculateMA(points, 60)
+        val volumeRatio = TechnicalIndicators.calculateVolumeRatio(points)
+        val (dif, dea, macd) = TechnicalIndicators.calculateMACD(points)
+        val rsiMap = TechnicalIndicators.calculateRSI(points)
+        val (bollUpper, bollMiddle, bollLower) = TechnicalIndicators.calculateBOLL(points)
         return KLineToolSnapshot(
             code = code,
             name = name,
             period = period,
             pointsCount = points.size,
-            latestPoint = latestPoint?.toSnapshot(),
+            latestPoint = latestPoint?.toSnapshot(0),
             highestHigh = highs.maxOrNull() ?: 0.0,
             lowestLow = lows.minOrNull() ?: 0.0,
-            points = points.map { it.toSnapshot() },
+            points = points.indices.map { i ->
+                points[i].toSnapshot(
+                    index = i,
+                    ma5 = ma5[i],
+                    ma20 = ma20[i],
+                    ma60 = ma60[i],
+                    volumeRatio = volumeRatio[i],
+                    dif = dif[i],
+                    dea = dea[i],
+                    macd = macd[i],
+                    rsi6 = rsiMap[6]?.get(i),
+                    rsi12 = rsiMap[12]?.get(i),
+                    rsi24 = rsiMap[24]?.get(i),
+                    bollUpper = bollUpper[i],
+                    bollMiddle = bollMiddle[i],
+                    bollLower = bollLower[i],
+                )
+            },
         )
     }
 
-    private fun com.jiucaihua.app.domain.model.KLinePoint.toSnapshot(): KLinePointSnapshot {
+    private fun com.jiucaihua.app.domain.model.KLinePoint.toSnapshot(
+        index: Int = 0,
+        ma5: Double? = null,
+        ma20: Double? = null,
+        ma60: Double? = null,
+        volumeRatio: Double? = null,
+        dif: Double? = null,
+        dea: Double? = null,
+        macd: Double? = null,
+        rsi6: Double? = null,
+        rsi12: Double? = null,
+        rsi24: Double? = null,
+        bollUpper: Double? = null,
+        bollMiddle: Double? = null,
+        bollLower: Double? = null,
+    ): KLinePointSnapshot {
         return KLinePointSnapshot(
             date = date,
             open = open,
@@ -67,6 +106,19 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
             low = low,
             volume = volume,
             changePercent = changePercent,
+            ma5 = ma5,
+            ma20 = ma20,
+            ma60 = ma60,
+            volumeRatio = volumeRatio,
+            dif = dif,
+            dea = dea,
+            macd = macd,
+            rsi6 = rsi6,
+            rsi12 = rsi12,
+            rsi24 = rsi24,
+            bollUpper = bollUpper,
+            bollMiddle = bollMiddle,
+            bollLower = bollLower,
         )
     }
 }
