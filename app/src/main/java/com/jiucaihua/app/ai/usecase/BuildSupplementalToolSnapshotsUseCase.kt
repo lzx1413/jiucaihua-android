@@ -49,6 +49,7 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
         val ma5 = TechnicalIndicators.calculateMA(points, 5)
         val ma20 = TechnicalIndicators.calculateMA(points, 20)
         val ma60 = TechnicalIndicators.calculateMA(points, 60)
+        val ma120 = TechnicalIndicators.calculateMA(points, 120)
         val volumeRatio = TechnicalIndicators.calculateVolumeRatio(points)
         val (dif, dea, macd) = TechnicalIndicators.calculateMACD(points)
         val rsiMap = TechnicalIndicators.calculateRSI(points)
@@ -67,6 +68,7 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
                     ma5 = ma5[i],
                     ma20 = ma20[i],
                     ma60 = ma60[i],
+                    ma120 = ma120[i],
                     volumeRatio = volumeRatio[i],
                     dif = dif[i],
                     dea = dea[i],
@@ -87,6 +89,7 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
         ma5: Double? = null,
         ma20: Double? = null,
         ma60: Double? = null,
+        ma120: Double? = null,
         volumeRatio: Double? = null,
         dif: Double? = null,
         dea: Double? = null,
@@ -109,6 +112,7 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
             ma5 = ma5,
             ma20 = ma20,
             ma60 = ma60,
+            ma120 = ma120,
             volumeRatio = volumeRatio,
             dif = dif,
             dea = dea,

@@ -24,6 +24,7 @@ data class KLinePointSnapshot(
     val ma5: Double? = null,
     val ma20: Double? = null,
     val ma60: Double? = null,
+    val ma120: Double? = null,
     val volumeRatio: Double? = null,
     val dif: Double? = null,
     val dea: Double? = null,
