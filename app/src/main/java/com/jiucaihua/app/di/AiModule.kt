@@ -12,6 +12,7 @@ import com.jiucaihua.app.ai.tool.DeleteAlertTool
 import com.jiucaihua.app.ai.tool.GetAlertsTool
 import com.jiucaihua.app.ai.tool.GetFundFlowTool
 import com.jiucaihua.app.ai.tool.GetHoldingAnalysisTool
+import com.jiucaihua.app.ai.tool.GetIndicatorSnapshotTool
 import com.jiucaihua.app.ai.tool.GetKLineDataTool
 import com.jiucaihua.app.ai.tool.GetMarketIndicesTool
 import com.jiucaihua.app.ai.tool.GetMarketNewsTool
@@ -61,6 +62,12 @@ abstract class AiModule {
     @IntoSet
     abstract fun bindGetKLineDataTool(
         tool: GetKLineDataTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetIndicatorSnapshotTool(
+        tool: GetIndicatorSnapshotTool,
     ): ToolExecutor
 
     @Binds
