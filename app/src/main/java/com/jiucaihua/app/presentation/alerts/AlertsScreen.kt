@@ -1,6 +1,7 @@
 package com.jiucaihua.app.presentation.alerts
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,17 +14,25 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.domain.model.AlertRecord
+import com.jiucaihua.app.domain.model.PriceAlert
 import com.jiucaihua.app.presentation.alerts.components.AddAlertDialog
 import com.jiucaihua.app.presentation.alerts.components.AlertListItem
+import com.jiucaihua.app.presentation.alerts.components.AlertRecordItem
 import com.jiucaihua.app.presentation.common.components.EmptyState
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 
@@ -34,6 +43,9 @@ fun AlertsScreen(
     viewModel: AlertsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+
+    val tabs = listOf("预警设置", "触发记录")
 
     Scaffold(
         topBar = {
@@ -53,38 +65,43 @@ fun AlertsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.showAddDialog() },
-                containerColor = MaterialTheme.colorScheme.primary,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "添加预警",
-                )
+            if (selectedTabIndex == 0) {
+                FloatingActionButton(
+                    onClick = { viewModel.showAddDialog() },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "添加预警",
+                    )
+                }
             }
         },
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-        ) {
-            when {
-                uiState.isLoading -> LoadingIndicator()
-                uiState.alerts.isEmpty() -> EmptyState(message = "暂无预警规则")
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(
-                            items = uiState.alerts,
-                            key = { it.id },
-                        ) { alert ->
-                            AlertListItem(
-                                alert = alert,
-                                onToggle = { viewModel.toggleAlert(alert.id, it) },
-                                onDelete = { viewModel.deleteAlert(alert.id) },
-                            )
-                        }
+        if (uiState.isLoading) {
+            LoadingIndicator()
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+            ) {
+                PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = { Text(title) },
+                        )
                     }
+                }
+                when (selectedTabIndex) {
+                    0 -> AlertSettingsTab(
+                        alerts = uiState.alerts,
+                        onToggle = { id, enabled -> viewModel.toggleAlert(id, enabled) },
+                        onDelete = { id -> viewModel.deleteAlert(id) },
+                    )
+                    1 -> AlertRecordsTab(records = uiState.records)
                 }
             }
         }
@@ -98,5 +115,41 @@ fun AlertsScreen(
             },
             onDismiss = { viewModel.hideAddDialog() },
         )
+    }
+}
+
+@Composable
+private fun AlertSettingsTab(
+    alerts: List<PriceAlert>,
+    onToggle: (Long, Boolean) -> Unit,
+    onDelete: (Long) -> Unit,
+) {
+    if (alerts.isEmpty()) {
+        EmptyState(message = "暂无预警规则")
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(items = alerts, key = { it.id }) { alert ->
+                AlertListItem(
+                    alert = alert,
+                    onToggle = { onToggle(alert.id, it) },
+                    onDelete = { onDelete(alert.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlertRecordsTab(
+    records: List<AlertRecord>,
+) {
+    if (records.isEmpty()) {
+        EmptyState(message = "暂无触发记录", hint = "")
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(items = records, key = { it.id }) { record ->
+                AlertRecordItem(record = record)
+            }
+        }
     }
 }

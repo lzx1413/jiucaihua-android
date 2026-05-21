@@ -1,5 +1,6 @@
 package com.jiucaihua.app.domain.usecase
 
+import com.jiucaihua.app.domain.model.AlertRecord
 import com.jiucaihua.app.domain.model.AlertType
 import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
@@ -93,6 +94,16 @@ class CheckAlertsUseCase @Inject constructor(
                     }
                     triggered.add(TriggeredAlert(alert, currentValue))
                     alertRepository.markTriggered(alert.id)
+                    alertRepository.addAlertRecord(
+                        AlertRecord(
+                            alertId = alert.id,
+                            code = alert.code,
+                            name = alert.name,
+                            alertType = alert.alertType,
+                            threshold = alert.threshold,
+                            currentValue = currentValue,
+                        )
+                    )
                 }
             }
         }

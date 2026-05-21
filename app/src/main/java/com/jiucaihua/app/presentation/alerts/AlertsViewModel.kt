@@ -2,6 +2,7 @@ package com.jiucaihua.app.presentation.alerts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.domain.model.AlertRecord
 import com.jiucaihua.app.domain.model.AlertType
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.PriceAlert
@@ -17,6 +18,7 @@ import javax.inject.Inject
 
 data class AlertsUiState(
     val alerts: List<PriceAlert> = emptyList(),
+    val records: List<AlertRecord> = emptyList(),
     val holdings: List<Holding> = emptyList(),
     val isLoading: Boolean = true,
     val showAddDialog: Boolean = false,
@@ -33,6 +35,7 @@ class AlertsViewModel @Inject constructor(
 
     init {
         observeAlerts()
+        observeRecords()
         loadHoldings()
     }
 
@@ -43,6 +46,14 @@ class AlertsViewModel @Inject constructor(
                     alerts = alerts,
                     isLoading = false,
                 )
+            }
+        }
+    }
+
+    private fun observeRecords() {
+        viewModelScope.launch {
+            alertRepository.getAlertRecords().collect { records ->
+                _uiState.value = _uiState.value.copy(records = records)
             }
         }
     }

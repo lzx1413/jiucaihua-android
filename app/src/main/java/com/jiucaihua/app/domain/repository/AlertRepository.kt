@@ -1,5 +1,6 @@
 package com.jiucaihua.app.domain.repository
 
+import com.jiucaihua.app.domain.model.AlertRecord
 import com.jiucaihua.app.domain.model.PriceAlert
 import kotlinx.coroutines.flow.Flow
 
@@ -13,4 +14,7 @@ interface AlertRepository {
     suspend fun setAlertEnabled(id: Long, isEnabled: Boolean)
     suspend fun markTriggered(id: Long)
     suspend fun deleteAlert(id: Long)
+
+    fun getAlertRecords(): Flow<List<AlertRecord>>
+    suspend fun addAlertRecord(record: AlertRecord)
 }

@@ -9,6 +9,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.jiucaihua.app.data.local.AppDatabase
 import com.jiucaihua.app.data.local.dao.AlertDao
+import com.jiucaihua.app.data.local.dao.AlertRecordDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
@@ -34,7 +35,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -58,6 +59,14 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `alert_records` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alertId` INTEGER NOT NULL, `code` TEXT NOT NULL, `name` TEXT NOT NULL, `alertType` TEXT NOT NULL, `threshold` REAL NOT NULL, `currentValue` REAL NOT NULL, `triggeredAt` INTEGER NOT NULL)"
+            )
+        }
+    }
+
     @Provides
     fun provideHoldingDao(database: AppDatabase): HoldingDao {
         return database.holdingDao()
@@ -76,6 +85,11 @@ object AppModule {
     @Provides
     fun provideAlertDao(database: AppDatabase): AlertDao {
         return database.alertDao()
+    }
+
+    @Provides
+    fun provideAlertRecordDao(database: AppDatabase): AlertRecordDao {
+        return database.alertRecordDao()
     }
 
     @Provides
