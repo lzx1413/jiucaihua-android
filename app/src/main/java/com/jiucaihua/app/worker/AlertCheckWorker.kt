@@ -15,7 +15,6 @@ import androidx.work.WorkerParameters
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.AlertType
 import com.jiucaihua.app.domain.usecase.CheckAlertsUseCase
-import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import com.jiucaihua.app.domain.usecase.TriggeredAlert
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -25,14 +24,10 @@ class AlertCheckWorker @AssistedInject constructor(
     @Assisted private val context: Context,
     @Assisted params: WorkerParameters,
     private val checkAlertsUseCase: CheckAlertsUseCase,
-    private val isMarketOpenUseCase: IsMarketOpenUseCase,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         return try {
-            if (!isMarketOpenUseCase.isAnyMarketTrading()) {
-                return Result.success()
-            }
             val triggered = checkAlertsUseCase.checkAlerts()
             triggered.forEach { sendNotification(it) }
             Result.success()

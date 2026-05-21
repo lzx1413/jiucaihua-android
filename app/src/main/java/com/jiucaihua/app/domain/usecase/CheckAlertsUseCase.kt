@@ -1,10 +1,12 @@
 package com.jiucaihua.app.domain.usecase
 
 import com.jiucaihua.app.domain.model.AlertType
+import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.PriceAlert
 import com.jiucaihua.app.domain.repository.AlertRepository
 import com.jiucaihua.app.domain.repository.FundRepository
+import com.jiucaihua.app.domain.repository.MarketCalendarRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import javax.inject.Inject
 
@@ -17,17 +19,23 @@ class CheckAlertsUseCase @Inject constructor(
     private val alertRepository: AlertRepository,
     private val stockRepository: StockRepository,
     private val fundRepository: FundRepository,
+    private val marketCalendarRepository: MarketCalendarRepository,
 ) {
 
     suspend fun checkAlerts(): List<TriggeredAlert> {
         val alerts = alertRepository.getEnabledAlerts()
         if (alerts.isEmpty()) return emptyList()
 
+        val sessions = marketCalendarRepository.getMarketSessions()
+        val tradingMarkets = sessions.filterValues { it == MarketSession.TRADING }.keys
+
         val triggered = mutableListOf<TriggeredAlert>()
 
-        val aStockCodes = alerts.filter { MarketType.fromCode(it.code) == MarketType.A_STOCK }.map { it.code }.distinct()
-        val hkStockCodes = alerts.filter { MarketType.fromCode(it.code) == MarketType.HK_STOCK }.map { it.code }.distinct()
-        val fundCodes = alerts.filter { MarketType.fromCode(it.code) == MarketType.FUND }.map { it.code }.distinct()
+        val aStockCodes = alerts.filter { it.marketType == MarketType.A_STOCK && MarketType.A_STOCK in tradingMarkets }.map { it.code }.distinct()
+        val hkStockCodes = alerts.filter { it.marketType == MarketType.HK_STOCK && MarketType.HK_STOCK in tradingMarkets }.map { it.code }.distinct()
+        val usStockCodes = alerts.filter { it.marketType == MarketType.US_STOCK && MarketType.US_STOCK in tradingMarkets }.map { it.code }.distinct()
+        val goldCodes = alerts.filter { it.marketType == MarketType.GOLD && MarketType.GOLD in tradingMarkets }.map { it.code }.distinct()
+        val fundCodes = alerts.filter { it.marketType == MarketType.FUND && MarketType.A_STOCK in tradingMarkets }.map { it.code }.distinct()
 
         val stockQuotes = buildMap {
             if (aStockCodes.isNotEmpty()) {
@@ -38,6 +46,14 @@ class CheckAlertsUseCase @Inject constructor(
                 try { stockRepository.getHKStockQuotes(hkStockCodes) } catch (_: Exception) { stockRepository.getCachedQuotes(hkStockCodes) }
                     .forEach { put(it.code, it) }
             }
+            if (usStockCodes.isNotEmpty()) {
+                try { stockRepository.getUSStockQuotes(usStockCodes) } catch (_: Exception) { stockRepository.getCachedQuotes(usStockCodes) }
+                    .forEach { put(it.code, it) }
+            }
+            if (goldCodes.isNotEmpty()) {
+                try { stockRepository.getGoldQuotes(goldCodes) } catch (_: Exception) { stockRepository.getCachedQuotes(goldCodes) }
+                    .forEach { put(it.code, it) }
+            }
         }
 
         val fundQuotes = if (fundCodes.isNotEmpty()) {
@@ -46,7 +62,9 @@ class CheckAlertsUseCase @Inject constructor(
         } else emptyMap()
 
         for (alert in alerts) {
-            val marketType = MarketType.fromCode(alert.code)
+            val marketType = alert.marketType
+            if (marketType != MarketType.FUND && marketType !in tradingMarkets) continue
+
             val (price, changePercent) = when (marketType) {
                 MarketType.FUND -> {
                     val fq = fundQuotes[alert.code] ?: continue
@@ -69,7 +87,11 @@ class CheckAlertsUseCase @Inject constructor(
                 val cooldownMs = 30 * 60 * 1000L
                 val lastTriggered = alert.lastTriggeredAt ?: 0
                 if (System.currentTimeMillis() - lastTriggered > cooldownMs) {
-                    triggered.add(TriggeredAlert(alert, price))
+                    val currentValue = when (alert.alertType) {
+                        AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> price
+                        AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> changePercent
+                    }
+                    triggered.add(TriggeredAlert(alert, currentValue))
                     alertRepository.markTriggered(alert.id)
                 }
             }
@@ -77,4 +99,7 @@ class CheckAlertsUseCase @Inject constructor(
 
         return triggered
     }
+
+    private val PriceAlert.marketType: MarketType
+        get() = MarketType.fromCode(code)
 }
