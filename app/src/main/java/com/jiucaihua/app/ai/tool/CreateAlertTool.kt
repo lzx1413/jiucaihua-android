@@ -10,7 +10,7 @@ class CreateAlertTool @Inject constructor(
 ) : ToolExecutor {
     override val definition = ToolDefinition(
         name = "create_alert",
-        description = "为指定证券创建价格预警。预警类型包括：PRICE_ABOVE（价格高于）、PRICE_BELOW（价格低于）、CHANGE_ABOVE（涨幅超过）、CHANGE_BELOW（跌幅超过）。价格类阈值为具体价格数值，涨跌幅类阈值为百分比数值（如 5 表示 5%）。",
+        description = "为指定证券创建价格预警。预警类型包括：PRICE_ABOVE（价格高于）、PRICE_BELOW（价格低于）、CHANGE_ABOVE（涨幅超过）、CHANGE_BELOW（跌幅超过）。价格类阈值为具体价格数值，涨跌幅类阈值为百分比数值（如 5 表示 5%）。可选提供操作提示，如加仓500股、减仓、止盈等。",
         inputSchema = mapOf(
             "type" to "object",
             "properties" to mapOf(
@@ -30,6 +30,10 @@ class CreateAlertTool @Inject constructor(
                 "threshold" to mapOf(
                     "type" to "number",
                     "description" to "阈值。价格类为具体价格，涨跌幅类为百分比（如 5 表示 5%）",
+                ),
+                "actionHint" to mapOf(
+                    "type" to "string",
+                    "description" to "操作提示，如加仓500股、减仓、止盈、止损、观望等。触发预警时会显示此提示。",
                 ),
             ),
             "required" to listOf("code", "name", "alertType", "threshold"),
@@ -60,18 +64,22 @@ class CreateAlertTool @Inject constructor(
             else -> return ToolResult(mapOf("success" to false, "error" to "缺少参数 threshold"))
         }
 
+        val actionHint = (arguments["actionHint"] as? String)?.takeIf { it.isNotBlank() }
+
         val alert = PriceAlert(
             code = code,
             name = name,
             alertType = alertType,
             threshold = threshold,
+            actionHint = actionHint,
         )
         val id = alertRepository.addAlert(alert)
 
+        val hintMsg = if (actionHint != null) "，操作提示：$actionHint" else ""
         return ToolResult(mapOf(
             "success" to true,
             "id" to id,
-            "message" to "已创建预警：$name($code) ${alertType.label} $threshold",
+            "message" to "已创建预警：$name($code) ${alertType.label} $threshold$hintMsg",
         ))
     }
 }

@@ -22,6 +22,7 @@ data class AlertsUiState(
     val holdings: List<Holding> = emptyList(),
     val isLoading: Boolean = true,
     val showAddDialog: Boolean = false,
+    val editingAlert: PriceAlert? = null,
 )
 
 @HiltViewModel
@@ -73,7 +74,7 @@ class AlertsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showAddDialog = false)
     }
 
-    fun addAlert(code: String, name: String, alertType: AlertType, threshold: Double) {
+    fun addAlert(code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?) {
         viewModelScope.launch {
             alertRepository.addAlert(
                 PriceAlert(
@@ -81,6 +82,7 @@ class AlertsViewModel @Inject constructor(
                     name = name,
                     alertType = alertType,
                     threshold = threshold,
+                    actionHint = actionHint,
                 )
             )
             _uiState.value = _uiState.value.copy(showAddDialog = false)
@@ -90,6 +92,30 @@ class AlertsViewModel @Inject constructor(
     fun toggleAlert(id: Long, isEnabled: Boolean) {
         viewModelScope.launch {
             alertRepository.setAlertEnabled(id, isEnabled)
+        }
+    }
+
+    fun showEditDialog(alert: PriceAlert) {
+        _uiState.value = _uiState.value.copy(editingAlert = alert)
+    }
+
+    fun hideEditDialog() {
+        _uiState.value = _uiState.value.copy(editingAlert = null)
+    }
+
+    fun updateAlert(id: Long, code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?) {
+        viewModelScope.launch {
+            val existing = alertRepository.getAlertById(id) ?: return@launch
+            alertRepository.updateAlert(
+                existing.copy(
+                    code = code,
+                    name = name,
+                    alertType = alertType,
+                    threshold = threshold,
+                    actionHint = actionHint,
+                )
+            )
+            _uiState.value = _uiState.value.copy(editingAlert = null)
         }
     }
 

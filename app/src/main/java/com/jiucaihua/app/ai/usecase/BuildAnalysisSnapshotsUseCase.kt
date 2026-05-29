@@ -111,6 +111,7 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
             name = name,
             alertType = alertType.name,
             threshold = threshold,
+            actionHint = actionHint,
             isEnabled = isEnabled,
             lastTriggeredAt = lastTriggeredAt,
         )
@@ -193,6 +194,7 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
                     name = it.name,
                     alertType = it.alertType.name,
                     threshold = it.threshold,
+                    actionHint = it.actionHint,
                     isEnabled = it.isEnabled,
                     lastTriggeredAt = it.lastTriggeredAt,
                 )

@@ -35,7 +35,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -64,6 +64,13 @@ object AppModule {
             db.execSQL(
                 "CREATE TABLE IF NOT EXISTS `alert_records` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alertId` INTEGER NOT NULL, `code` TEXT NOT NULL, `name` TEXT NOT NULL, `alertType` TEXT NOT NULL, `threshold` REAL NOT NULL, `currentValue` REAL NOT NULL, `triggeredAt` INTEGER NOT NULL)"
             )
+        }
+    }
+
+    private val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `alerts` ADD COLUMN `actionHint` TEXT")
+            db.execSQL("ALTER TABLE `alert_records` ADD COLUMN `actionHint` TEXT")
         }
     }
 

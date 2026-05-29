@@ -57,6 +57,13 @@ fun AlertRecordItem(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (record.actionHint != null) {
+                Text(
+                    text = "💡 ${record.actionHint}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

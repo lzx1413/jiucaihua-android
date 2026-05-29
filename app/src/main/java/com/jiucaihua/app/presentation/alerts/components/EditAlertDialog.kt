@@ -27,25 +27,30 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jiucaihua.app.domain.model.AlertType
 import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.domain.model.PriceAlert
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun AddAlertDialog(
+fun EditAlertDialog(
+    alert: PriceAlert,
     holdings: List<Holding>,
-    onConfirm: (code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?) -> Unit,
+    onConfirm: (id: Long, code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var selectedHolding by remember { mutableStateOf<Holding?>(null) }
-    var selectedAlertType by remember { mutableStateOf(AlertType.PRICE_ABOVE) }
-    var thresholdText by remember { mutableStateOf("") }
-    var actionHintText by remember { mutableStateOf("") }
+    // Pre-populate with existing alert data
+    var selectedHolding by remember {
+        mutableStateOf(holdings.firstOrNull { it.code == alert.code })
+    }
+    var selectedAlertType by remember { mutableStateOf(alert.alertType) }
+    var thresholdText by remember { mutableStateOf(alert.threshold.toString()) }
+    var actionHintText by remember { mutableStateOf(alert.actionHint ?: "") }
     var holdingDropdownExpanded by remember { mutableStateOf(false) }
 
     val isValid = selectedHolding != null && thresholdText.toDoubleOrNull() != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加价格预警") },
+        title = { Text("编辑预警") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -126,7 +131,7 @@ fun AddAlertDialog(
                     val holding = selectedHolding ?: return@TextButton
                     val threshold = thresholdText.toDoubleOrNull() ?: return@TextButton
                     val actionHint = actionHintText.takeIf { it.isNotBlank() }
-                    onConfirm(holding.code, holding.name, selectedAlertType, threshold, actionHint)
+                    onConfirm(alert.id, holding.code, holding.name, selectedAlertType, threshold, actionHint)
                 },
                 enabled = isValid,
             ) {

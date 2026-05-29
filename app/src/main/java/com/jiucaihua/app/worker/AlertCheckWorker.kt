@@ -47,22 +47,34 @@ class AlertCheckWorker @AssistedInject constructor(
         ensureNotificationChannel()
 
         val alert = triggeredAlert.alert
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("${alert.name} 预警触发")
+            .setContentText(formatNotificationText(triggeredAlert))
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(formatNotificationText(triggeredAlert))
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(alert.id.toInt(), notification)
+    }
+
+    private fun formatNotificationText(triggeredAlert: TriggeredAlert): String {
+        val alert = triggeredAlert.alert
         val typeLabel = when (alert.alertType) {
             AlertType.PRICE_ABOVE -> "价格已达 ${triggeredAlert.currentValue}，超过预警值 ${alert.threshold}"
             AlertType.PRICE_BELOW -> "价格已跌至 ${triggeredAlert.currentValue}，低于预警值 ${alert.threshold}"
             AlertType.CHANGE_ABOVE -> "涨幅已达 ${triggeredAlert.currentValue}%，超过预警值 ${alert.threshold}%"
             AlertType.CHANGE_BELOW -> "跌幅已达 ${triggeredAlert.currentValue}%，超过预警值 ${alert.threshold}%"
         }
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("${alert.name} 预警触发")
-            .setContentText(typeLabel)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-
-        NotificationManagerCompat.from(context).notify(alert.id.toInt(), notification)
+        return if (alert.actionHint != null) {
+            "$typeLabel\n建议操作：${alert.actionHint}"
+        } else {
+            typeLabel
+        }
     }
 
     private fun ensureNotificationChannel() {

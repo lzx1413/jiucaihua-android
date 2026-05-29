@@ -180,6 +180,7 @@ class BuildAlertsToolSnapshotUseCase @Inject constructor(
             name = name,
             alertType = alertType.name,
             threshold = threshold,
+            actionHint = actionHint,
             isEnabled = isEnabled,
             lastTriggeredAt = lastTriggeredAt,
         )

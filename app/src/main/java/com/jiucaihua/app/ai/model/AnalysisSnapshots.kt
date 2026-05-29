@@ -61,6 +61,7 @@ data class AlertSnapshot(
     val name: String,
     val alertType: String,
     val threshold: Double,
+    val actionHint: String?,
     val isEnabled: Boolean,
     val lastTriggeredAt: Long?,
 )

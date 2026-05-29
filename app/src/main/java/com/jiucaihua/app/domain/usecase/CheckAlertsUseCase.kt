@@ -102,6 +102,7 @@ class CheckAlertsUseCase @Inject constructor(
                             alertType = alert.alertType,
                             threshold = alert.threshold,
                             currentValue = currentValue,
+                            actionHint = alert.actionHint,
                         )
                     )
                 }

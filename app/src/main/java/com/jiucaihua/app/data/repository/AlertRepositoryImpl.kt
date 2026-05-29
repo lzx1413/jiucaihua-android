@@ -78,6 +78,7 @@ class AlertRepositoryImpl @Inject constructor(
             alertType = AlertType.valueOf(alertType),
             threshold = threshold,
             currentValue = currentValue,
+            actionHint = actionHint,
             triggeredAt = triggeredAt,
         )
     }
@@ -91,6 +92,7 @@ class AlertRepositoryImpl @Inject constructor(
             alertType = alertType.name,
             threshold = threshold,
             currentValue = currentValue,
+            actionHint = actionHint,
             triggeredAt = triggeredAt,
         )
     }
@@ -102,6 +104,7 @@ class AlertRepositoryImpl @Inject constructor(
             name = name,
             alertType = AlertType.valueOf(alertType),
             threshold = threshold,
+            actionHint = actionHint,
             isEnabled = isEnabled,
             lastTriggeredAt = lastTriggeredAt,
             createdAt = createdAt,
@@ -115,6 +118,7 @@ class AlertRepositoryImpl @Inject constructor(
             name = name,
             alertType = alertType.name,
             threshold = threshold,
+            actionHint = actionHint,
             isEnabled = isEnabled,
             lastTriggeredAt = lastTriggeredAt,
             createdAt = createdAt,

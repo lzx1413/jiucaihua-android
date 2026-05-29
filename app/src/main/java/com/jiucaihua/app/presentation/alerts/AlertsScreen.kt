@@ -33,6 +33,7 @@ import com.jiucaihua.app.domain.model.PriceAlert
 import com.jiucaihua.app.presentation.alerts.components.AddAlertDialog
 import com.jiucaihua.app.presentation.alerts.components.AlertListItem
 import com.jiucaihua.app.presentation.alerts.components.AlertRecordItem
+import com.jiucaihua.app.presentation.alerts.components.EditAlertDialog
 import com.jiucaihua.app.presentation.common.components.EmptyState
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 
@@ -99,6 +100,7 @@ fun AlertsScreen(
                     0 -> AlertSettingsTab(
                         alerts = uiState.alerts,
                         onToggle = { id, enabled -> viewModel.toggleAlert(id, enabled) },
+                        onEdit = { alert -> viewModel.showEditDialog(alert) },
                         onDelete = { id -> viewModel.deleteAlert(id) },
                     )
                     1 -> AlertRecordsTab(records = uiState.records)
@@ -110,10 +112,22 @@ fun AlertsScreen(
     if (uiState.showAddDialog) {
         AddAlertDialog(
             holdings = uiState.holdings,
-            onConfirm = { code, name, type, threshold ->
-                viewModel.addAlert(code, name, type, threshold)
+            onConfirm = { code, name, type, threshold, actionHint ->
+                viewModel.addAlert(code, name, type, threshold, actionHint)
             },
             onDismiss = { viewModel.hideAddDialog() },
+        )
+    }
+
+    val editingAlert = uiState.editingAlert
+    if (editingAlert != null) {
+        EditAlertDialog(
+            alert = editingAlert,
+            holdings = uiState.holdings,
+            onConfirm = { id, code, name, type, threshold, actionHint ->
+                viewModel.updateAlert(id, code, name, type, threshold, actionHint)
+            },
+            onDismiss = { viewModel.hideEditDialog() },
         )
     }
 }
@@ -122,6 +136,7 @@ fun AlertsScreen(
 private fun AlertSettingsTab(
     alerts: List<PriceAlert>,
     onToggle: (Long, Boolean) -> Unit,
+    onEdit: (PriceAlert) -> Unit,
     onDelete: (Long) -> Unit,
 ) {
     if (alerts.isEmpty()) {
@@ -132,6 +147,7 @@ private fun AlertSettingsTab(
                 AlertListItem(
                     alert = alert,
                     onToggle = { onToggle(alert.id, it) },
+                    onEdit = { onEdit(alert) },
                     onDelete = { onDelete(alert.id) },
                 )
             }

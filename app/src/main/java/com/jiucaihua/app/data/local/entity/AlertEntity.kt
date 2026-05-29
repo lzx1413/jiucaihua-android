@@ -13,6 +13,7 @@ data class AlertEntity(
     val name: String,
     val alertType: String,
     val threshold: Double,
+    val actionHint: String? = null,
     val isEnabled: Boolean = true,
     val lastTriggeredAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),

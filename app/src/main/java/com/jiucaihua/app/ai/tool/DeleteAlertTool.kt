@@ -30,10 +30,11 @@ class DeleteAlertTool @Inject constructor(
         val alert = alertRepository.getAlertById(id)
             ?: return ToolResult(mapOf("success" to false, "error" to "预警不存在: id=$id"))
 
+        val hintMsg = if (alert.actionHint != null) "，操作提示：${alert.actionHint}" else ""
         alertRepository.deleteAlert(id)
         return ToolResult(mapOf(
             "success" to true,
-            "message" to "已删除预警：${alert.name}(${alert.code}) ${alert.alertType.label} ${alert.threshold}",
+            "message" to "已删除预警：${alert.name}(${alert.code}) ${alert.alertType.label} ${alert.threshold}$hintMsg",
         ))
     }
 }
