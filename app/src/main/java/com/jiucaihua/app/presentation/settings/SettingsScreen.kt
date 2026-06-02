@@ -263,7 +263,7 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             SectionHeader("关于")
-            SettingItem(title = "版本", subtitle = "1.0.0")
+            SettingItem(title = "版本", subtitle = "1.2.0")
             SettingItem(title = "应用名称", subtitle = "九财花")
         }
     }
