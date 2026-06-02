@@ -107,6 +107,7 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
 
     private fun PriceAlert.toSnapshot(): AlertSnapshot {
         return AlertSnapshot(
+            id = id,
             code = code,
             name = name,
             alertType = alertType.name,
@@ -190,6 +191,7 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
             latestQuoteTime = quoteDisplayTime,
             activeAlerts = activeAlerts.map {
                 AlertSnapshot(
+                    id = it.id,
                     code = it.code,
                     name = it.name,
                     alertType = it.alertType.name,

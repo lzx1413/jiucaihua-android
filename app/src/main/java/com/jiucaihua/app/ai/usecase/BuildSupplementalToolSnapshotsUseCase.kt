@@ -176,6 +176,7 @@ class BuildAlertsToolSnapshotUseCase @Inject constructor(
 
     private fun PriceAlert.toSnapshot(): AlertSnapshot {
         return AlertSnapshot(
+            id = id,
             code = code,
             name = name,
             alertType = alertType.name,

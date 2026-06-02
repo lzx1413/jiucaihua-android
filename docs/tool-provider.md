@@ -33,7 +33,7 @@ Use Cases → Repositories → API / Room
 | `jiucaihua__get_holding_analysis` | `get_holding_analysis` | 单标的持仓分析 | `code` (必须) |
 | `jiucaihua__get_kline_data` | `get_kline_data` | K线图表数据 | `code` (必须), `period`, `limit` |
 | `jiucaihua__get_market_news` | `get_market_news` | 市场资讯摘要 | `limit` |
-| `jiucaihua__get_alerts` | `get_alerts` | 价格预警快照 | `code` |
+| `jiucaihua__get_alerts` | `get_alerts` | 价格预警快照（含 id，可用于 delete_alert） | `code` |
 | `jiucaihua__create_alert` | `create_alert` | 创建价格预警 | `code` (必须), `name` (必须), `alertType` (必须), `threshold` (必须) |
 | `jiucaihua__delete_alert` | `delete_alert` | 删除价格预警 | `id` (必须) |
 | `jiucaihua__calculate_what_if` | `calculate_what_if` | 目标价/涨跌幅假设推演 | `code` (必须), `targetPrice`/`changePercent` |

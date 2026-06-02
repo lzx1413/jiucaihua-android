@@ -57,6 +57,7 @@ data class AlertsSummary(
 )
 
 data class AlertSnapshot(
+    val id: Long,
     val code: String,
     val name: String,
     val alertType: String,
