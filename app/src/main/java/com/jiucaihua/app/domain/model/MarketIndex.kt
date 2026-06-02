@@ -91,4 +91,12 @@ object MarketIndexCodes {
         "gds_AU9999" to "上海金Au99.99",
         "gds_AUTD" to "黄金T+D",
     )
+
+    val GOLD_KLINE_SYMBOLS = mapOf(
+        "hf_XAU" to null,        // 国际现货黄金：无直接K线API
+        "hf_GC" to "gc0",        // COMEX黄金期货
+        "gds_AU9999" to "au0",   // 上海金Au99.99
+        "gds_AUTD" to "autd0",   // 黄金T+D
+        "hf_XAG" to "ag0",       // 国际现货白银
+    )
 }

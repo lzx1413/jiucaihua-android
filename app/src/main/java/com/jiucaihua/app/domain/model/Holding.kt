@@ -21,11 +21,7 @@ data class Holding(
         get() = dailyEarnings * exchangeRate
 
     val earnings: Double
-        get() = if (marketType == MarketType.FUND) {
-            if (costPrice > 0) (currentPrice / costPrice) * holdingAmount - holdingAmount else 0.0
-        } else {
-            (currentPrice - costPrice) * holdingShares
-        }
+        get() = (currentPrice - costPrice) * holdingShares
 
     val earningsCNY: Double
         get() = earnings * exchangeRate
@@ -34,11 +30,7 @@ data class Holding(
         get() = if (costPrice > 0) (currentPrice - costPrice) / costPrice * 100 else 0.0
 
     val marketValue: Double
-        get() = if (marketType == MarketType.FUND) {
-            currentPrice * holdingShares
-        } else {
-            currentPrice * holdingShares
-        }
+        get() = currentPrice * holdingShares
 
     val marketValueCNY: Double
         get() = marketValue * exchangeRate

@@ -553,16 +553,18 @@ class NewsRepositoryImpl @Inject constructor(
     // --- Local cache ---
 
     override fun observeAllNews(): Flow<List<NewsFlash>> {
-        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
-        return newsFlashDao.getAll(cutoff).map { entities ->
-            entities.map { it.toDomain() }
+        return newsFlashDao.getAll().map { entities ->
+            val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+            entities.filter { it.epochMillis >= cutoff }
+                .map { it.toDomain() }
         }
     }
 
     override fun observeNewsBySource(source: NewsSource): Flow<List<NewsFlash>> {
-        val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
-        return newsFlashDao.getBySourceType(source.name, cutoff).map { entities ->
-            entities.map { it.toDomain() }
+        return newsFlashDao.getBySourceType(source.name).map { entities ->
+            val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
+            entities.filter { it.epochMillis >= cutoff }
+                .map { it.toDomain() }
         }
     }
 

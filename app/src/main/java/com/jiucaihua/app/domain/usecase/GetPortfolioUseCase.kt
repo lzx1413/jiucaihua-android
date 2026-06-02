@@ -40,21 +40,26 @@ class GetPortfolioUseCase @Inject constructor(
 
         val aStockCodes = holdings.filter { it.marketType == MarketType.A_STOCK }.map { it.code }
         val hkStockCodes = holdings.filter { it.marketType == MarketType.HK_STOCK }.map { it.code }
+        val usStockCodes = holdings.filter { it.marketType == MarketType.US_STOCK }.map { it.code }
         val fundCodes = holdings.filter { it.marketType == MarketType.FUND }.map { it.code }
         val goldCodes = holdings.filter { it.marketType == MarketType.GOLD }.map { it.code }
 
-        val (aQuotes, hkQuotes, fundQuotes, goldQuotes, hkdRate) = coroutineScope {
+        val (aQuotes, hkQuotes, usQuotes, fundQuotes, goldQuotes, hkdRate, usdRate) = coroutineScope {
             val aDeferred = async { fetchAStockQuotes(aStockCodes) }
             val hkDeferred = async { fetchHKStockQuotes(hkStockCodes) }
+            val usDeferred = async { fetchUSStockQuotes(usStockCodes) }
             val fundDeferred = async { fetchFundQuotes(fundCodes) }
             val goldDeferred = async { fetchGoldQuotes(goldCodes) }
-            val rateDeferred = async {
-                if (hkStockCodes.isNotEmpty()) exchangeRateRepository.getHkdToCnyRate() else 1.0
+            val hkdRateDeferred = async {
+                if (hkStockCodes.isNotEmpty()) try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { DEFAULT_HKD_RATE } else 1.0
             }
-            QuintResult(aDeferred.await(), hkDeferred.await(), fundDeferred.await(), goldDeferred.await(), rateDeferred.await())
+            val usdRateDeferred = async {
+                if (usStockCodes.isNotEmpty()) try { exchangeRateRepository.getUsdToCnyRate() } catch (_: Exception) { DEFAULT_USD_RATE } else 1.0
+            }
+            SeptResult(aDeferred.await(), hkDeferred.await(), usDeferred.await(), fundDeferred.await(), goldDeferred.await(), hkdRateDeferred.await(), usdRateDeferred.await())
         }
 
-        val stockQuotes = (aQuotes + hkQuotes + correctGoldQuotes(goldQuotes)).associateBy { it.code }
+        val stockQuotes = (aQuotes + hkQuotes + usQuotes + correctGoldQuotes(goldQuotes)).associateBy { it.code }
         val fundQuoteMap = fundQuotes.associateBy { it.code }
 
         val updatedHoldings = holdings.map { holding ->
@@ -75,7 +80,16 @@ class GetPortfolioUseCase @Inject constructor(
                         )
                     } else holding.copy(exchangeRate = hkdRate)
                 }
-                MarketType.US_STOCK -> holding
+                MarketType.US_STOCK -> {
+                    val quote = stockQuotes[holding.code]
+                    if (quote != null) {
+                        holding.copy(
+                            currentPrice = quote.price,
+                            changePercent = quote.changePercent,
+                            exchangeRate = usdRate,
+                        )
+                    } else holding.copy(exchangeRate = usdRate)
+                }
                 MarketType.FUND -> {
                     val fq = fundQuoteMap[holding.code]
                     if (fq != null) {
@@ -103,10 +117,11 @@ class GetPortfolioUseCase @Inject constructor(
 
         val aStockCodes = holdings.filter { it.marketType == MarketType.A_STOCK }.map { it.code }
         val hkStockCodes = holdings.filter { it.marketType == MarketType.HK_STOCK }.map { it.code }
+        val usStockCodes = holdings.filter { it.marketType == MarketType.US_STOCK }.map { it.code }
         val fundCodes = holdings.filter { it.marketType == MarketType.FUND }.map { it.code }
         val goldCodes = holdings.filter { it.marketType == MarketType.GOLD }.map { it.code }
 
-        val allStockCodes = aStockCodes + hkStockCodes + goldCodes
+        val allStockCodes = aStockCodes + hkStockCodes + usStockCodes + goldCodes
         val cachedStockQuotes = stockRepository.getCachedQuotes(allStockCodes)
         val goldCachedQuotes = cachedStockQuotes.filter { it.marketType == MarketType.GOLD }
         val nonGoldCachedQuotes = cachedStockQuotes.filter { it.marketType != MarketType.GOLD }
@@ -114,7 +129,11 @@ class GetPortfolioUseCase @Inject constructor(
         val fundQuoteMap = fundRepository.getCachedFundQuotes(fundCodes).associateBy { it.code }
 
         val hkdRate = if (hkStockCodes.isNotEmpty()) {
-            try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { 0.92 }
+            try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { DEFAULT_HKD_RATE }
+        } else 1.0
+
+        val usdRate = if (usStockCodes.isNotEmpty()) {
+            try { exchangeRateRepository.getUsdToCnyRate() } catch (_: Exception) { DEFAULT_USD_RATE }
         } else 1.0
 
         val updatedHoldings = holdings.map { holding ->
@@ -135,7 +154,16 @@ class GetPortfolioUseCase @Inject constructor(
                         )
                     } else holding.copy(exchangeRate = hkdRate)
                 }
-                MarketType.US_STOCK -> holding
+                MarketType.US_STOCK -> {
+                    val quote = stockQuotes[holding.code]
+                    if (quote != null) {
+                        holding.copy(
+                            currentPrice = quote.price,
+                            changePercent = quote.changePercent,
+                            exchangeRate = usdRate,
+                        )
+                    } else holding.copy(exchangeRate = usdRate)
+                }
                 MarketType.FUND -> {
                     val fq = fundQuoteMap[holding.code]
                     if (fq != null) {
@@ -188,6 +216,15 @@ class GetPortfolioUseCase @Inject constructor(
         if (codes.isEmpty()) return emptyList()
         return try {
             stockRepository.getGoldQuotes(codes)
+        } catch (_: Exception) {
+            stockRepository.getCachedQuotes(codes)
+        }
+    }
+
+    private suspend fun fetchUSStockQuotes(codes: List<String>): List<StockQuote> {
+        if (codes.isEmpty()) return emptyList()
+        return try {
+            stockRepository.getUSStockQuotes(codes)
         } catch (_: Exception) {
             stockRepository.getCachedQuotes(codes)
         }
@@ -263,11 +300,7 @@ class GetPortfolioUseCase @Inject constructor(
     }
 
     private fun calcCostCNY(holding: Holding): Double {
-        return if (holding.marketType == MarketType.FUND) {
-            holding.holdingAmount * holding.exchangeRate
-        } else {
-            holding.costPrice * holding.holdingShares * holding.exchangeRate
-        }
+        return holding.costPrice * holding.holdingShares * holding.exchangeRate
     }
 
     private fun calcTodayEarnings(holding: Holding, stockQuote: StockQuote?, fundQuote: FundQuote?): Double {
@@ -282,7 +315,10 @@ class GetPortfolioUseCase @Inject constructor(
                 if (stockQuote == null) return 0.0
                 (stockQuote.price - stockQuote.yestClose) * holding.holdingShares * holding.exchangeRate
             }
-            MarketType.US_STOCK -> 0.0
+            MarketType.US_STOCK -> {
+                if (stockQuote == null) return 0.0
+                (stockQuote.price - stockQuote.yestClose) * holding.holdingShares * holding.exchangeRate
+            }
             MarketType.FUND -> {
                 if (fundQuote == null) return 0.0
                 val dailyChangeRatio = fundQuote.dailyChangePercent / 100
@@ -334,10 +370,12 @@ class GetPortfolioUseCase @Inject constructor(
         }
     }
 
-    private data class QuintResult<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
+    private data class SeptResult<A, B, C, D, E, F, G>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E, val sixth: F, val seventh: G)
 
     companion object {
         private const val KEY_CASH = "cash"
         private const val KEY_LOSS_COMPENSATION = "loss_compensation"
+        private const val DEFAULT_HKD_RATE = 0.92
+        private const val DEFAULT_USD_RATE = 7.2
     }
 }

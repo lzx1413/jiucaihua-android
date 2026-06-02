@@ -121,7 +121,10 @@ class MarketRepositoryImpl @Inject constructor(
 
     private suspend fun getGoldKLineData(code: String, period: KLinePeriod): KLineData {
         val name = MarketIndexCodes.GOLD_NAMES[code] ?: ""
-        val symbol = "au0"
+        val symbol = MarketIndexCodes.GOLD_KLINE_SYMBOLS[code]
+        if (symbol == null) {
+            return KLineData(code, name, period, emptyList())
+        }
         val url = "https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20kline=/InnerFuturesNewService.getDailyKLine?symbol=$symbol&_=${System.currentTimeMillis()}"
 
         return try {

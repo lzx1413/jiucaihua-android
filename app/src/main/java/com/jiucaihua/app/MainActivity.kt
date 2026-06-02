@@ -1,5 +1,6 @@
 package com.jiucaihua.app
 
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,6 +15,7 @@ import androidx.compose.runtime.setValue
 import com.jiucaihua.app.presentation.navigation.AppNavHost
 import com.jiucaihua.app.presentation.settings.SettingsViewModel
 import com.jiucaihua.app.presentation.theme.JiucaihuaTheme
+import com.jiucaihua.app.worker.AlertCheckWorker
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import javax.inject.Named
@@ -28,6 +30,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleNotificationNavigation(intent)
         setContent {
             var darkModePref by remember {
                 mutableStateOf(
@@ -51,7 +54,28 @@ class MainActivity : ComponentActivity() {
             }
             val isDark = darkModePref ?: isSystemInDarkTheme()
             JiucaihuaTheme(darkTheme = isDark) {
-                AppNavHost()
+                AppNavHost(initialDestination = pendingNavDestination)
+                pendingNavDestination = null
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleNotificationNavigation(intent)
+    }
+
+    companion object {
+        var pendingNavDestination: String? = null
+
+        private fun handleNotificationNavigation(intent: Intent?) {
+            if (intent == null) return
+            val navigateTo = intent.getStringExtra(AlertCheckWorker.EXTRA_NAVIGATE_TO)
+            if (navigateTo == AlertCheckWorker.NAVIGATE_DETAIL) {
+                val stockCode = intent.getStringExtra(AlertCheckWorker.EXTRA_STOCK_CODE)
+                if (stockCode != null) {
+                    pendingNavDestination = "detail/$stockCode"
+                }
             }
         }
     }

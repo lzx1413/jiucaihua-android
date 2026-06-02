@@ -1,5 +1,6 @@
 package com.jiucaihua.app.presentation.detail
 
+import android.content.SharedPreferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 data class DetailUiState(
     val code: String = "",
@@ -48,6 +50,7 @@ class DetailViewModel @Inject constructor(
     private val exchangeRateRepository: ExchangeRateRepository,
     private val getKLineDataUseCase: GetKLineDataUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
+    @Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
     private val code: String = savedStateHandle.get<String>("code") ?: ""
@@ -83,7 +86,7 @@ class DetailViewModel @Inject constructor(
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
             while (isActive) {
-                delay(REFRESH_INTERVAL_MS)
+                delay(prefs.getInt(KEY_REFRESH_INTERVAL, 10) * 1000L)
                 val trading = try {
                     isMarketOpenUseCase.isMarketTrading(_uiState.value.marketType)
                 } catch (_: Exception) {
@@ -108,7 +111,7 @@ class DetailViewModel @Inject constructor(
         val holding = holdingRepository.getHoldingByCode(code) ?: return
         val marketType = MarketType.fromCode(code)
         val exchangeRate = if (marketType == MarketType.HK_STOCK) {
-            try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { 0.92 }
+            try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { DEFAULT_HKD_RATE }
         } else 1.0
         _uiState.value = _uiState.value.copy(
             holding = holding.copy(exchangeRate = exchangeRate),
@@ -221,6 +224,7 @@ class DetailViewModel @Inject constructor(
     }
 
     companion object {
-        private const val REFRESH_INTERVAL_MS = 10_000L
+        private const val KEY_REFRESH_INTERVAL = "refresh_interval_seconds"
+        private const val DEFAULT_HKD_RATE = 0.92
     }
 }

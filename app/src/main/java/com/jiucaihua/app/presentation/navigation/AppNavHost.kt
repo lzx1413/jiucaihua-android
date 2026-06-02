@@ -1,6 +1,7 @@
 package com.jiucaihua.app.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -18,8 +19,22 @@ import com.jiucaihua.app.presentation.portfolio.PortfolioScreen
 import com.jiucaihua.app.presentation.settings.SettingsScreen
 
 @Composable
-fun AppNavHost() {
+fun AppNavHost(initialDestination: String? = null) {
     val navController = rememberNavController()
+
+    val startDestination = if (initialDestination != null && initialDestination.startsWith("detail/")) {
+        initialDestination
+    } else {
+        Screen.Portfolio.route
+    }
+
+    LaunchedEffect(initialDestination) {
+        if (initialDestination != null && initialDestination.startsWith("detail/")) {
+            navController.navigate(initialDestination) {
+                popUpTo(Screen.Portfolio.route) { inclusive = false }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,

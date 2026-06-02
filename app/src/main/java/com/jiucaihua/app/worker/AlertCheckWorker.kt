@@ -3,7 +3,9 @@ package com.jiucaihua.app.worker
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -12,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.jiucaihua.app.MainActivity
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.AlertType
 import com.jiucaihua.app.domain.usecase.CheckAlertsUseCase
@@ -47,6 +50,19 @@ class AlertCheckWorker @AssistedInject constructor(
         ensureNotificationChannel()
 
         val alert = triggeredAlert.alert
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_NAVIGATE_TO, NAVIGATE_DETAIL)
+            putExtra(EXTRA_STOCK_CODE, alert.code)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            alert.id.toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("${alert.name} 预警触发")
@@ -57,6 +73,7 @@ class AlertCheckWorker @AssistedInject constructor(
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
             .build()
 
         NotificationManagerCompat.from(context).notify(alert.id.toInt(), notification)
@@ -94,5 +111,8 @@ class AlertCheckWorker @AssistedInject constructor(
     companion object {
         const val WORK_NAME = "alert_check_worker"
         const val CHANNEL_ID = "price_alerts"
+        const val EXTRA_NAVIGATE_TO = "navigate_to"
+        const val NAVIGATE_DETAIL = "detail"
+        const val EXTRA_STOCK_CODE = "stock_code"
     }
 }

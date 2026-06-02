@@ -139,7 +139,7 @@ class PortfolioViewModel @Inject constructor(
                 val anyTrading = sessions.values.any { it == MarketSession.TRADING }
                 if (anyTrading) {
                     refreshQuotes()
-                    delay(REFRESH_INTERVAL_MS)
+                    delay(prefs.getInt(KEY_REFRESH_INTERVAL, 10) * 1000L)
                 } else {
                     delay(SESSION_CHECK_INTERVAL_MS)
                 }
@@ -226,9 +226,9 @@ class PortfolioViewModel @Inject constructor(
     }
 
     companion object {
-        private const val REFRESH_INTERVAL_MS = 10_000L
         private const val SESSION_CHECK_INTERVAL_MS = 60_000L
         private const val KEY_CASH = "cash"
         private const val KEY_LOSS_COMPENSATION = "loss_compensation"
+        private const val KEY_REFRESH_INTERVAL = "refresh_interval_seconds"
     }
 }
