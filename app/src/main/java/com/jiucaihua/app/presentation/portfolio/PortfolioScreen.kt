@@ -17,7 +17,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.TrendingUp
@@ -34,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Snackbar
@@ -243,6 +246,11 @@ fun PortfolioScreen(
                     error = uiState.newsError,
                     onRefresh = viewModel::refreshNews,
                     onArticleClick = onArticleClick,
+                    searchQuery = uiState.newsSearchQuery,
+                    searchedNews = uiState.searchedNews,
+                    isNewsSearching = uiState.isNewsSearching,
+                    onSearchQueryChange = viewModel::searchNews,
+                    onClearSearch = viewModel::clearNewsSearch,
                 )
 
                 WatchlistTabIndex -> WatchlistTabContent(
@@ -406,9 +414,15 @@ private fun NewsTabContent(
     error: String?,
     onRefresh: () -> Unit,
     onArticleClick: (NewsFlash) -> Unit,
+    searchQuery: String,
+    searchedNews: List<NewsFlash>?,
+    isNewsSearching: Boolean,
+    onSearchQueryChange: (String) -> Unit,
+    onClearSearch: () -> Unit,
 ) {
-    val filtered = if (selectedSource == null) articles
-        else articles.filter { it.sourceType == selectedSource }
+    val displayedArticles = searchedNews ?: articles
+    val filtered = if (selectedSource == null) displayedArticles
+        else displayedArticles.filter { it.sourceType == selectedSource }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -416,12 +430,40 @@ private fun NewsTabContent(
         modifier = Modifier.fillMaxSize(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Search bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                placeholder = { Text("搜索资讯") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "搜索",
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        IconButton(onClick = onClearSearch) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "清空",
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+            )
+
             NewsSourceFilterRow(
                 selectedSource = selectedSource,
                 onSourceSelected = onSourceSelected,
             )
             when {
-                isLoading -> {
+                isNewsSearching -> {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -431,7 +473,17 @@ private fun NewsTabContent(
                         CircularProgressIndicator()
                     }
                 }
-                error != null -> {
+                isLoading && searchedNews == null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                error != null && searchedNews == null -> {
                     Text(
                         text = error,
                         modifier = Modifier.padding(16.dp),
@@ -441,7 +493,7 @@ private fun NewsTabContent(
                 }
                 filtered.isEmpty() -> {
                     Text(
-                        text = "暂无资讯",
+                        text = if (searchedNews != null) "未找到相关资讯" else "暂无资讯",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

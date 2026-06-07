@@ -1,5 +1,6 @@
 package com.jiucaihua.app.domain.repository
 
+import com.jiucaihua.app.domain.model.ArticleDetail
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.NewsTopic
@@ -14,4 +15,5 @@ interface NewsRepository {
     fun observeNewsBySource(source: NewsSource): Flow<List<NewsFlash>>
     suspend fun refreshNews(topic: NewsTopic? = null)
     suspend fun searchNews(query: String, topic: NewsTopic? = null, limit: Int = 20): List<NewsFlash>
+    suspend fun fetchArticleDetail(url: String): ArticleDetail
 }

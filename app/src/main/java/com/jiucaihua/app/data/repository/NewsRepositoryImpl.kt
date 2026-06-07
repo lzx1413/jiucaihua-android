@@ -10,6 +10,7 @@ import com.jiucaihua.app.data.remote.api.WallstreetCnApi
 import com.jiucaihua.app.data.remote.api.XuanGuBaoNewsApi
 import com.jiucaihua.app.data.remote.dto.StockArticleDto
 import com.jiucaihua.app.data.remote.util.ClsSignHelper
+import com.jiucaihua.app.domain.model.ArticleDetail
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.NewsTopic
@@ -94,13 +95,13 @@ class NewsRepositoryImpl @Inject constructor(
             .take(limit)
     }
 
-    override suspend fun getStockNews(stockName: String, limit: Int): List<StockArticle> {
+    override suspend fun getStockNews(stockName: String, limit: Int): List<StockArticle> = withContext(Dispatchers.IO) {
         val keyword = stockName.trim()
-        if (keyword.isBlank()) return emptyList()
+        if (keyword.isBlank()) return@withContext emptyList()
 
-        return try {
+        try {
             val token = getJiuYanToken()
-            if (token.isBlank()) return emptyList()
+            if (token.isBlank()) return@withContext emptyList()
 
             val payload = JSONObject()
                 .put("back_garden", 0)
@@ -161,20 +162,20 @@ class NewsRepositoryImpl @Inject constructor(
                 val title = item.optString("title").trim()
                 val summary = normalizeText(item.optString("content"))
                 if (title.isBlank() || summary.isBlank()) continue
-                val detailUrl = item.optString("url").toAbsoluteStcnUrl()
-                val detail = fetchStcnDetail(detailUrl)
                 val epochMillis = item.optLong("time")
+                val detailUrl = item.optString("url").toAbsoluteStcnUrl()
                 add(
                     NewsFlash(
                         id = item.optLong("id"),
-                        title = detail.title.ifBlank { title },
+                        title = title,
                         summary = abbreviate(summary, 140),
-                        content = detail.content.ifBlank { summary },
+                        content = summary,
                         impact = if (item.optInt("isRed") == 1) "利好" else "",
-                        source = detail.source.ifBlank { item.optString("source").trim().ifBlank { STCN_SOURCE } },
+                        source = item.optString("source").trim().ifBlank { STCN_SOURCE },
                         time = formatEpochMillis(epochMillis),
                         sourceType = NewsSource.STCN,
                         epochMillis = epochMillis,
+                        detailUrl = detailUrl,
                     )
                 )
             }
@@ -550,6 +551,16 @@ class NewsRepositoryImpl @Inject constructor(
                 .take(limit)
         }
 
+    override suspend fun fetchArticleDetail(url: String): ArticleDetail = withContext(Dispatchers.IO) {
+        if (url.isBlank()) return@withContext ArticleDetail()
+        try {
+            val detail = fetchStcnDetail(url)
+            ArticleDetail(title = detail.title, content = detail.content, source = detail.source)
+        } catch (_: Exception) {
+            ArticleDetail()
+        }
+    }
+
     // --- Local cache ---
 
     override fun observeAllNews(): Flow<List<NewsFlash>> {
@@ -594,6 +605,7 @@ class NewsRepositoryImpl @Inject constructor(
             time = time,
             sourceType = NewsSource.valueOf(sourceType),
             epochMillis = epochMillis,
+            detailUrl = detailUrl,
         )
     }
 
@@ -608,6 +620,7 @@ class NewsRepositoryImpl @Inject constructor(
             time = time,
             sourceType = sourceType.name,
             epochMillis = epochMillis,
+            detailUrl = detailUrl,
         )
     }
 

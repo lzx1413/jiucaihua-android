@@ -18,6 +18,7 @@ import com.jiucaihua.app.ai.tool.GetMarketIndicesTool
 import com.jiucaihua.app.ai.tool.GetMarketNewsTool
 import com.jiucaihua.app.ai.tool.GetMarketStatusTool
 import com.jiucaihua.app.ai.tool.GetPortfolioAnalysisTool
+import com.jiucaihua.app.ai.tool.GetStockNewsTool
 import com.jiucaihua.app.ai.tool.GetWatchlistTool
 import com.jiucaihua.app.ai.tool.SearchSecuritiesTool
 import com.jiucaihua.app.ai.tool.ToolExecutor
@@ -128,5 +129,11 @@ abstract class AiModule {
     @IntoSet
     abstract fun bindDeleteAlertTool(
         tool: DeleteAlertTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetStockNewsTool(
+        tool: GetStockNewsTool,
     ): ToolExecutor
 }

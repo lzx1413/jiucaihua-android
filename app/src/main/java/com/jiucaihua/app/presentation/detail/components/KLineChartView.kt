@@ -24,6 +24,9 @@ import com.github.mikephil.charting.data.CandleData
 import com.github.mikephil.charting.data.CandleDataSet
 import com.github.mikephil.charting.data.CandleEntry
 import com.github.mikephil.charting.data.CombinedData
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.listener.ChartTouchListener
 import com.github.mikephil.charting.listener.OnChartGestureListener
@@ -31,11 +34,15 @@ import com.jiucaihua.app.domain.model.KLineData
 
 private const val RISE_COLOR = 0xFFE53935.toInt()
 private const val FALL_COLOR = 0xFF43A047.toInt()
+private const val MA5_COLOR = 0xFFFFEB3B.toInt()   // Yellow
+private const val MA10_COLOR = 0xFF2196F3.toInt()   // Blue
+private const val MA20_COLOR = 0xFF9C27B0.toInt()   // Purple
 private const val VISIBLE_COUNT = 60
 
 @Composable
 fun KLineChartView(
     kLineData: KLineData,
+    showMA: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     if (kLineData.points.isEmpty()) return
@@ -67,7 +74,7 @@ fun KLineChartView(
                     isDragEnabled = true
                     isDragDecelerationEnabled = true
                     dragDecelerationFrictionCoef = 0.92f
-                    setDrawOrder(arrayOf(CombinedChart.DrawOrder.CANDLE))
+                    setDrawOrder(arrayOf(CombinedChart.DrawOrder.LINE, CombinedChart.DrawOrder.CANDLE))
                     legend.isEnabled = false
 
                     xAxis.apply {
@@ -136,6 +143,9 @@ fun KLineChartView(
 
                 val combinedData = CombinedData().apply {
                     setData(CandleData(candleDataSet))
+                    if (showMA) {
+                        setData(LineData(createMALineDataSets(points)))
+                    }
                 }
 
                 chart.data = combinedData
@@ -283,4 +293,26 @@ private class ChartSyncHelper {
             syncing = false
         }
     }
+}
+
+private fun maEntries(points: List<com.jiucaihua.app.domain.model.KLinePoint>, selector: (com.jiucaihua.app.domain.model.KLinePoint) -> Double?): List<Entry> =
+    points.mapIndexedNotNull { i, p -> selector(p)?.let { Entry(i.toFloat(), it.toFloat()) } }
+
+private fun createMALineDataSets(points: List<com.jiucaihua.app.domain.model.KLinePoint>): List<LineDataSet> {
+    fun makeLineDataSet(entries: List<Entry>, label: String, color: Int): LineDataSet {
+        return LineDataSet(entries, label).apply {
+            setDrawValues(false)
+            setColor(color)
+            lineWidth = 1f
+            setDrawCircles(false)
+            isHighlightEnabled = false
+            axisDependency = YAxis.AxisDependency.LEFT
+        }
+    }
+
+    return listOf(
+        makeLineDataSet(maEntries(points) { it.ma5 }, "MA5", MA5_COLOR),
+        makeLineDataSet(maEntries(points) { it.ma10 }, "MA10", MA10_COLOR),
+        makeLineDataSet(maEntries(points) { it.ma20 }, "MA20", MA20_COLOR),
+    )
 }

@@ -39,6 +39,9 @@ data class PortfolioUiState(
     val isNewsRefreshing: Boolean = false,
     val error: String? = null,
     val newsError: String? = null,
+    val newsSearchQuery: String = "",
+    val searchedNews: List<NewsFlash>? = null,
+    val isNewsSearching: Boolean = false,
 )
 
 @HiltViewModel
@@ -56,6 +59,7 @@ class PortfolioViewModel @Inject constructor(
     private var refreshJob: Job? = null
 
     private var newsJob: Job? = null
+    private var searchJob: Job? = null
 
     init {
         loadCachedData()
@@ -185,6 +189,41 @@ class PortfolioViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    fun searchNews(query: String) {
+        if (query.isBlank()) {
+            searchJob?.cancel()
+            _uiState.value = _uiState.value.copy(
+                newsSearchQuery = "",
+                searchedNews = null,
+                isNewsSearching = false,
+            )
+            return
+        }
+        searchJob?.cancel()
+        _uiState.value = _uiState.value.copy(newsSearchQuery = query, isNewsSearching = true)
+        searchJob = viewModelScope.launch {
+            delay(300) // debounce
+            try {
+                val results = newsRepository.searchNews(query)
+                _uiState.value = _uiState.value.copy(
+                    searchedNews = results,
+                    isNewsSearching = false,
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isNewsSearching = false)
+            }
+        }
+    }
+
+    fun clearNewsSearch() {
+        searchJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            newsSearchQuery = "",
+            searchedNews = null,
+            isNewsSearching = false,
+        )
+    }
+
     fun setCash(value: Double) {
         prefs.edit().putFloat(KEY_CASH, value.toFloat()).apply()
         refreshQuotes()
@@ -223,6 +262,7 @@ class PortfolioViewModel @Inject constructor(
         super.onCleared()
         refreshJob?.cancel()
         newsJob?.cancel()
+        searchJob?.cancel()
     }
 
     companion object {

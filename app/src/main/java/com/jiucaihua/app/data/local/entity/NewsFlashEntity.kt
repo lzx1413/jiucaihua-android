@@ -20,5 +20,6 @@ data class NewsFlashEntity(
     val time: String,
     val sourceType: String,
     val epochMillis: Long,
+    val detailUrl: String = "",
     val fetchedAt: Long = System.currentTimeMillis(),
 )

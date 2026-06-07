@@ -1,4 +1,4 @@
-package com.jiucaihua.app.ai.usecase
+package com.jiucaihua.app.domain.util
 
 import com.jiucaihua.app.domain.model.KLinePoint
 import kotlin.math.sqrt

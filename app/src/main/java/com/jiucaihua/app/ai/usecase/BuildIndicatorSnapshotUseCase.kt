@@ -4,6 +4,7 @@ import com.jiucaihua.app.ai.model.IndicatorSnapshot
 import com.jiucaihua.app.domain.model.KLineData
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.repository.FundRepository
+import com.jiucaihua.app.domain.util.TechnicalIndicators
 import com.jiucaihua.app.domain.usecase.GetKLineDataUseCase
 import javax.inject.Inject
 

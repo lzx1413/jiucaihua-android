@@ -9,4 +9,7 @@ data class KLinePoint(
     val volume: Double,
     val amount: Double = 0.0,
     val changePercent: Double = 0.0,
+    val ma5: Double? = null,
+    val ma10: Double? = null,
+    val ma20: Double? = null,
 )

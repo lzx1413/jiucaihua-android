@@ -28,4 +28,5 @@ data class NewsFlash(
     val time: String,
     val sourceType: NewsSource,
     val epochMillis: Long = 0L,
+    val detailUrl: String = "",
 )

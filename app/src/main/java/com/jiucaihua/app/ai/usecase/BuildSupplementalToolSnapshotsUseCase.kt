@@ -17,6 +17,7 @@ import com.jiucaihua.app.domain.model.StockArticle
 import com.jiucaihua.app.domain.repository.AlertRepository
 import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
+import com.jiucaihua.app.domain.util.TechnicalIndicators
 import com.jiucaihua.app.domain.usecase.GetKLineDataUseCase
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import kotlinx.coroutines.flow.first

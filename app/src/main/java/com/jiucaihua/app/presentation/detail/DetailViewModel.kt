@@ -9,10 +9,12 @@ import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.KLineData
 import com.jiucaihua.app.domain.model.KLinePeriod
 import com.jiucaihua.app.domain.model.MarketType
+import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.StockQuote
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.HoldingRepository
+import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import com.jiucaihua.app.domain.usecase.GetKLineDataUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
@@ -39,6 +41,10 @@ data class DetailUiState(
     val isLoading: Boolean = true,
     val isKLineLoading: Boolean = false,
     val error: String? = null,
+    val newsArticles: List<NewsFlash> = emptyList(),
+    val isNewsLoading: Boolean = false,
+    val newsError: String? = null,
+    val newsLoaded: Boolean = false,
 )
 
 @HiltViewModel
@@ -48,6 +54,7 @@ class DetailViewModel @Inject constructor(
     private val fundRepository: FundRepository,
     private val holdingRepository: HoldingRepository,
     private val exchangeRateRepository: ExchangeRateRepository,
+    private val newsRepository: NewsRepository,
     private val getKLineDataUseCase: GetKLineDataUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     @Named("appPrefs") private val prefs: SharedPreferences,
@@ -74,6 +81,7 @@ class DetailViewModel @Inject constructor(
                 loadHolding()
                 loadQuote()
                 loadKLine(_uiState.value.selectedPeriod)
+                loadNews()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "数据加载失败: ${e.message}")
             } finally {
@@ -214,6 +222,34 @@ class DetailViewModel @Inject constructor(
         kLineJob?.cancel()
         kLineJob = viewModelScope.launch {
             loadKLine(period)
+        }
+    }
+
+    private fun loadNews() {
+        val name = _uiState.value.name
+        if (name.isBlank()) return
+        val keyword = when (_uiState.value.marketType) {
+            MarketType.GOLD -> "黄金行情"
+            else -> name
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isNewsLoading = true, newsError = null)
+            try {
+                val articles = newsRepository.searchNews(keyword)
+                _uiState.value = _uiState.value.copy(
+                    newsArticles = articles,
+                    isNewsLoading = false,
+                    newsLoaded = true,
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isNewsLoading = false,
+                    newsArticles = emptyList(),
+                    newsLoaded = true,
+                )
+            }
         }
     }
 

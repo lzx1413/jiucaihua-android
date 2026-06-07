@@ -10,3 +10,15 @@ data class StockArticle(
     val sourceType: NewsSource = NewsSource.JIUYAN,
     val impact: String = "",
 )
+
+fun StockArticle.toNewsFlash(): NewsFlash = NewsFlash(
+    id = articleId?.hashCode()?.toLong() ?: title.hashCode().toLong(),
+    title = title,
+    summary = summary,
+    content = content,
+    impact = impact,
+    source = source,
+    time = time,
+    sourceType = sourceType,
+    epochMillis = 0L,
+)

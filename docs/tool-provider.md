@@ -16,7 +16,7 @@ CetpToolProvider (ContentProvider)
   │  EntryPointAccessors → ToolRegistry
   ▼
 ToolRegistry (Hilt Singleton)
-  │  11 个 ToolExecutor
+  │  15 个 ToolExecutor
   ▼
 Use Cases → Repositories → API / Room
 ```
@@ -32,7 +32,8 @@ Use Cases → Repositories → API / Room
 | `jiucaihua__get_portfolio_analysis` | `get_portfolio_analysis` | 投资组合全局快照 | 无 |
 | `jiucaihua__get_holding_analysis` | `get_holding_analysis` | 单标的持仓分析 | `code` (必须) |
 | `jiucaihua__get_kline_data` | `get_kline_data` | K线图表数据 | `code` (必须), `period`, `limit` |
-| `jiucaihua__get_market_news` | `get_market_news` | 市场资讯摘要 | `limit` |
+| `jiucaihua__get_market_news` | `get_market_news` | 市场资讯摘要 | `topic`, `query`, `limit` |
+| `jiucaihua__get_stock_news` | `get_stock_news` | 个股相关资讯 | `name` (必须), `limit` |
 | `jiucaihua__get_alerts` | `get_alerts` | 价格预警快照（含 id，可用于 delete_alert） | `code` |
 | `jiucaihua__create_alert` | `create_alert` | 创建价格预警 | `code` (必须), `name` (必须), `alertType` (必须), `threshold` (必须) |
 | `jiucaihua__delete_alert` | `delete_alert` | 删除价格预警 | `id` (必须) |
@@ -85,7 +86,7 @@ content call --uri content://com.jiucaihua.app.clawseed.tools --method get_provi
 | `cetp/CetpDiscoveryService.kt` | 发现服务，供 Consumer 扫描 |
 | `ai/tool/ToolRegistry.kt` | 工具注册表（Hilt Singleton） |
 | `ai/tool/ToolExecutor.kt` | 工具执行接口 |
-| `ai/tool/*.kt` | 11 个 ToolExecutor 实现 |
+| `ai/tool/*.kt` | 15 个 ToolExecutor 实现 |
 | `ai/model/CetpToolSnapshots.kt` | 新增 4 个工具的输出模型 |
 | `ai/usecase/BuildCetpToolSnapshotsUseCase.kt` | 新增 4 个工具的 Use Case |
 

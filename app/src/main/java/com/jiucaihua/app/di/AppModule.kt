@@ -35,7 +35,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -71,6 +71,12 @@ object AppModule {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE `alerts` ADD COLUMN `actionHint` TEXT")
             db.execSQL("ALTER TABLE `alert_records` ADD COLUMN `actionHint` TEXT")
+        }
+    }
+
+    private val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `news_flash` ADD COLUMN `detailUrl` TEXT NOT NULL DEFAULT ''")
         }
     }
 

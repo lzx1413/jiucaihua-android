@@ -21,7 +21,7 @@ import com.jiucaihua.app.data.local.entity.WatchlistEntity
 
 @Database(
     entities = [HoldingEntity::class, StockCacheEntity::class, FundCacheEntity::class, AlertEntity::class, AlertRecordEntity::class, WatchlistEntity::class, NewsFlashEntity::class],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

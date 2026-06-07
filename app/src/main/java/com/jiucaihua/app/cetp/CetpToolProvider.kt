@@ -161,6 +161,7 @@ class CetpToolProvider : ContentProvider() {
             "get_kline_data",
             "get_indicator_snapshot",
             "get_market_news",
+            "get_stock_news",
             "get_alerts",
             "create_alert",
             "delete_alert",

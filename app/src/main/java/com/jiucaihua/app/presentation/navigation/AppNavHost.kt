@@ -4,11 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.presentation.ai.AiChatScreen
 import com.jiucaihua.app.presentation.alerts.AlertsScreen
 import com.jiucaihua.app.presentation.article.ArticleDetailScreen
@@ -17,6 +19,17 @@ import com.jiucaihua.app.presentation.holdings.AddEditHoldingScreen
 import com.jiucaihua.app.presentation.market.MarketScreen
 import com.jiucaihua.app.presentation.portfolio.PortfolioScreen
 import com.jiucaihua.app.presentation.settings.SettingsScreen
+
+private fun NavController.navigateToArticle(article: NewsFlash) {
+    currentBackStackEntry?.savedStateHandle?.apply {
+        set("articleTitle", article.title)
+        set("articleSummary", article.summary)
+        set("articleContent", article.content)
+        set("articleSource", article.source)
+        set("articleTime", article.time)
+    }
+    navigate(Screen.ArticleDetail.route)
+}
 
 @Composable
 fun AppNavHost(initialDestination: String? = null) {
@@ -52,12 +65,7 @@ fun AppNavHost(initialDestination: String? = null) {
                     navController.navigate(Screen.Detail.createRoute(code))
                 },
                 onArticleClick = { article ->
-                    navController.currentBackStackEntry?.savedStateHandle?.set("articleTitle", article.title)
-                    navController.currentBackStackEntry?.savedStateHandle?.set("articleSummary", article.summary)
-                    navController.currentBackStackEntry?.savedStateHandle?.set("articleContent", article.content)
-                    navController.currentBackStackEntry?.savedStateHandle?.set("articleSource", article.source)
-                    navController.currentBackStackEntry?.savedStateHandle?.set("articleTime", article.time)
-                    navController.navigate(Screen.ArticleDetail.route)
+                    navController.navigateToArticle(article)
                 },
                 onNavigateToAlerts = {
                     navController.navigate(Screen.Alerts.route)
@@ -103,7 +111,10 @@ fun AppNavHost(initialDestination: String? = null) {
             )
         ) {
             DetailScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onArticleClick = { article ->
+                    navController.navigateToArticle(article)
+                },
             )
         }
 
