@@ -25,18 +25,24 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -56,11 +62,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,6 +78,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.Holding
@@ -117,7 +126,8 @@ fun PortfolioScreen(
     val watchlistUiState by watchlistViewModel.uiState.collectAsStateWithLifecycle()
     var holdingToDelete by remember { mutableStateOf<Holding?>(null) }
     var watchlistToDelete by remember { mutableStateOf<WatchlistItem?>(null) }
-    var showMenu by remember { mutableStateOf(false) }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
     var selectedTabIndex by rememberSaveable { mutableStateOf(HoldingsTabIndex) }
     val snackbarHostState = remember { SnackbarHostState() }
     val tabItems = listOf(
@@ -134,9 +144,51 @@ fun PortfolioScreen(
         }
     }
 
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Text(
+                    "九财花",
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                HorizontalDivider()
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Notifications, contentDescription = "预警管理") },
+                    label = { Text("预警管理") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToAlerts()
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Outlined.Settings, contentDescription = "设置") },
+                    label = { Text("设置") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToSettings()
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                )
+            }
+        }
+    ) {
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "菜单",
+                        )
+                    }
+                },
                 title = {
                     Column {
                         Text("九财花")
@@ -176,33 +228,6 @@ fun PortfolioScreen(
                         sessions = uiState.marketSessions,
                         modifier = Modifier.padding(end = 4.dp),
                     )
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "菜单",
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("预警管理") },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToAlerts()
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("设置") },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToSettings()
-                                },
-                            )
-                        }
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -235,8 +260,7 @@ fun PortfolioScreen(
                 )
             }
         }
-    ) { paddingValues ->
-        Box(
+    ) { paddingValues ->        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -285,6 +309,7 @@ fun PortfolioScreen(
                 )
             }
         }
+    }
     }
 
     holdingToDelete?.let { holding ->
