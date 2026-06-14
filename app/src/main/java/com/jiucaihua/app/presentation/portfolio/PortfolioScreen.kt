@@ -1,23 +1,30 @@
 package com.jiucaihua.app.presentation.portfolio
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -26,6 +33,8 @@ import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
@@ -431,31 +440,11 @@ private fun HoldingsList(
         }
         if (snapshots.isNotEmpty()) {
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        ChartRange.entries.forEach { range ->
-                            FilterChip(
-                                selected = selectedChartRange == range,
-                                onClick = { onChartRangeChanged(range) },
-                                label = { Text(range.label) },
-                            )
-                        }
-                    }
-                    EarningsChartView(
-                        snapshots = snapshots,
-                        selectedRange = selectedChartRange,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                    )
-                }
+                EarningsChartSection(
+                    snapshots = snapshots,
+                    selectedChartRange = selectedChartRange,
+                    onChartRangeChanged = onChartRangeChanged,
+                )
             }
         }
         item {
@@ -741,4 +730,82 @@ private fun MarketTabContent(
             onIndexClick(index.code)
         },
     )
+}
+
+@Composable
+private fun EarningsChartSection(
+    snapshots: List<PortfolioSnapshot>,
+    selectedChartRange: ChartRange,
+    onChartRangeChanged: (ChartRange) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val latestSnapshot = snapshots.lastOrNull()
+    val benchmarkPercent = latestSnapshot?.benchmarkPercent ?: 0.0
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Header row - always visible
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "收益走势",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.width(12.dp))
+                if (benchmarkPercent != 0.0) {
+                    Text(
+                        text = "沪深300 ${String.format("%.2f%%", benchmarkPercent)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFFF9800),
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            // Expanded content - chart
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        ChartRange.entries.forEach { range ->
+                            FilterChip(
+                                selected = selectedChartRange == range,
+                                onClick = { onChartRangeChanged(range) },
+                                label = { Text(range.label) },
+                            )
+                        }
+                    }
+                    EarningsChartView(
+                        snapshots = snapshots,
+                        selectedRange = selectedChartRange,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+            }
+        }
+    }
 }

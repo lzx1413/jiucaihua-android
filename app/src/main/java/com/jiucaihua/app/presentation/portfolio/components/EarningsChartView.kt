@@ -82,7 +82,7 @@ fun EarningsChartView(
         ChartRange.ALL -> if (snapshots.size > 30) snapshots.size / 6 else 1
     }
 
-    val chartHeight = 180.dp
+    val chartHeight = 200.dp
 
     Column(modifier = modifier) {
         // Legend row
@@ -134,7 +134,7 @@ fun EarningsChartView(
         ) {
             val chartWidth = size.width
             val chartHeightPx = size.height
-            val leftPadding = 40f
+            val leftPadding = 50f
             val rightPadding = 10f
             val topPadding = 15f
             val bottomPadding = 35f
