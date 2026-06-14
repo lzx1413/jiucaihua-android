@@ -61,6 +61,7 @@ class PortfolioSnapshotRepositoryImpl @Inject constructor(
             cash = cash,
             lossCompensation = lossCompensation,
             categoryValues = categoryMap,
+            benchmarkPercent = benchmarkValue,
         )
     }
 
@@ -80,6 +81,7 @@ class PortfolioSnapshotRepositoryImpl @Inject constructor(
                 kotlinx.serialization.serializer<Map<String, Double>>(),
                 categoryValues,
             ),
+            benchmarkValue = benchmarkPercent,
         )
     }
 }

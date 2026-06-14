@@ -204,6 +204,8 @@ class PortfolioViewModel @Inject constructor(
                     isRefreshing = false,
                     error = null,
                 )
+                // Record snapshot after successful quote refresh
+                recordSnapshotUseCase.recordSnapshot()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isRefreshing = false,

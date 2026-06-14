@@ -20,4 +20,5 @@ data class PortfolioSnapshotEntity(
     val cash: Double,
     val lossCompensation: Double,
     val categoryValuesJson: String,
+    val benchmarkValue: Double = 0.0,
 )

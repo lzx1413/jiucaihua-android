@@ -12,6 +12,7 @@ data class PortfolioSnapshot(
     val cash: Double,
     val lossCompensation: Double,
     val categoryValues: Map<String, Double>,
+    val benchmarkPercent: Double = 0.0,
 )
 
 enum class ChartRange(val label: String) {
