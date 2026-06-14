@@ -6,7 +6,9 @@ import kotlinx.coroutines.flow.Flow
 
 interface WatchlistRepository {
     fun getAllWatchlist(): Flow<List<WatchlistItem>>
-    suspend fun addWatchlistItem(code: String, name: String, marketType: MarketType): Long
+    fun observeGroups(): Flow<List<String>>
+    suspend fun addWatchlistItem(code: String, name: String, marketType: MarketType, group: String = ""): Long
     suspend fun removeWatchlistItem(id: Long)
+    suspend fun updateGroup(id: Long, group: String)
     suspend fun isWatched(code: String): Boolean
 }

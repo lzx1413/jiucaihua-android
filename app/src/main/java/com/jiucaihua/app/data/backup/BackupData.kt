@@ -2,7 +2,9 @@ package com.jiucaihua.app.data.backup
 
 import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.HoldingEntity
+import com.jiucaihua.app.data.local.entity.NewsFlashEntity
 import com.jiucaihua.app.data.local.entity.PortfolioSnapshotEntity
+import com.jiucaihua.app.data.local.entity.WatchlistEntity
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -13,9 +15,11 @@ data class BackupData(
     val alerts: List<AlertEntity>,
     val settings: AppSettingsBackup,
     val portfolioSnapshots: List<PortfolioSnapshotEntity> = emptyList(),
+    val watchlistItems: List<WatchlistEntity> = emptyList(),
+    val newsFlash: List<NewsFlashEntity> = emptyList(),
 ) {
     companion object {
-        const val BACKUP_VERSION = 4
+        const val BACKUP_VERSION = 5
     }
 }
 

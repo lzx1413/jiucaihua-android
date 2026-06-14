@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.TrendingUp
@@ -80,6 +81,7 @@ import com.jiucaihua.app.presentation.portfolio.components.HoldingListItem
 import com.jiucaihua.app.presentation.portfolio.components.PortfolioSummaryCard
 import com.jiucaihua.app.presentation.portfolio.components.SortSelector
 import com.jiucaihua.app.presentation.watchlist.AddWatchlistDialog
+import com.jiucaihua.app.presentation.watchlist.WatchlistGroupDialog
 import com.jiucaihua.app.presentation.watchlist.WatchlistTabContent
 import com.jiucaihua.app.presentation.watchlist.WatchlistUiState
 import com.jiucaihua.app.presentation.watchlist.WatchlistViewModel
@@ -243,6 +245,8 @@ fun PortfolioScreen(
 
                 NewsTabIndex -> NewsTabContent(
                     articles = uiState.marketNews,
+                    bookmarkedNews = uiState.bookmarkedNews,
+                    showBookmarkedOnly = uiState.showBookmarkedOnly,
                     selectedSource = uiState.selectedNewsSource,
                     onSourceSelected = viewModel::setSelectedNewsSource,
                     isLoading = uiState.isNewsLoading,
@@ -255,6 +259,8 @@ fun PortfolioScreen(
                     isNewsSearching = uiState.isNewsSearching,
                     onSearchQueryChange = viewModel::searchNews,
                     onClearSearch = viewModel::clearNewsSearch,
+                    onBookmarkToggle = viewModel::toggleNewsBookmark,
+                    onShowBookmarkedOnly = viewModel::setShowBookmarkedOnly,
                 )
 
                 WatchlistTabIndex -> WatchlistTabContent(
@@ -262,6 +268,7 @@ fun PortfolioScreen(
                     onAddClick = watchlistViewModel::showAddDialog,
                     onItemClick = onHoldingClick,
                     onItemLongClick = { watchlistToDelete = it },
+                    onGroupSelected = watchlistViewModel::setSelectedGroup,
                 )
 
                 MarketTabIndex -> MarketTabContent(
@@ -306,26 +313,52 @@ fun PortfolioScreen(
     }
 
     watchlistToDelete?.let { item ->
-        AlertDialog(
-            onDismissRequest = { watchlistToDelete = null },
-            title = { Text("删除自选") },
-            text = { Text("确定要删除 ${item.name}(${item.code}) 吗？") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        watchlistViewModel.removeWatchlistItem(item.id)
-                        watchlistToDelete = null
+        var showGroupDialog by remember { mutableStateOf(false) }
+
+        if (showGroupDialog) {
+            WatchlistGroupDialog(
+                item = item,
+                existingGroups = watchlistUiState.groups,
+                onConfirm = { group ->
+                    watchlistViewModel.updateGroup(item, group)
+                    showGroupDialog = false
+                    watchlistToDelete = null
+                },
+                onDismiss = {
+                    showGroupDialog = false
+                },
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { watchlistToDelete = null },
+                title = { Text("管理自选") },
+                text = { Text("${item.name}(${item.code})") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            watchlistViewModel.removeWatchlistItem(item.id)
+                            watchlistToDelete = null
+                        }
+                    ) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
                     }
-                ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { watchlistToDelete = null }) {
-                    Text("取消")
-                }
-            }
-        )
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(onClick = { watchlistToDelete = null }) {
+                            Text("取消")
+                        }
+                        TextButton(
+                            onClick = {
+                                showGroupDialog = true
+                            }
+                        ) {
+                            Text("分组")
+                        }
+                    }
+                },
+            )
+        }
     }
 
     if (watchlistUiState.isAddDialogVisible) {
@@ -333,6 +366,7 @@ fun PortfolioScreen(
             uiState = watchlistUiState,
             onQueryChange = watchlistViewModel::onSearchQueryChange,
             onResultClick = watchlistViewModel::addWatchlistItem,
+            onGroupChange = watchlistViewModel::setAddDialogGroup,
             onDismiss = watchlistViewModel::hideAddDialog,
         )
     }
@@ -447,6 +481,8 @@ private fun HoldingsList(
 @Composable
 private fun NewsTabContent(
     articles: List<NewsFlash>,
+    bookmarkedNews: List<NewsFlash>,
+    showBookmarkedOnly: Boolean,
     selectedSource: NewsSource?,
     onSourceSelected: (NewsSource?) -> Unit,
     isLoading: Boolean,
@@ -459,8 +495,10 @@ private fun NewsTabContent(
     isNewsSearching: Boolean,
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
+    onBookmarkToggle: (NewsFlash) -> Unit,
+    onShowBookmarkedOnly: (Boolean) -> Unit,
 ) {
-    val displayedArticles = searchedNews ?: articles
+    val displayedArticles = searchedNews ?: if (showBookmarkedOnly) bookmarkedNews else articles
     val filtered = if (selectedSource == null) displayedArticles
         else displayedArticles.filter { it.sourceType == selectedSource }
 
@@ -502,6 +540,26 @@ private fun NewsTabContent(
                 selectedSource = selectedSource,
                 onSourceSelected = onSourceSelected,
             )
+            // Bookmark filter
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilterChip(
+                    selected = showBookmarkedOnly,
+                    onClick = { onShowBookmarkedOnly(!showBookmarkedOnly) },
+                    label = { Text("仅收藏") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (showBookmarkedOnly) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                            contentDescription = "收藏",
+                            modifier = Modifier.size(16.dp),
+                        )
+                    },
+                )
+            }
             when {
                 isNewsSearching -> {
                     Box(
@@ -533,7 +591,9 @@ private fun NewsTabContent(
                 }
                 filtered.isEmpty() -> {
                     Text(
-                        text = if (searchedNews != null) "未找到相关资讯" else "暂无资讯",
+                        text = if (searchedNews != null) "未找到相关资讯"
+                            else if (showBookmarkedOnly) "暂无收藏资讯"
+                            else "暂无资讯",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -548,6 +608,7 @@ private fun NewsTabContent(
                             NewsListItem(
                                 article = article,
                                 onClick = { onArticleClick(article) },
+                                onBookmarkToggle = { onBookmarkToggle(article) },
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
@@ -563,6 +624,7 @@ private fun NewsTabContent(
 private fun NewsListItem(
     article: NewsFlash,
     onClick: () -> Unit,
+    onBookmarkToggle: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -571,11 +633,28 @@ private fun NewsListItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(
-            text = article.title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = article.title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(
+                onClick = onBookmarkToggle,
+                modifier = Modifier.size(24.dp),
+            ) {
+                Icon(
+                    imageVector = if (article.isBookmarked) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                    contentDescription = if (article.isBookmarked) "取消收藏" else "收藏",
+                    tint = if (article.isBookmarked) Color(0xFFFFC107) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

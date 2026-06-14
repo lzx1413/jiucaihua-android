@@ -21,14 +21,22 @@ class WatchlistRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addWatchlistItem(code: String, name: String, marketType: MarketType): Long {
+    override fun observeGroups(): Flow<List<String>> {
+        return watchlistDao.getAllGroups()
+    }
+
+    override suspend fun addWatchlistItem(code: String, name: String, marketType: MarketType, group: String): Long {
         return watchlistDao.insert(
-            WatchlistEntity(code = code, name = name, marketType = marketType.name)
+            WatchlistEntity(code = code, name = name, marketType = marketType.name, group = group)
         )
     }
 
     override suspend fun removeWatchlistItem(id: Long) {
         watchlistDao.deleteById(id)
+    }
+
+    override suspend fun updateGroup(id: Long, group: String) {
+        watchlistDao.updateGroup(id, group)
     }
 
     override suspend fun isWatched(code: String): Boolean {
@@ -41,6 +49,7 @@ class WatchlistRepositoryImpl @Inject constructor(
             code = code,
             name = name,
             marketType = MarketType.valueOf(marketType),
+            group = group,
         )
     }
 }

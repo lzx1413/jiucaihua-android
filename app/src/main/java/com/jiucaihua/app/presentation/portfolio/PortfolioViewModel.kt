@@ -36,6 +36,8 @@ data class PortfolioUiState(
     val sortOrder: SortOrder = SortOrder.DEFAULT,
     val marketSessions: Map<MarketType, MarketSession> = emptyMap(),
     val marketNews: List<NewsFlash> = emptyList(),
+    val bookmarkedNews: List<NewsFlash> = emptyList(),
+    val showBookmarkedOnly: Boolean = false,
     val selectedNewsSource: NewsSource? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -73,6 +75,7 @@ class PortfolioViewModel @Inject constructor(
         loadCachedData()
         observeHoldings()
         observeMarketNews()
+        observeBookmarkedNews()
         observeSnapshots()
         refreshNews()
         startAutoRefresh()
@@ -125,6 +128,24 @@ class PortfolioViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(snapshots = snapshotList)
             }
         }
+    }
+
+    private fun observeBookmarkedNews() {
+        viewModelScope.launch {
+            newsRepository.observeBookmarkedNews().collect { bookmarkedList ->
+                _uiState.value = _uiState.value.copy(bookmarkedNews = bookmarkedList)
+            }
+        }
+    }
+
+    fun toggleNewsBookmark(news: NewsFlash) {
+        viewModelScope.launch {
+            newsRepository.toggleBookmark(news.id, news.sourceType, !news.isBookmarked)
+        }
+    }
+
+    fun setShowBookmarkedOnly(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showBookmarkedOnly = show)
     }
 
     fun setChartRange(range: ChartRange) {

@@ -13,7 +13,9 @@ interface NewsRepository {
     suspend fun getStockNews(stockName: String, limit: Int = 10): List<StockArticle>
     fun observeAllNews(): Flow<List<NewsFlash>>
     fun observeNewsBySource(source: NewsSource): Flow<List<NewsFlash>>
+    fun observeBookmarkedNews(): Flow<List<NewsFlash>>
     suspend fun refreshNews(topic: NewsTopic? = null)
     suspend fun searchNews(query: String, topic: NewsTopic? = null, limit: Int = 20): List<NewsFlash>
     suspend fun fetchArticleDetail(url: String): ArticleDetail
+    suspend fun toggleBookmark(newsId: Long, sourceType: NewsSource, isBookmarked: Boolean)
 }

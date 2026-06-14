@@ -27,4 +27,13 @@ interface NewsFlashDao {
 
     @Query("DELETE FROM news_flash WHERE epochMillis < :cutoff")
     suspend fun deleteOlderThan(cutoff: Long)
+
+    @Query("SELECT * FROM news_flash WHERE isBookmarked = 1 ORDER BY epochMillis DESC")
+    fun getBookmarked(): Flow<List<NewsFlashEntity>>
+
+    @Query("SELECT * FROM news_flash WHERE isBookmarked = 1 ORDER BY epochMillis DESC")
+    suspend fun getBookmarkedOnce(): List<NewsFlashEntity>
+
+    @Query("UPDATE news_flash SET isBookmarked = :bookmarked WHERE newsId = :newsId AND sourceType = :sourceType")
+    suspend fun setBookmarked(newsId: Long, sourceType: String, bookmarked: Boolean)
 }

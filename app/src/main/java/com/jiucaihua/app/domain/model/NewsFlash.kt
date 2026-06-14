@@ -29,4 +29,5 @@ data class NewsFlash(
     val sourceType: NewsSource,
     val epochMillis: Long = 0L,
     val detailUrl: String = "",
+    val isBookmarked: Boolean = false,
 )

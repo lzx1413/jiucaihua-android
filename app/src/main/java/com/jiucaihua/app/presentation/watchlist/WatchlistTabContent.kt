@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -25,6 +26,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +53,7 @@ fun WatchlistTabContent(
     onAddClick: () -> Unit,
     onItemClick: (String) -> Unit,
     onItemLongClick: (WatchlistItem) -> Unit,
+    onGroupSelected: (String?) -> Unit,
 ) {
     when {
         uiState.isLoading -> {
@@ -58,14 +61,70 @@ fun WatchlistTabContent(
                 CircularProgressIndicator()
             }
         }
+        uiState.items.isEmpty() && uiState.selectedGroup != null -> {
+            // Group selected but no items in it
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "该分组暂无自选",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { onGroupSelected(null) }) {
+                    Text("查看全部")
+                }
+            }
+        }
         uiState.items.isEmpty() -> {
             EmptyWatchlistState(onAddClick)
         }
         else -> {
-            WatchlistList(
-                items = uiState.items,
-                onItemClick = onItemClick,
-                onItemLongClick = onItemLongClick,
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (uiState.groups.isNotEmpty()) {
+                    GroupFilterRow(
+                        groups = uiState.groups,
+                        selectedGroup = uiState.selectedGroup,
+                        onGroupSelected = onGroupSelected,
+                    )
+                }
+                WatchlistList(
+                    items = uiState.items,
+                    onItemClick = onItemClick,
+                    onItemLongClick = onItemLongClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupFilterRow(
+    groups: List<String>,
+    selectedGroup: String?,
+    onGroupSelected: (String?) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        item {
+            FilterChip(
+                selected = selectedGroup == null,
+                onClick = { onGroupSelected(null) },
+                label = { Text("全部") },
+            )
+        }
+        items(groups) { group ->
+            FilterChip(
+                selected = selectedGroup == group,
+                onClick = { onGroupSelected(group) },
+                label = { Text(group) },
             )
         }
     }
@@ -97,17 +156,33 @@ private fun WatchlistList(
     onItemClick: (String) -> Unit,
     onItemLongClick: (WatchlistItem) -> Unit,
 ) {
+    // Group items by group field, show group headers
+    val groupedItems = items.groupBy { it.group.ifEmpty { "未分组" } }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items(items = items, key = { it.id }) { item ->
-            WatchlistItemRow(
-                item = item,
-                onClick = { onItemClick(item.code) },
-                onLongClick = { onItemLongClick(item) },
-            )
+        groupedItems.forEach { (group, groupItems) ->
+            if (group != "未分组" || groupedItems.size > 1) {
+                item(key = "group_$group") {
+                    Text(
+                        text = group,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                    )
+                }
+            }
+            items(items = groupItems, key = { it.id }) { item ->
+                WatchlistItemRow(
+                    item = item,
+                    onClick = { onItemClick(item.code) },
+                    onLongClick = { onItemLongClick(item) },
+                )
+            }
         }
     }
 }
@@ -147,11 +222,23 @@ private fun WatchlistItemRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = item.code,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = item.code,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (item.group.isNotBlank()) {
+                        Text(
+                            text = item.group,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
             Spacer(Modifier.width(12.dp))
             Text(
@@ -183,6 +270,7 @@ fun AddWatchlistDialog(
     uiState: WatchlistUiState,
     onQueryChange: (String) -> Unit,
     onResultClick: (com.jiucaihua.app.domain.model.SecuritySearchResult) -> Unit,
+    onGroupChange: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -200,6 +288,29 @@ fun AddWatchlistDialog(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { }),
                 )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.addDialogGroup,
+                    onValueChange = onGroupChange,
+                    label = { Text("分组（可选）") },
+                    placeholder = { Text("例如：银行、科技") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (uiState.groups.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        items(uiState.groups) { group ->
+                            FilterChip(
+                                selected = uiState.addDialogGroup == group,
+                                onClick = { onGroupChange(group) },
+                                label = { Text(group) },
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 AnimatedVisibility(visible = uiState.isSearching) {
                     Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
@@ -256,6 +367,62 @@ fun AddWatchlistDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("关闭")
+            }
+        },
+    )
+}
+
+@Composable
+fun WatchlistGroupDialog(
+    item: WatchlistItem,
+    existingGroups: List<String>,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var groupInput by remember { mutableStateOf(item.group) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("设置分组") },
+        text = {
+            Column {
+                Text(
+                    text = "${item.name}(${item.code})",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = groupInput,
+                    onValueChange = { groupInput = it },
+                    label = { Text("分组名称") },
+                    placeholder = { Text("输入分组名，留空取消分组") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (existingGroups.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        items(existingGroups) { group ->
+                            FilterChip(
+                                selected = groupInput == group,
+                                onClick = { groupInput = group },
+                                label = { Text(group) },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(groupInput) }) {
+                Text("确认")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
             }
         },
     )

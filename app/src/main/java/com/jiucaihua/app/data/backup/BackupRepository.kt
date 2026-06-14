@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.jiucaihua.app.data.local.dao.AlertDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
+import com.jiucaihua.app.data.local.dao.WatchlistDao
 import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.HoldingEntity
 import com.jiucaihua.app.presentation.settings.SettingsViewModel
@@ -24,6 +26,8 @@ class BackupRepository @Inject constructor(
     private val holdingDao: HoldingDao,
     private val alertDao: AlertDao,
     private val snapshotDao: PortfolioSnapshotDao,
+    private val watchlistDao: WatchlistDao,
+    private val newsFlashDao: NewsFlashDao,
     @Named("appPrefs") private val prefs: SharedPreferences,
 ) {
 
@@ -37,6 +41,8 @@ class BackupRepository @Inject constructor(
         val holdings = holdingDao.getAllHoldingsOnce()
         val alerts = alertDao.getAllAlertsOnce()
         val snapshots = snapshotDao.getAllOnce()
+        val watchlistItems = watchlistDao.getAllWatchlistOnce()
+        val bookmarkedNews = newsFlashDao.getBookmarkedOnce()
         val settings = AppSettingsBackup(
             refreshIntervalSeconds = prefs.getInt(SettingsViewModel.KEY_REFRESH_INTERVAL, 10),
             isDarkMode = if (prefs.contains(SettingsViewModel.KEY_DARK_MODE)) {
@@ -53,6 +59,8 @@ class BackupRepository @Inject constructor(
             alerts = alerts,
             settings = settings,
             portfolioSnapshots = snapshots,
+            watchlistItems = watchlistItems,
+            newsFlash = bookmarkedNews,
         )
     }
 

@@ -22,12 +22,15 @@ import javax.inject.Inject
 
 data class WatchlistUiState(
     val items: List<WatchlistItem> = emptyList(),
+    val groups: List<String> = emptyList(),
+    val selectedGroup: String? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
     val searchQuery: String = "",
     val searchResults: List<SecuritySearchResult> = emptyList(),
     val isSearching: Boolean = false,
     val isAddDialogVisible: Boolean = false,
+    val addDialogGroup: String = "",
 )
 
 @HiltViewModel
@@ -46,14 +49,26 @@ class WatchlistViewModel @Inject constructor(
 
     init {
         observeWatchlist()
+        observeGroups()
         startAutoRefresh()
     }
 
     private fun observeWatchlist() {
         viewModelScope.launch {
             watchlistRepository.getAllWatchlist().collect { items ->
-                _uiState.update { it.copy(items = items, isLoading = false) }
+                val filtered = if (_uiState.value.selectedGroup != null) {
+                    items.filter { it.group == _uiState.value.selectedGroup }
+                } else items
+                _uiState.update { it.copy(items = filtered, isLoading = false) }
                 refreshQuotes()
+            }
+        }
+    }
+
+    private fun observeGroups() {
+        viewModelScope.launch {
+            watchlistRepository.observeGroups().collect { groups ->
+                _uiState.update { it.copy(groups = groups) }
             }
         }
     }
@@ -148,10 +163,24 @@ class WatchlistViewModel @Inject constructor(
         viewModelScope.launch {
             val alreadyWatched = watchlistRepository.isWatched(result.code)
             if (!alreadyWatched) {
-                watchlistRepository.addWatchlistItem(result.code, result.name, result.marketType)
+                watchlistRepository.addWatchlistItem(result.code, result.name, result.marketType, _uiState.value.addDialogGroup)
             }
             hideAddDialog()
         }
+    }
+
+    fun setSelectedGroup(group: String?) {
+        _uiState.update { it.copy(selectedGroup = group) }
+    }
+
+    fun updateGroup(item: WatchlistItem, group: String) {
+        viewModelScope.launch {
+            watchlistRepository.updateGroup(item.id, group)
+        }
+    }
+
+    fun setAddDialogGroup(group: String) {
+        _uiState.update { it.copy(addDialogGroup = group) }
     }
 
     fun removeWatchlistItem(id: Long) {

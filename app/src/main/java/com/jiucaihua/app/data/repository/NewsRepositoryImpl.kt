@@ -579,6 +579,16 @@ class NewsRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun observeBookmarkedNews(): Flow<List<NewsFlash>> {
+        return newsFlashDao.getBookmarked().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun toggleBookmark(newsId: Long, sourceType: NewsSource, isBookmarked: Boolean) {
+        newsFlashDao.setBookmarked(newsId, sourceType.name, isBookmarked)
+    }
+
     override suspend fun refreshNews(topic: NewsTopic?) {
         val sources = topic?.sources ?: NewsSource.entries.filter { it != NewsSource.JIUYAN }
         val allNews = withContext(Dispatchers.IO) {
@@ -606,6 +616,7 @@ class NewsRepositoryImpl @Inject constructor(
             sourceType = NewsSource.valueOf(sourceType),
             epochMillis = epochMillis,
             detailUrl = detailUrl,
+            isBookmarked = isBookmarked,
         )
     }
 
