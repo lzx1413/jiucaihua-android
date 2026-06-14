@@ -137,7 +137,7 @@ fun EarningsChartView(
             val leftPadding = 40f
             val rightPadding = 10f
             val topPadding = 15f
-            val bottomPadding = 25f
+            val bottomPadding = 35f
             val drawableWidth = chartWidth - leftPadding - rightPadding
             val drawableHeight = chartHeightPx - topPadding - bottomPadding
 
