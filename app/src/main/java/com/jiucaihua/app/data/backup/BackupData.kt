@@ -15,7 +15,7 @@ data class BackupData(
     val portfolioSnapshots: List<PortfolioSnapshotEntity> = emptyList(),
 ) {
     companion object {
-        const val BACKUP_VERSION = 3
+        const val BACKUP_VERSION = 4
     }
 }
 
@@ -23,6 +23,7 @@ data class BackupData(
 data class AppSettingsBackup(
     val refreshIntervalSeconds: Int = 10,
     val isDarkMode: Boolean? = null,
+    val oledMode: Boolean = false,
     val alertsEnabled: Boolean = true,
     val cash: Float = 0f,
     val lossCompensation: Float = 0f,

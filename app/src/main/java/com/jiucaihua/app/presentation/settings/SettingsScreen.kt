@@ -49,6 +49,8 @@ import com.jiucaihua.app.ai.model.AiProvider
 import com.jiucaihua.app.ai.model.metadata
 import com.jiucaihua.app.data.backup.BackupRepository
 
+private const val SHOW_AI_SETTINGS = false
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -138,6 +140,14 @@ fun SettingsScreen(
                 isDarkMode = uiState.isDarkMode,
                 onSelect = { viewModel.setDarkMode(it) },
             )
+            if (uiState.isDarkMode != false) {
+                SettingSwitch(
+                    title = "OLED 纯黑模式",
+                    subtitle = "在深色模式下使用纯黑背景，适合 OLED 屏幕",
+                    checked = uiState.oledMode,
+                    onCheckedChange = { viewModel.setOledMode(it) },
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -151,75 +161,77 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            SectionHeader("AI 助手")
-            AiProviderSelector(
-                selectedProvider = uiState.aiConfig.provider,
-                onSelect = { viewModel.setAiProvider(it) },
-            )
-            SettingTextField(
-                title = "API Key",
-                value = uiState.aiConfig.apiKey,
-                onValueChange = viewModel::setAiApiKey,
-                placeholder = "输入 API Key",
-                isSecret = true,
-            )
-            SettingTextField(
-                title = "Base URL",
-                value = if (uiState.aiConfig.provider == AiProvider.CUSTOM) uiState.aiConfig.baseUrl else uiState.aiConfig.effectiveBaseUrl,
-                onValueChange = viewModel::setAiBaseUrl,
-                placeholder = uiState.aiConfig.provider.metadata.defaultBaseUrl,
-                enabled = uiState.aiConfig.provider == AiProvider.CUSTOM,
-            )
-            SettingTextField(
-                title = "模型",
-                value = uiState.aiConfig.preferredModel,
-                onValueChange = viewModel::setAiModel,
-                placeholder = uiState.aiConfig.provider.metadata.recommendedModel,
-            )
-            if (uiState.availableModels.isNotEmpty()) {
-                ModelSelector(
-                    models = uiState.availableModels,
-                    selectedModel = uiState.aiConfig.preferredModel,
-                    onSelect = viewModel::selectDiscoveredModel,
+            if (SHOW_AI_SETTINGS) {
+                SectionHeader("AI 助手")
+                AiProviderSelector(
+                    selectedProvider = uiState.aiConfig.provider,
+                    onSelect = { viewModel.setAiProvider(it) },
                 )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Button(
-                    onClick = viewModel::discoverAvailableModels,
-                    enabled = !uiState.isLoadingModels && uiState.aiConfig.apiKey.isNotBlank(),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (uiState.isLoadingModels) "获取中..." else "获取可用模型")
-                }
-                Button(
-                    onClick = viewModel::testAiConnection,
-                    enabled = !uiState.isTestingConnection && uiState.aiConfig.apiKey.isNotBlank(),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (uiState.isTestingConnection) "测试中..." else "测试连通性")
-                }
-            }
-            uiState.connectivityMessage?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                SettingTextField(
+                    title = "API Key",
+                    value = uiState.aiConfig.apiKey,
+                    onValueChange = viewModel::setAiApiKey,
+                    placeholder = "输入 API Key",
+                    isSecret = true,
                 )
-            }
-            SettingSwitch(
-                title = "启用深度思考",
-                subtitle = "允许 provider 使用更高推理强度",
-                checked = uiState.aiConfig.enableThinking,
-                onCheckedChange = { viewModel.setAiThinkingEnabled(it) },
-            )
+                SettingTextField(
+                    title = "Base URL",
+                    value = if (uiState.aiConfig.provider == AiProvider.CUSTOM) uiState.aiConfig.baseUrl else uiState.aiConfig.effectiveBaseUrl,
+                    onValueChange = viewModel::setAiBaseUrl,
+                    placeholder = uiState.aiConfig.provider.metadata.defaultBaseUrl,
+                    enabled = uiState.aiConfig.provider == AiProvider.CUSTOM,
+                )
+                SettingTextField(
+                    title = "模型",
+                    value = uiState.aiConfig.preferredModel,
+                    onValueChange = viewModel::setAiModel,
+                    placeholder = uiState.aiConfig.provider.metadata.recommendedModel,
+                )
+                if (uiState.availableModels.isNotEmpty()) {
+                    ModelSelector(
+                        models = uiState.availableModels,
+                        selectedModel = uiState.aiConfig.preferredModel,
+                        onSelect = viewModel::selectDiscoveredModel,
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Button(
+                        onClick = viewModel::discoverAvailableModels,
+                        enabled = !uiState.isLoadingModels && uiState.aiConfig.apiKey.isNotBlank(),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(if (uiState.isLoadingModels) "获取中..." else "获取可用模型")
+                    }
+                    Button(
+                        onClick = viewModel::testAiConnection,
+                        enabled = !uiState.isTestingConnection && uiState.aiConfig.apiKey.isNotBlank(),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(if (uiState.isTestingConnection) "测试中..." else "测试连通性")
+                    }
+                }
+                uiState.connectivityMessage?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+                SettingSwitch(
+                    title = "启用深度思考",
+                    subtitle = "允许 provider 使用更高推理强度",
+                    checked = uiState.aiConfig.enableThinking,
+                    onCheckedChange = { viewModel.setAiThinkingEnabled(it) },
+                )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
 
             SectionHeader("数据备份")
             if (backupState.isExporting || backupState.isImporting) {

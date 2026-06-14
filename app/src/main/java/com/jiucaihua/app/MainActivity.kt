@@ -40,12 +40,20 @@ class MainActivity : ComponentActivity() {
                     } else null
                 )
             }
+            var oledModePref by remember {
+                mutableStateOf(prefs.getBoolean(SettingsViewModel.KEY_OLED_MODE, false))
+            }
             DisposableEffect(Unit) {
                 val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
-                    if (key == SettingsViewModel.KEY_DARK_MODE) {
-                        darkModePref = if (sharedPreferences.contains(key)) {
-                            sharedPreferences.getBoolean(key, false)
-                        } else null
+                    when (key) {
+                        SettingsViewModel.KEY_DARK_MODE -> {
+                            darkModePref = if (sharedPreferences.contains(key)) {
+                                sharedPreferences.getBoolean(key, false)
+                            } else null
+                        }
+                        SettingsViewModel.KEY_OLED_MODE -> {
+                            oledModePref = sharedPreferences.getBoolean(key, false)
+                        }
                     }
                 }
                 prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -54,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val isDark = darkModePref ?: isSystemInDarkTheme()
-            JiucaihuaTheme(darkTheme = isDark) {
+            JiucaihuaTheme(darkTheme = isDark, oledMode = oledModePref) {
                 AppNavHost(initialDestination = pendingNavDestination)
                 pendingNavDestination = null
             }

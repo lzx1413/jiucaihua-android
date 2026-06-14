@@ -42,6 +42,7 @@ class BackupRepository @Inject constructor(
             isDarkMode = if (prefs.contains(SettingsViewModel.KEY_DARK_MODE)) {
                 prefs.getBoolean(SettingsViewModel.KEY_DARK_MODE, false)
             } else null,
+            oledMode = prefs.getBoolean(SettingsViewModel.KEY_OLED_MODE, false),
             alertsEnabled = prefs.getBoolean(SettingsViewModel.KEY_ALERTS_ENABLED, true),
             cash = prefs.getFloat("cash", 0f),
             lossCompensation = prefs.getFloat("loss_compensation", 0f),
@@ -108,6 +109,7 @@ class BackupRepository @Inject constructor(
             } else {
                 remove(SettingsViewModel.KEY_DARK_MODE)
             }
+            putBoolean(SettingsViewModel.KEY_OLED_MODE, backup.settings.oledMode)
             putBoolean(SettingsViewModel.KEY_ALERTS_ENABLED, backup.settings.alertsEnabled)
             putFloat("cash", backup.settings.cash)
             putFloat("loss_compensation", backup.settings.lossCompensation)

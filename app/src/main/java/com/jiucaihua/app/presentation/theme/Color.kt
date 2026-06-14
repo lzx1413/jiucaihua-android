@@ -19,3 +19,5 @@ val OnSurfaceDark = Color(0xFFE6E1E5)
 
 val BackgroundLight = Color(0xFFF5F5F5)
 val BackgroundDark = Color(0xFF121212)
+
+val OledBlack = Color(0xFF000000)

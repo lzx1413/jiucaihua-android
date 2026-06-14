@@ -19,6 +19,7 @@ import javax.inject.Named
 data class SettingsUiState(
     val refreshIntervalSeconds: Int = 10,
     val isDarkMode: Boolean? = null,
+    val oledMode: Boolean = false,
     val alertsEnabled: Boolean = true,
     val aiConfig: AiConfig = AiConfig(),
     val availableModels: List<String> = emptyList(),
@@ -46,6 +47,7 @@ class SettingsViewModel @Inject constructor(
         return SettingsUiState(
             refreshIntervalSeconds = prefs.getInt(KEY_REFRESH_INTERVAL, 10),
             isDarkMode = if (prefs.contains(KEY_DARK_MODE)) prefs.getBoolean(KEY_DARK_MODE, false) else null,
+            oledMode = prefs.getBoolean(KEY_OLED_MODE, false),
             alertsEnabled = prefs.getBoolean(KEY_ALERTS_ENABLED, true),
             aiConfig = aiConfig,
         )
@@ -63,6 +65,11 @@ class SettingsViewModel @Inject constructor(
             prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply()
         }
         _uiState.value = _uiState.value.copy(isDarkMode = enabled)
+    }
+
+    fun setOledMode(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_OLED_MODE, enabled).apply()
+        _uiState.value = _uiState.value.copy(oledMode = enabled)
     }
 
     fun setAlertsEnabled(enabled: Boolean) {
@@ -163,6 +170,7 @@ class SettingsViewModel @Inject constructor(
     companion object {
         const val KEY_REFRESH_INTERVAL = "refresh_interval_seconds"
         const val KEY_DARK_MODE = "dark_mode"
+        const val KEY_OLED_MODE = "oled_mode"
         const val KEY_ALERTS_ENABLED = "alerts_enabled"
     }
 }

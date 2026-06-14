@@ -44,15 +44,29 @@ private val DarkColorScheme = darkColorScheme(
 fun JiucaihuaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    oledMode: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    val baseColorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    val colorScheme = if (darkTheme && oledMode) {
+        baseColorScheme.copy(
+            background = OledBlack,
+            surface = OledBlack,
+            surfaceVariant = Color(0xFF1A1A1A),
+            surfaceContainer = Color(0xFF0D0D0D),
+            surfaceContainerHigh = Color(0xFF1A1A1A),
+            surfaceContainerHighest = Color(0xFF222222),
+        )
+    } else {
+        baseColorScheme
     }
 
     val view = LocalView.current
