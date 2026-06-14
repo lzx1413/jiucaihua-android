@@ -1,5 +1,6 @@
 package com.jiucaihua.app.presentation.detail.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -27,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
+import com.jiucaihua.app.presentation.theme.FallGreen
+import com.jiucaihua.app.presentation.theme.RiseRed
 
 @Composable
 fun StockNewsSection(
@@ -44,7 +47,8 @@ fun StockNewsSection(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -131,7 +135,7 @@ private fun StockArticleItem(
                 Text(
                     text = article.impact,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (article.impact == "利好") Color(0xFFE53935) else Color(0xFF2E7D32),
+                    color = if (article.impact == "利好") RiseRed else FallGreen,
                     fontWeight = FontWeight.Bold,
                 )
             }

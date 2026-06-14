@@ -87,6 +87,8 @@ import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
+import com.jiucaihua.app.presentation.theme.FallGreen
+import com.jiucaihua.app.presentation.theme.RiseRed
 import com.jiucaihua.app.domain.model.WatchlistItem
 import com.jiucaihua.app.presentation.market.MarketScreenContent
 import com.jiucaihua.app.presentation.market.MarketViewModel
@@ -684,7 +686,7 @@ private fun NewsListItem(
                 Text(
                     text = article.impact,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (article.impact == "利好") Color(0xFFE53935) else Color(0xFF2E7D32),
+                    color = if (article.impact == "利好") RiseRed else FallGreen,
                     fontWeight = FontWeight.Bold,
                 )
             }

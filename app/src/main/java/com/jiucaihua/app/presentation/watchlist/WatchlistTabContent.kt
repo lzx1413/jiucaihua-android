@@ -46,6 +46,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jiucaihua.app.domain.model.WatchlistItem
+import com.jiucaihua.app.presentation.theme.FallGreen
+import com.jiucaihua.app.presentation.theme.RiseRed
 
 @Composable
 fun WatchlistTabContent(
@@ -194,7 +196,7 @@ private fun WatchlistItemRow(
     onLongClick: () -> Unit,
 ) {
     val isPositive = item.changePercent >= 0
-    val changeColor = if (isPositive) RiseColor else FallColor
+    val changeColor = if (isPositive) RiseRed else FallGreen
 
     Card(
         modifier = Modifier
@@ -427,9 +429,6 @@ fun WatchlistGroupDialog(
         },
     )
 }
-
-private val RiseColor = Color(0xFFE53935)
-private val FallColor = Color(0xFF43A047)
 
 private fun formatPrice(price: Double): String {
     return if (price == 0.0) "--" else String.format("%.2f", price)

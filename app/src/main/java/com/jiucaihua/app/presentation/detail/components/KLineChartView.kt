@@ -32,8 +32,8 @@ import com.github.mikephil.charting.listener.ChartTouchListener
 import com.github.mikephil.charting.listener.OnChartGestureListener
 import com.jiucaihua.app.domain.model.KLineData
 
-private const val RISE_COLOR = 0xFFE53935.toInt()
-private const val FALL_COLOR = 0xFF43A047.toInt()
+private const val RISE_COLOR = 0xFFEF5350.toInt()
+private const val FALL_COLOR = 0xFF26A69A.toInt()
 private const val MA5_COLOR = 0xFFFFEB3B.toInt()   // Yellow
 private const val MA10_COLOR = 0xFF2196F3.toInt()   // Blue
 private const val MA20_COLOR = 0xFF9C27B0.toInt()   // Purple

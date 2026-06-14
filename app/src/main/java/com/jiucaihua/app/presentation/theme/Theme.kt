@@ -22,6 +22,8 @@ private val LightColorScheme = lightColorScheme(
     primaryContainer = PrimaryBlueLight,
     onPrimaryContainer = PrimaryBlueDark,
     secondary = PrimaryBlue,
+    tertiary = AccentGold,
+    onTertiary = Color(0xFF3E2723),
     background = BackgroundLight,
     surface = SurfaceLight,
     onBackground = OnSurfaceLight,
@@ -34,6 +36,8 @@ private val DarkColorScheme = darkColorScheme(
     primaryContainer = PrimaryBlue,
     onPrimaryContainer = Color.White,
     secondary = PrimaryBlueLight,
+    tertiary = AccentGold,
+    onTertiary = Color(0xFF3E2723),
     background = BackgroundDark,
     surface = SurfaceDark,
     onBackground = OnSurfaceDark,
@@ -60,10 +64,10 @@ fun JiucaihuaTheme(
         baseColorScheme.copy(
             background = OledBlack,
             surface = OledBlack,
-            surfaceVariant = Color(0xFF1A1A1A),
-            surfaceContainer = Color(0xFF0D0D0D),
-            surfaceContainerHigh = Color(0xFF1A1A1A),
-            surfaceContainerHighest = Color(0xFF222222),
+            surfaceVariant = Color(0xFF0D0F14),
+            surfaceContainer = Color(0xFF080A0E),
+            surfaceContainerHigh = Color(0xFF0D0F14),
+            surfaceContainerHighest = Color(0xFF151820),
         )
     } else {
         baseColorScheme

@@ -1,5 +1,6 @@
 package com.jiucaihua.app.presentation.portfolio.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,13 +8,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,7 +47,8 @@ fun HoldingListItem(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
     ) {
         Column(
             modifier = Modifier
@@ -63,12 +71,10 @@ fun HoldingListItem(
                     modifier = Modifier.weight(2.5f),
                 )
                 if (hasQuote) {
-                    Text(
+                    PnLWithArrow(
                         text = formatSignedMoney(holding.dailyEarningsCNY),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = pLColor(holding.dailyEarningsCNY),
+                        value = holding.dailyEarningsCNY,
                         modifier = Modifier.weight(1.5f),
-                        textAlign = TextAlign.End,
                     )
                     Text(
                         text = "%.2f".format(holding.currentPrice),
@@ -76,12 +82,10 @@ fun HoldingListItem(
                         modifier = Modifier.weight(1.2f),
                         textAlign = TextAlign.End,
                     )
-                    Text(
+                    PnLWithArrow(
                         text = formatSignedMoney(holding.earningsCNY),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = pLColor(holding.earningsCNY),
+                        value = holding.earningsCNY,
                         modifier = Modifier.weight(1.5f),
-                        textAlign = TextAlign.End,
                     )
                 }
             }
@@ -100,12 +104,10 @@ fun HoldingListItem(
                     modifier = Modifier.weight(2.5f),
                 )
                 if (hasQuote) {
-                    Text(
+                    PnLWithArrow(
                         text = formatChangePercent(holding.changePercent),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = pLColor(holding.changePercent),
+                        value = holding.changePercent,
                         modifier = Modifier.weight(1.5f),
-                        textAlign = TextAlign.End,
                     )
                     Text(
                         text = if (holding.costPrice > 0) "%.2f".format(holding.costPrice) else "--",
@@ -113,16 +115,44 @@ fun HoldingListItem(
                         modifier = Modifier.weight(1.2f),
                         textAlign = TextAlign.End,
                     )
-                    Text(
+                    PnLWithArrow(
                         text = formatChangePercent(holding.earningsPercent),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = pLColor(holding.earningsPercent),
+                        value = holding.earningsPercent,
                         modifier = Modifier.weight(1.5f),
-                        textAlign = TextAlign.End,
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PnLWithArrow(
+    text: String,
+    value: Double,
+    modifier: Modifier = Modifier,
+) {
+    val color = pLColor(value)
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End,
+    ) {
+        if (value != 0.0) {
+            Icon(
+                imageVector = if (value > 0)
+                    Icons.Filled.KeyboardArrowUp
+                else Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = color,
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = color,
+        )
     }
 }
 
