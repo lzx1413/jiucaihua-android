@@ -17,6 +17,9 @@ android {
         versionCode = 2
         versionName = "1.2.0"
 
+        buildConfigField("String", "GITHUB_URL", "\"https://github.com/lzx1413/jiucaihua-android\"")
+        buildConfigField("String", "BUILD_DATE", "\"2026-06-14 15:30\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -35,6 +38,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

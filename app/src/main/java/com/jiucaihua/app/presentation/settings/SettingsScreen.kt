@@ -1,11 +1,13 @@
 package com.jiucaihua.app.presentation.settings
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -47,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jiucaihua.app.ai.model.AiProvider
 import com.jiucaihua.app.ai.model.metadata
+import com.jiucaihua.app.BuildConfig
 import com.jiucaihua.app.data.backup.BackupRepository
 
 private const val SHOW_AI_SETTINGS = false
@@ -275,8 +278,10 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             SectionHeader("关于")
-            SettingItem(title = "版本", subtitle = "1.2.0")
+            SettingItem(title = "版本", subtitle = BuildConfig.VERSION_NAME)
             SettingItem(title = "应用名称", subtitle = "九财花")
+            SettingItem(title = "GitHub", subtitle = BuildConfig.GITHUB_URL)
+            SettingItem(title = "编译日期", subtitle = BuildConfig.BUILD_DATE)
         }
     }
 }
