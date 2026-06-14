@@ -14,5 +14,6 @@ data class AlertRecordEntity(
     val threshold: Double,
     val currentValue: Double,
     val actionHint: String? = null,
+    val params: String = "{}",
     val triggeredAt: Long = System.currentTimeMillis(),
 )

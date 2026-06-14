@@ -3,18 +3,22 @@ package com.jiucaihua.app.presentation.portfolio
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.NewsTopic
+import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
 import com.jiucaihua.app.domain.repository.NewsRepository
+import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import com.jiucaihua.app.domain.usecase.ManageHoldingUseCase
+import com.jiucaihua.app.domain.usecase.RecordSnapshotUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -42,6 +46,8 @@ data class PortfolioUiState(
     val newsSearchQuery: String = "",
     val searchedNews: List<NewsFlash>? = null,
     val isNewsSearching: Boolean = false,
+    val snapshots: List<PortfolioSnapshot> = emptyList(),
+    val selectedChartRange: ChartRange = ChartRange.SEVEN_DAYS,
 )
 
 @HiltViewModel
@@ -50,6 +56,8 @@ class PortfolioViewModel @Inject constructor(
     private val getPortfolioUseCase: GetPortfolioUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     private val newsRepository: NewsRepository,
+    private val snapshotRepository: PortfolioSnapshotRepository,
+    private val recordSnapshotUseCase: RecordSnapshotUseCase,
     @Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
@@ -65,6 +73,7 @@ class PortfolioViewModel @Inject constructor(
         loadCachedData()
         observeHoldings()
         observeMarketNews()
+        observeSnapshots()
         refreshNews()
         startAutoRefresh()
     }
@@ -108,6 +117,18 @@ class PortfolioViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun observeSnapshots() {
+        viewModelScope.launch {
+            snapshotRepository.observeAll().collect { snapshotList ->
+                _uiState.value = _uiState.value.copy(snapshots = snapshotList)
+            }
+        }
+    }
+
+    fun setChartRange(range: ChartRange) {
+        _uiState.value = _uiState.value.copy(selectedChartRange = range)
     }
 
     fun refreshNews() {

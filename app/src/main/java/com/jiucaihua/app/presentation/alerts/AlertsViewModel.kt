@@ -74,7 +74,7 @@ class AlertsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showAddDialog = false)
     }
 
-    fun addAlert(code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?) {
+    fun addAlert(code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?, params: Map<String, String>) {
         viewModelScope.launch {
             alertRepository.addAlert(
                 PriceAlert(
@@ -83,6 +83,7 @@ class AlertsViewModel @Inject constructor(
                     alertType = alertType,
                     threshold = threshold,
                     actionHint = actionHint,
+                    params = params,
                 )
             )
             _uiState.value = _uiState.value.copy(showAddDialog = false)
@@ -103,7 +104,7 @@ class AlertsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(editingAlert = null)
     }
 
-    fun updateAlert(id: Long, code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?) {
+    fun updateAlert(id: Long, code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?, params: Map<String, String>) {
         viewModelScope.launch {
             val existing = alertRepository.getAlertById(id) ?: return@launch
             alertRepository.updateAlert(
@@ -113,6 +114,7 @@ class AlertsViewModel @Inject constructor(
                     alertType = alertType,
                     threshold = threshold,
                     actionHint = actionHint,
+                    params = params,
                 )
             )
             _uiState.value = _uiState.value.copy(editingAlert = null)

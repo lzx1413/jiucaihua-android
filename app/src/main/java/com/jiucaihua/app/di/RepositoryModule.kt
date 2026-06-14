@@ -7,6 +7,7 @@ import com.jiucaihua.app.data.repository.HoldingRepositoryImpl
 import com.jiucaihua.app.data.repository.MarketCalendarRepositoryImpl
 import com.jiucaihua.app.data.repository.MarketRepositoryImpl
 import com.jiucaihua.app.data.repository.NewsRepositoryImpl
+import com.jiucaihua.app.data.repository.PortfolioSnapshotRepositoryImpl
 import com.jiucaihua.app.data.repository.SecuritySearchRepositoryImpl
 import com.jiucaihua.app.data.repository.StockRepositoryImpl
 import com.jiucaihua.app.data.repository.WatchlistRepositoryImpl
@@ -17,6 +18,7 @@ import com.jiucaihua.app.domain.repository.HoldingRepository
 import com.jiucaihua.app.domain.repository.MarketCalendarRepository
 import com.jiucaihua.app.domain.repository.MarketRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
+import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import com.jiucaihua.app.domain.repository.WatchlistRepository
@@ -89,4 +91,10 @@ abstract class RepositoryModule {
     abstract fun bindWatchlistRepository(
         impl: WatchlistRepositoryImpl
     ): WatchlistRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPortfolioSnapshotRepository(
+        impl: PortfolioSnapshotRepositoryImpl
+    ): PortfolioSnapshotRepository
 }

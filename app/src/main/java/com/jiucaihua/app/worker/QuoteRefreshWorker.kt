@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
+import com.jiucaihua.app.domain.usecase.RecordSnapshotUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -15,6 +16,7 @@ class QuoteRefreshWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     private val getPortfolioUseCase: GetPortfolioUseCase,
+    private val recordSnapshotUseCase: RecordSnapshotUseCase,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -23,6 +25,7 @@ class QuoteRefreshWorker @AssistedInject constructor(
                 return Result.success()
             }
             getPortfolioUseCase.getPortfolioWithQuotes()
+            recordSnapshotUseCase.recordSnapshot()
             Result.success()
         } catch (_: Exception) {
             Result.retry()

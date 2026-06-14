@@ -13,6 +13,7 @@ import com.jiucaihua.app.data.local.dao.AlertRecordDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
+import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
 import dagger.Module
@@ -35,7 +36,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -80,6 +81,24 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `portfolio_snapshots` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `totalMarketValue` REAL NOT NULL, `totalCost` REAL NOT NULL, `totalEarnings` REAL NOT NULL, `totalEarningsPercent` REAL NOT NULL, `todayEarnings` REAL NOT NULL, `cash` REAL NOT NULL, `lossCompensation` REAL NOT NULL, `categoryValuesJson` TEXT NOT NULL)"
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_portfolio_snapshots_date` ON `portfolio_snapshots` (`date`)"
+            )
+        }
+    }
+
+    private val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `alerts` ADD COLUMN `params` TEXT NOT NULL DEFAULT '{}'")
+            db.execSQL("ALTER TABLE `alert_records` ADD COLUMN `params` TEXT NOT NULL DEFAULT '{}'")
+        }
+    }
+
     @Provides
     fun provideHoldingDao(database: AppDatabase): HoldingDao {
         return database.holdingDao()
@@ -113,6 +132,11 @@ object AppModule {
     @Provides
     fun provideNewsFlashDao(database: AppDatabase): NewsFlashDao {
         return database.newsFlashDao()
+    }
+
+    @Provides
+    fun providePortfolioSnapshotDao(database: AppDatabase): PortfolioSnapshotDao {
+        return database.portfolioSnapshotDao()
     }
 
     @Provides

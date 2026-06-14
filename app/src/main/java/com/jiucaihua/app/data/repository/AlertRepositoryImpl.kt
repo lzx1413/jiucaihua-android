@@ -10,6 +10,7 @@ import com.jiucaihua.app.domain.model.PriceAlert
 import com.jiucaihua.app.domain.repository.AlertRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +19,8 @@ class AlertRepositoryImpl @Inject constructor(
     private val alertDao: AlertDao,
     private val alertRecordDao: AlertRecordDao,
 ) : AlertRepository {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     override fun getAllAlerts(): Flow<List<PriceAlert>> {
         return alertDao.getAllAlerts().map { entities ->
@@ -70,6 +73,11 @@ class AlertRepositoryImpl @Inject constructor(
     }
 
     private fun AlertRecordEntity.toDomain(): AlertRecord {
+        val paramMap: Map<String, String> = try {
+            json.decodeFromString<Map<String, String>>(params)
+        } catch (_: Exception) {
+            emptyMap()
+        }
         return AlertRecord(
             id = id,
             alertId = alertId,
@@ -79,6 +87,7 @@ class AlertRepositoryImpl @Inject constructor(
             threshold = threshold,
             currentValue = currentValue,
             actionHint = actionHint,
+            params = paramMap,
             triggeredAt = triggeredAt,
         )
     }
@@ -93,11 +102,17 @@ class AlertRepositoryImpl @Inject constructor(
             threshold = threshold,
             currentValue = currentValue,
             actionHint = actionHint,
+            params = json.encodeToString(kotlinx.serialization.serializer<Map<String, String>>(), params),
             triggeredAt = triggeredAt,
         )
     }
 
     private fun AlertEntity.toDomain(): PriceAlert {
+        val paramMap: Map<String, String> = try {
+            json.decodeFromString<Map<String, String>>(params)
+        } catch (_: Exception) {
+            emptyMap()
+        }
         return PriceAlert(
             id = id,
             code = code,
@@ -105,6 +120,7 @@ class AlertRepositoryImpl @Inject constructor(
             alertType = AlertType.valueOf(alertType),
             threshold = threshold,
             actionHint = actionHint,
+            params = paramMap,
             isEnabled = isEnabled,
             lastTriggeredAt = lastTriggeredAt,
             createdAt = createdAt,
@@ -119,6 +135,7 @@ class AlertRepositoryImpl @Inject constructor(
             alertType = alertType.name,
             threshold = threshold,
             actionHint = actionHint,
+            params = json.encodeToString(kotlinx.serialization.serializer<Map<String, String>>(), params),
             isEnabled = isEnabled,
             lastTriggeredAt = lastTriggeredAt,
             createdAt = createdAt,

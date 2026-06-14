@@ -77,7 +77,16 @@ private fun formatRecordDetail(record: AlertRecord): String {
     val suffix = when (record.alertType) {
         AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> ""
         AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "%"
+        AlertType.VOLUME_ABOVE -> "手"
+        AlertType.NEW_HIGH, AlertType.NEW_LOW -> ""
+        AlertType.MA_CROSS_ABOVE, AlertType.MA_CROSS_BELOW -> ""
     }
-    val currentSuffix = suffix
+    val currentSuffix = when (record.alertType) {
+        AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> ""
+        AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "%"
+        AlertType.VOLUME_ABOVE -> "手"
+        AlertType.NEW_HIGH, AlertType.NEW_LOW -> "元"
+        AlertType.MA_CROSS_ABOVE, AlertType.MA_CROSS_BELOW -> ""
+    }
     return "${record.alertType.label} ${record.threshold}$suffix，触发值 ${record.currentValue}$currentSuffix"
 }

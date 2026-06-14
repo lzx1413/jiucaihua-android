@@ -12,6 +12,22 @@ object TechnicalIndicators {
         }
     }
 
+    /**
+     * Enrich KLinePoint list with MA5, MA10, MA20 values filled in.
+     */
+    fun enrichWithMA(points: List<KLinePoint>): List<KLinePoint> {
+        val ma5 = calculateMA(points, 5)
+        val ma10 = calculateMA(points, 10)
+        val ma20 = calculateMA(points, 20)
+        return points.mapIndexed { i, point ->
+            point.copy(
+                ma5 = ma5[i],
+                ma10 = ma10[i],
+                ma20 = ma20[i],
+            )
+        }
+    }
+
     fun calculateVolumeRatio(points: List<KLinePoint>): List<Double?> {
         return points.indices.map { i ->
             if (i < 5) null

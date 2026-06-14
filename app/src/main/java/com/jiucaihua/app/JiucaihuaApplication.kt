@@ -39,14 +39,23 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
+            val alertChannel = NotificationChannel(
                 AlertCheckWorker.CHANNEL_ID,
                 "价格预警",
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 description = "证券价格预警通知"
             }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            val newsChannel = NotificationChannel(
+                CHANNEL_NEWS_ID,
+                "市场资讯",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "重要市场资讯推送"
+            }
+            getSystemService(NotificationManager::class.java).createNotificationChannels(
+                listOf(alertChannel, newsChannel)
+            )
         }
     }
 
@@ -96,5 +105,9 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
             ExistingPeriodicWorkPolicy.KEEP,
             request,
         )
+    }
+
+    companion object {
+        const val CHANNEL_NEWS_ID = "market_news"
     }
 }

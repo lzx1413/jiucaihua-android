@@ -92,6 +92,16 @@ private fun formatAlertCondition(alert: PriceAlert): String {
     val suffix = when (alert.alertType) {
         AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> ""
         AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "%"
+        AlertType.VOLUME_ABOVE -> "手"
+        AlertType.NEW_HIGH, AlertType.NEW_LOW -> {
+            val period = alert.params["period"] ?: "20"
+            "(${period}日)"
+        }
+        AlertType.MA_CROSS_ABOVE, AlertType.MA_CROSS_BELOW -> {
+            val shortPeriod = alert.params["short_period"] ?: "5"
+            val longPeriod = alert.params["long_period"] ?: "20"
+            "(MA${shortPeriod}/MA${longPeriod})"
+        }
     }
     return "${alert.alertType.label} ${alert.threshold}$suffix"
 }

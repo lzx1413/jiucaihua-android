@@ -9,5 +9,6 @@ data class AlertRecord(
     val threshold: Double,
     val currentValue: Double,
     val actionHint: String? = null,
+    val params: Map<String, String> = emptyMap(),
     val triggeredAt: Long = System.currentTimeMillis(),
 )

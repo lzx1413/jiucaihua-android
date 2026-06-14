@@ -17,6 +17,7 @@ import androidx.work.WorkerParameters
 import com.jiucaihua.app.MainActivity
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.AlertType
+import com.jiucaihua.app.presentation.navigation.NavExtras
 import com.jiucaihua.app.domain.usecase.CheckAlertsUseCase
 import com.jiucaihua.app.domain.usecase.TriggeredAlert
 import dagger.assisted.Assisted
@@ -52,8 +53,8 @@ class AlertCheckWorker @AssistedInject constructor(
         val alert = triggeredAlert.alert
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(EXTRA_NAVIGATE_TO, NAVIGATE_DETAIL)
-            putExtra(EXTRA_STOCK_CODE, alert.code)
+            putExtra(NavExtras.EXTRA_TARGET_ROUTE, "detail")
+            putExtra(NavExtras.EXTRA_TARGET_CODE, alert.code)
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -86,6 +87,25 @@ class AlertCheckWorker @AssistedInject constructor(
             AlertType.PRICE_BELOW -> "价格已跌至 ${triggeredAlert.currentValue}，低于预警值 ${alert.threshold}"
             AlertType.CHANGE_ABOVE -> "涨幅已达 ${triggeredAlert.currentValue}%，超过预警值 ${alert.threshold}%"
             AlertType.CHANGE_BELOW -> "跌幅已达 ${triggeredAlert.currentValue}%，超过预警值 ${alert.threshold}%"
+            AlertType.VOLUME_ABOVE -> "成交量已达 ${triggeredAlert.currentValue}，超过预警值 ${alert.threshold}"
+            AlertType.NEW_HIGH -> {
+                val period = alert.params["period"] ?: "20"
+                "创${period}日新高，当前价格 ${triggeredAlert.currentValue}"
+            }
+            AlertType.NEW_LOW -> {
+                val period = alert.params["period"] ?: "20"
+                "创${period}日新低，当前价格 ${triggeredAlert.currentValue}"
+            }
+            AlertType.MA_CROSS_ABOVE -> {
+                val shortPeriod = alert.params["short_period"] ?: "5"
+                val longPeriod = alert.params["long_period"] ?: "20"
+                "MA${shortPeriod} 上穿 MA${longPeriod} 金叉信号"
+            }
+            AlertType.MA_CROSS_BELOW -> {
+                val shortPeriod = alert.params["short_period"] ?: "5"
+                val longPeriod = alert.params["long_period"] ?: "20"
+                "MA${shortPeriod} 下穿 MA${longPeriod} 死叉信号"
+            }
         }
         return if (alert.actionHint != null) {
             "$typeLabel\n建议操作：${alert.actionHint}"
@@ -111,8 +131,5 @@ class AlertCheckWorker @AssistedInject constructor(
     companion object {
         const val WORK_NAME = "alert_check_worker"
         const val CHANNEL_ID = "price_alerts"
-        const val EXTRA_NAVIGATE_TO = "navigate_to"
-        const val NAVIGATE_DETAIL = "detail"
-        const val EXTRA_STOCK_CODE = "stock_code"
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.jiucaihua.app.data.local.dao.AlertDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.HoldingEntity
 import com.jiucaihua.app.presentation.settings.SettingsViewModel
@@ -22,6 +23,7 @@ class BackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val holdingDao: HoldingDao,
     private val alertDao: AlertDao,
+    private val snapshotDao: PortfolioSnapshotDao,
     @Named("appPrefs") private val prefs: SharedPreferences,
 ) {
 
@@ -34,6 +36,7 @@ class BackupRepository @Inject constructor(
     suspend fun exportData(): BackupData = withContext(Dispatchers.IO) {
         val holdings = holdingDao.getAllHoldingsOnce()
         val alerts = alertDao.getAllAlertsOnce()
+        val snapshots = snapshotDao.getAllOnce()
         val settings = AppSettingsBackup(
             refreshIntervalSeconds = prefs.getInt(SettingsViewModel.KEY_REFRESH_INTERVAL, 10),
             isDarkMode = if (prefs.contains(SettingsViewModel.KEY_DARK_MODE)) {
@@ -48,6 +51,7 @@ class BackupRepository @Inject constructor(
             holdings = holdings,
             alerts = alerts,
             settings = settings,
+            portfolioSnapshots = snapshots,
         )
     }
 

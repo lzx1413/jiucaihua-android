@@ -17,3 +17,9 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
     data object AiChat : Screen("ai_chat")
 }
+
+object NavExtras {
+    const val EXTRA_TARGET_ROUTE = "target_route"
+    const val EXTRA_TARGET_CODE = "target_code"
+    const val EXTRA_TARGET_ID = "target_id"
+}

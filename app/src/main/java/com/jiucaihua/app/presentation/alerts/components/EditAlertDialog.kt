@@ -34,19 +34,35 @@ import com.jiucaihua.app.domain.model.PriceAlert
 fun EditAlertDialog(
     alert: PriceAlert,
     holdings: List<Holding>,
-    onConfirm: (id: Long, code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?) -> Unit,
+    onConfirm: (id: Long, code: String, name: String, alertType: AlertType, threshold: Double, actionHint: String?, params: Map<String, String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // Pre-populate with existing alert data
     var selectedHolding by remember {
         mutableStateOf(holdings.firstOrNull { it.code == alert.code })
     }
     var selectedAlertType by remember { mutableStateOf(alert.alertType) }
     var thresholdText by remember { mutableStateOf(alert.threshold.toString()) }
     var actionHintText by remember { mutableStateOf(alert.actionHint ?: "") }
+    var periodText by remember { mutableStateOf(alert.params["period"] ?: "20") }
+    var shortPeriodText by remember { mutableStateOf(alert.params["short_period"] ?: "5") }
+    var longPeriodText by remember { mutableStateOf(alert.params["long_period"] ?: "20") }
     var holdingDropdownExpanded by remember { mutableStateOf(false) }
 
-    val isValid = selectedHolding != null && thresholdText.toDoubleOrNull() != null
+    val needsThreshold = selectedAlertType in setOf(
+        AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW,
+        AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW,
+        AlertType.VOLUME_ABOVE,
+    )
+    val needsPeriod = selectedAlertType in setOf(AlertType.NEW_HIGH, AlertType.NEW_LOW)
+    val needsMAPeriods = selectedAlertType in setOf(AlertType.MA_CROSS_ABOVE, AlertType.MA_CROSS_BELOW)
+
+    val isValid = selectedHolding != null && when {
+        needsThreshold -> thresholdText.toDoubleOrNull() != null
+        needsPeriod -> periodText.toIntOrNull() != null && periodText.toInt() >= 5
+        needsMAPeriods -> shortPeriodText.toIntOrNull() != null && longPeriodText.toIntOrNull() != null &&
+            shortPeriodText.toInt() >= 2 && longPeriodText.toInt() >= 5
+        else -> true
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -103,17 +119,48 @@ fun EditAlertDialog(
                     }
                 }
 
-                val thresholdLabel = when (selectedAlertType) {
-                    AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> "阈值价格"
-                    AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "阈值百分比 (%)"
+                if (needsThreshold) {
+                    val thresholdLabel = when (selectedAlertType) {
+                        AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> "阈值价格"
+                        AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "阈值百分比 (%)"
+                        AlertType.VOLUME_ABOVE -> "成交量阈值"
+                        else -> "阈值"
+                    }
+                    OutlinedTextField(
+                        value = thresholdText,
+                        onValueChange = { thresholdText = it },
+                        label = { Text(thresholdLabel) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                OutlinedTextField(
-                    value = thresholdText,
-                    onValueChange = { thresholdText = it },
-                    label = { Text(thresholdLabel) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+
+                if (needsPeriod) {
+                    OutlinedTextField(
+                        value = periodText,
+                        onValueChange = { periodText = it },
+                        label = { Text("天数N（如创20日新高则输入20）") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                if (needsMAPeriods) {
+                    OutlinedTextField(
+                        value = shortPeriodText,
+                        onValueChange = { shortPeriodText = it },
+                        label = { Text("短周期（如5）") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = longPeriodText,
+                        onValueChange = { longPeriodText = it },
+                        label = { Text("长周期（如20）") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
                 OutlinedTextField(
                     value = actionHintText,
@@ -129,9 +176,17 @@ fun EditAlertDialog(
             TextButton(
                 onClick = {
                     val holding = selectedHolding ?: return@TextButton
-                    val threshold = thresholdText.toDoubleOrNull() ?: return@TextButton
+                    val threshold = when {
+                        needsThreshold -> thresholdText.toDoubleOrNull() ?: 0.0
+                        else -> 0.0
+                    }
+                    val params = when {
+                        needsPeriod -> mapOf("period" to periodText)
+                        needsMAPeriods -> mapOf("short_period" to shortPeriodText, "long_period" to longPeriodText)
+                        else -> emptyMap()
+                    }
                     val actionHint = actionHintText.takeIf { it.isNotBlank() }
-                    onConfirm(alert.id, holding.code, holding.name, selectedAlertType, threshold, actionHint)
+                    onConfirm(alert.id, holding.code, holding.name, selectedAlertType, threshold, actionHint, params)
                 },
                 enabled = isValid,
             ) {

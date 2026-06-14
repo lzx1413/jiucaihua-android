@@ -112,8 +112,8 @@ fun AlertsScreen(
     if (uiState.showAddDialog) {
         AddAlertDialog(
             holdings = uiState.holdings,
-            onConfirm = { code, name, type, threshold, actionHint ->
-                viewModel.addAlert(code, name, type, threshold, actionHint)
+            onConfirm = { code, name, type, threshold, actionHint, params ->
+                viewModel.addAlert(code, name, type, threshold, actionHint, params)
             },
             onDismiss = { viewModel.hideAddDialog() },
         )
@@ -124,8 +124,8 @@ fun AlertsScreen(
         EditAlertDialog(
             alert = editingAlert,
             holdings = uiState.holdings,
-            onConfirm = { id, code, name, type, threshold, actionHint ->
-                viewModel.updateAlert(id, code, name, type, threshold, actionHint)
+            onConfirm = { id, code, name, type, threshold, actionHint, params ->
+                viewModel.updateAlert(id, code, name, type, threshold, actionHint, params)
             },
             onDismiss = { viewModel.hideEditDialog() },
         )

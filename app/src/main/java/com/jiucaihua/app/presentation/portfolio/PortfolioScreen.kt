@@ -61,9 +61,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jiucaihua.app.domain.model.CategorySummary
+import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
+import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
 import com.jiucaihua.app.domain.model.WatchlistItem
@@ -73,6 +75,7 @@ import com.jiucaihua.app.presentation.common.components.EmptyState
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 import com.jiucaihua.app.presentation.common.components.MarketStatusBadge
 import com.jiucaihua.app.presentation.portfolio.components.CategoryHoldingSection
+import com.jiucaihua.app.presentation.portfolio.components.EarningsChartView
 import com.jiucaihua.app.presentation.portfolio.components.HoldingListItem
 import com.jiucaihua.app.presentation.portfolio.components.PortfolioSummaryCard
 import com.jiucaihua.app.presentation.portfolio.components.SortSelector
@@ -235,6 +238,7 @@ fun PortfolioScreen(
                     onHoldingLongClick = { holdingToDelete = it },
                     onSetCash = viewModel::setCash,
                     onSetLossCompensation = viewModel::setLossCompensation,
+                    onChartRangeChanged = viewModel::setChartRange,
                 )
 
                 NewsTabIndex -> NewsTabContent(
@@ -342,6 +346,7 @@ private fun HoldingsTabContent(
     onHoldingLongClick: (Holding) -> Unit,
     onSetCash: (Double) -> Unit,
     onSetLossCompensation: (Double) -> Unit,
+    onChartRangeChanged: (ChartRange) -> Unit,
 ) {
     when {
         uiState.isLoading -> {
@@ -356,11 +361,14 @@ private fun HoldingsTabContent(
             HoldingsList(
                 summary = uiState.summary,
                 sortOrder = uiState.sortOrder,
+                snapshots = uiState.snapshots,
+                selectedChartRange = uiState.selectedChartRange,
                 onSortChanged = onSortChanged,
                 onHoldingClick = onHoldingClick,
                 onHoldingLongClick = onHoldingLongClick,
                 onSetCash = onSetCash,
                 onSetLossCompensation = onSetLossCompensation,
+                onChartRangeChanged = onChartRangeChanged,
             )
         }
     }
@@ -370,11 +378,14 @@ private fun HoldingsTabContent(
 private fun HoldingsList(
     summary: PortfolioSummary,
     sortOrder: SortOrder,
+    snapshots: List<PortfolioSnapshot>,
+    selectedChartRange: ChartRange,
     onSortChanged: (SortOrder) -> Unit,
     onHoldingClick: (String) -> Unit,
     onHoldingLongClick: (Holding) -> Unit,
     onSetCash: (Double) -> Unit,
     onSetLossCompensation: (Double) -> Unit,
+    onChartRangeChanged: (ChartRange) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -383,6 +394,35 @@ private fun HoldingsList(
                 onSetCash = onSetCash,
                 onSetLossCompensation = onSetLossCompensation,
             )
+        }
+        if (snapshots.isNotEmpty()) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        ChartRange.entries.forEach { range ->
+                            FilterChip(
+                                selected = selectedChartRange == range,
+                                onClick = { onChartRangeChanged(range) },
+                                label = { Text(range.label) },
+                            )
+                        }
+                    }
+                    EarningsChartView(
+                        snapshots = snapshots,
+                        selectedRange = selectedChartRange,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+            }
         }
         item {
             SortSelector(

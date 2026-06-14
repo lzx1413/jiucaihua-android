@@ -15,7 +15,8 @@ import androidx.compose.runtime.setValue
 import com.jiucaihua.app.presentation.navigation.AppNavHost
 import com.jiucaihua.app.presentation.settings.SettingsViewModel
 import com.jiucaihua.app.presentation.theme.JiucaihuaTheme
-import com.jiucaihua.app.worker.AlertCheckWorker
+import com.jiucaihua.app.presentation.navigation.NavExtras
+import com.jiucaihua.app.presentation.navigation.Screen
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import javax.inject.Named
@@ -70,11 +71,18 @@ class MainActivity : ComponentActivity() {
 
         private fun handleNotificationNavigation(intent: Intent?) {
             if (intent == null) return
-            val navigateTo = intent.getStringExtra(AlertCheckWorker.EXTRA_NAVIGATE_TO)
-            if (navigateTo == AlertCheckWorker.NAVIGATE_DETAIL) {
-                val stockCode = intent.getStringExtra(AlertCheckWorker.EXTRA_STOCK_CODE)
-                if (stockCode != null) {
-                    pendingNavDestination = "detail/$stockCode"
+            val targetRoute = intent.getStringExtra(NavExtras.EXTRA_TARGET_ROUTE)
+            if (targetRoute != null) {
+                val code = intent.getStringExtra(NavExtras.EXTRA_TARGET_CODE)
+                pendingNavDestination = when (targetRoute) {
+                    "detail" -> {
+                        if (code != null) Screen.Detail.createRoute(code) else null
+                    }
+                    Screen.Alerts.route -> Screen.Alerts.route
+                    Screen.Market.route -> Screen.Market.route
+                    Screen.AiChat.route -> Screen.AiChat.route
+                    Screen.Settings.route -> Screen.Settings.route
+                    else -> null
                 }
             }
         }
