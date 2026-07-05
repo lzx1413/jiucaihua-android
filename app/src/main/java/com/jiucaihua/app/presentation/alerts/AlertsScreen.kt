@@ -26,8 +26,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.AlertRecord
 import com.jiucaihua.app.domain.model.PriceAlert
 import com.jiucaihua.app.presentation.alerts.components.AddAlertDialog
@@ -46,17 +48,20 @@ fun AlertsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
-    val tabs = listOf("预警设置", "触发记录")
+    val tabs = listOf(
+        stringResource(R.string.alerts_tab_rules),
+        stringResource(R.string.alerts_tab_records),
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("预警管理") },
+                title = { Text(stringResource(R.string.alerts)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.action_back),
                         )
                     }
                 },
@@ -73,7 +78,7 @@ fun AlertsScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "添加预警",
+                        contentDescription = stringResource(R.string.add_alert),
                     )
                 }
             }
@@ -140,7 +145,7 @@ private fun AlertSettingsTab(
     onDelete: (Long) -> Unit,
 ) {
     if (alerts.isEmpty()) {
-        EmptyState(message = "暂无预警规则")
+        EmptyState(message = stringResource(R.string.no_alert_rules))
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(items = alerts, key = { it.id }) { alert ->
@@ -160,7 +165,7 @@ private fun AlertRecordsTab(
     records: List<AlertRecord>,
 ) {
     if (records.isEmpty()) {
-        EmptyState(message = "暂无触发记录", hint = "")
+        EmptyState(message = stringResource(R.string.no_alert_records), hint = "")
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(items = records, key = { it.id }) { record ->

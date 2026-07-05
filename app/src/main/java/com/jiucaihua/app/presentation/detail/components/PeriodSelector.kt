@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.jiucaihua.app.domain.model.KLinePeriod
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @Composable
 fun PeriodSelector(
@@ -29,7 +30,7 @@ fun PeriodSelector(
             FilterChip(
                 selected = period == selectedPeriod,
                 onClick = { onPeriodSelected(period) },
-                label = { Text(period.label) },
+                label = { Text(period.localizedLabel()) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,

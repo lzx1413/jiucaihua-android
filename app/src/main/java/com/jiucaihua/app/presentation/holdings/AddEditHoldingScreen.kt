@@ -18,8 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.R
 import com.jiucaihua.app.presentation.holdings.components.HoldingForm
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,13 +42,19 @@ fun AddEditHoldingScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (uiState.isEditing) "编辑持仓" else "新增持仓")
+                    Text(
+                        if (uiState.isEditing) {
+                            stringResource(R.string.holding_edit_title)
+                        } else {
+                            stringResource(R.string.holding_add_title)
+                        }
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = stringResource(R.string.action_back)
                         )
                     }
                 },
@@ -56,7 +64,7 @@ fun AddEditHoldingScreen(
                         enabled = uiState.isValid && !uiState.isLoading,
                     ) {
                         Text(
-                            "保存",
+                            stringResource(R.string.action_save),
                             color = if (uiState.isValid) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )

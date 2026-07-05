@@ -1,15 +1,18 @@
 package com.jiucaihua.app.presentation.holdings
 
 import android.content.SharedPreferences
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.SecuritySearchResult
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
 import com.jiucaihua.app.domain.usecase.ManageHoldingUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,10 +67,11 @@ data class AddEditHoldingUiState(
 
 @HiltViewModel
 class AddEditHoldingViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val manageHoldingUseCase: ManageHoldingUseCase,
     private val securitySearchRepository: SecuritySearchRepository,
-    @Named("appPrefs") private val prefs: SharedPreferences,
+    @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
     private val holdingId: Long = savedStateHandle.get<Long>("holdingId") ?: -1L
@@ -104,7 +108,12 @@ class AddEditHoldingViewModel @Inject constructor(
                     )
                 }
             } else {
-                _uiState.update { it.copy(isLoading = false, error = "持仓记录不存在") }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = context.getString(R.string.holding_not_found),
+                    )
+                }
             }
         }
     }
@@ -223,7 +232,7 @@ class AddEditHoldingViewModel @Inject constructor(
                 it.copy(
                     searchResults = emptyList(),
                     isSearching = false,
-                    searchError = "搜索失败，请稍后重试",
+                    searchError = context.getString(R.string.search_failed_retry),
                     searchExpanded = false,
                 )
             }
@@ -249,7 +258,12 @@ class AddEditHoldingViewModel @Inject constructor(
             )
             if (state.isEditing) {
                 val currentHolding = originalHolding ?: run {
-                    _uiState.update { it.copy(isLoading = false, error = "持仓记录不存在") }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = context.getString(R.string.holding_not_found),
+                        )
+                    }
                     return@launch
                 }
                 val updatedHolding = buildUpdatedHolding(currentHolding, state)

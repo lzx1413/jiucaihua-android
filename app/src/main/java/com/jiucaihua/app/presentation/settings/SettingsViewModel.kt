@@ -1,14 +1,18 @@
 package com.jiucaihua.app.presentation.settings
 
+import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.R
 import com.jiucaihua.app.ai.config.AiConfigStore
 import com.jiucaihua.app.ai.model.AiConfig
 import com.jiucaihua.app.ai.model.AiProvider
 import com.jiucaihua.app.ai.model.metadata
 import com.jiucaihua.app.ai.provider.AiProviderService
+import com.jiucaihua.app.i18n.AppLocaleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +23,7 @@ import javax.inject.Named
 data class SettingsUiState(
     val refreshIntervalSeconds: Int = 10,
     val isDarkMode: Boolean? = null,
+    val languageTag: String = AppLocaleManager.LANGUAGE_SYSTEM,
     val oledMode: Boolean = false,
     val alertsEnabled: Boolean = true,
     val aiConfig: AiConfig = AiConfig(),
@@ -30,7 +35,8 @@ data class SettingsUiState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    @Named("appPrefs") private val prefs: SharedPreferences,
+    @param:ApplicationContext private val context: Context,
+    @param:Named("appPrefs") private val prefs: SharedPreferences,
     private val aiConfigStore: AiConfigStore,
     private val aiProviderService: AiProviderService,
 ) : ViewModel() {
@@ -47,6 +53,9 @@ class SettingsViewModel @Inject constructor(
         return SettingsUiState(
             refreshIntervalSeconds = prefs.getInt(KEY_REFRESH_INTERVAL, 10),
             isDarkMode = if (prefs.contains(KEY_DARK_MODE)) prefs.getBoolean(KEY_DARK_MODE, false) else null,
+            languageTag = prefs.getString(KEY_LANGUAGE, AppLocaleManager.LANGUAGE_SYSTEM)
+                ?.takeIf { it in AppLocaleManager.supportedLanguages }
+                ?: AppLocaleManager.LANGUAGE_SYSTEM,
             oledMode = prefs.getBoolean(KEY_OLED_MODE, false),
             alertsEnabled = prefs.getBoolean(KEY_ALERTS_ENABLED, true),
             aiConfig = aiConfig,
@@ -65,6 +74,17 @@ class SettingsViewModel @Inject constructor(
             prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply()
         }
         _uiState.value = _uiState.value.copy(isDarkMode = enabled)
+    }
+
+    fun setLanguage(languageTag: String) {
+        val normalized = languageTag.takeIf { it in AppLocaleManager.supportedLanguages }
+            ?: AppLocaleManager.LANGUAGE_SYSTEM
+        if (normalized == AppLocaleManager.LANGUAGE_SYSTEM) {
+            prefs.edit().remove(KEY_LANGUAGE).apply()
+        } else {
+            prefs.edit().putString(KEY_LANGUAGE, normalized).apply()
+        }
+        _uiState.value = _uiState.value.copy(languageTag = normalized)
     }
 
     fun setOledMode(enabled: Boolean) {
@@ -124,12 +144,16 @@ class SettingsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     availableModels = result.models,
                     isLoadingModels = false,
-                    connectivityMessage = if (result.models.isEmpty()) "未发现可用模型" else "已发现 ${result.models.size} 个模型",
+                    connectivityMessage = if (result.models.isEmpty()) {
+                        context.getString(R.string.settings_no_models_found)
+                    } else {
+                        context.getString(R.string.settings_models_found, result.models.size)
+                    },
                 )
             }.onFailure {
                 _uiState.value = _uiState.value.copy(
                     isLoadingModels = false,
-                    connectivityMessage = it.message ?: "获取模型失败",
+                    connectivityMessage = it.message ?: context.getString(R.string.settings_fetch_models_failed),
                 )
             }
         }
@@ -170,6 +194,7 @@ class SettingsViewModel @Inject constructor(
     companion object {
         const val KEY_REFRESH_INTERVAL = "refresh_interval_seconds"
         const val KEY_DARK_MODE = "dark_mode"
+        const val KEY_LANGUAGE = AppLocaleManager.KEY_LANGUAGE
         const val KEY_OLED_MODE = "oled_mode"
         const val KEY_ALERTS_ENABLED = "alerts_enabled"
     }

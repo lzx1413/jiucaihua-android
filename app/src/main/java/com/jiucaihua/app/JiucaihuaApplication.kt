@@ -3,6 +3,7 @@ package com.jiucaihua.app
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
@@ -11,6 +12,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.jiucaihua.app.i18n.AppLocaleManager
 import com.jiucaihua.app.worker.AlertCheckWorker
 import com.jiucaihua.app.worker.NewsSyncWorker
 import com.jiucaihua.app.worker.QuoteRefreshWorker
@@ -29,6 +31,10 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
             .setWorkerFactory(workerFactory)
             .build()
 
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(AppLocaleManager.wrap(base))
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
@@ -41,17 +47,17 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val alertChannel = NotificationChannel(
                 AlertCheckWorker.CHANNEL_ID,
-                "价格预警",
+                getString(R.string.notification_alert_channel_name),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "证券价格预警通知"
+                description = getString(R.string.notification_alert_channel_description)
             }
             val newsChannel = NotificationChannel(
                 CHANNEL_NEWS_ID,
-                "市场资讯",
+                getString(R.string.notification_news_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "重要市场资讯推送"
+                description = getString(R.string.notification_news_channel_description)
             }
             getSystemService(NotificationManager::class.java).createNotificationChannels(
                 listOf(alertChannel, newsChannel)

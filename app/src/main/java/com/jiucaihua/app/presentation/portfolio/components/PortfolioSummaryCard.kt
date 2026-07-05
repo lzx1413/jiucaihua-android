@@ -26,8 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
@@ -55,7 +57,7 @@ fun PortfolioSummaryCard(
 
         AlertDialog(
             onDismissRequest = { showCashDialog = false },
-            title = { Text("设置现金") },
+            title = { Text(stringResource(R.string.set_cash)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -64,13 +66,13 @@ fun PortfolioSummaryCard(
                             cashInputText = it
                             cashDiffText = ""
                         },
-                        label = { Text("现金金额（元）") },
+                        label = { Text(stringResource(R.string.cash_amount_yuan)) },
                         singleLine = true,
                     )
                     OutlinedTextField(
                         value = cashDiffText,
                         onValueChange = { cashDiffText = it },
-                        label = { Text("增减金额（可正可负）") },
+                        label = { Text(stringResource(R.string.cash_delta_amount)) },
                         singleLine = true,
                     )
                 }
@@ -79,10 +81,10 @@ fun PortfolioSummaryCard(
                 TextButton(onClick = {
                     cashInputText.toDoubleOrNull()?.let { onSetCash(it) }
                     showCashDialog = false
-                }) { Text("确定") }
+                }) { Text(stringResource(R.string.action_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCashDialog = false }) { Text("取消") }
+                TextButton(onClick = { showCashDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -90,18 +92,18 @@ fun PortfolioSummaryCard(
     if (showLossDialog) {
         AlertDialog(
             onDismissRequest = { showLossDialog = false },
-            title = { Text("亏损补偿") },
+            title = { Text(stringResource(R.string.loss_compensation)) },
             text = {
                 Column {
                     Text(
-                        text = "填写历史已实现亏损总额，用于计算累计收益",
+                        text = stringResource(R.string.loss_compensation_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     OutlinedTextField(
                         value = lossInputText,
                         onValueChange = { lossInputText = it },
-                        label = { Text("亏损金额（元）") },
+                        label = { Text(stringResource(R.string.loss_amount_yuan)) },
                         singleLine = true,
                     )
                 }
@@ -110,10 +112,10 @@ fun PortfolioSummaryCard(
                 TextButton(onClick = {
                     lossInputText.toDoubleOrNull()?.let { onSetLossCompensation(it) }
                     showLossDialog = false
-                }) { Text("确定") }
+                }) { Text(stringResource(R.string.action_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showLossDialog = false }) { Text("取消") }
+                TextButton(onClick = { showLossDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -135,7 +137,7 @@ fun PortfolioSummaryCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "总资产",
+                text = stringResource(R.string.portfolio_summary_total_assets),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -150,7 +152,7 @@ fun PortfolioSummaryCard(
             ) {
                 Column {
                     Text(
-                        text = "持仓收益",
+                        text = stringResource(R.string.portfolio_summary_holding_earnings),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -169,7 +171,7 @@ fun PortfolioSummaryCard(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "累计收益",
+                        text = stringResource(R.string.portfolio_summary_total_earnings),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -194,7 +196,7 @@ fun PortfolioSummaryCard(
             ) {
                 Column {
                     Text(
-                        text = "今日",
+                        text = stringResource(R.string.portfolio_summary_today),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -231,7 +233,7 @@ fun PortfolioSummaryCard(
             ) {
                 Column {
                     Text(
-                        text = "持仓市值",
+                        text = stringResource(R.string.holding_market_value),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -242,12 +244,12 @@ fun PortfolioSummaryCard(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "现金",
+                        text = stringResource(R.string.cash),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = if (summary.cash > 0) formatMoney(summary.cash) else "点击设置",
+                        text = if (summary.cash > 0) formatMoney(summary.cash) else stringResource(R.string.tap_to_set),
                         style = MaterialTheme.typography.titleMedium,
                         color = if (summary.cash > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable {
@@ -264,12 +266,16 @@ fun PortfolioSummaryCard(
             ) {
                 Column {
                     Text(
-                        text = "亏损补偿",
+                        text = stringResource(R.string.loss_compensation),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = if (summary.lossCompensation > 0) formatMoney(summary.lossCompensation) else "点击设置",
+                        text = if (summary.lossCompensation > 0) {
+                            formatMoney(summary.lossCompensation)
+                        } else {
+                            stringResource(R.string.tap_to_set)
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         color = if (summary.lossCompensation > 0) FallGreen else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable {

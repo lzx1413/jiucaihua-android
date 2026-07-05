@@ -23,13 +23,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.MarketIndexCodes
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.SecuritySearchResult
 import com.jiucaihua.app.presentation.holdings.HoldingTradeAction
 import com.jiucaihua.app.presentation.holdings.AddEditHoldingUiState
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +56,7 @@ fun HoldingForm(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "市场类型",
+            text = stringResource(R.string.market_type),
             style = MaterialTheme.typography.labelLarge,
         )
         Row(
@@ -63,7 +66,7 @@ fun HoldingForm(
                 FilterChip(
                     selected = state.marketType == type,
                     onClick = { onMarketTypeChange(type) },
-                    label = { Text(type.label) },
+                    label = { Text(type.localizedLabel()) },
                     enabled = !state.isEditing,
                 )
             }
@@ -81,8 +84,8 @@ fun HoldingForm(
                 OutlinedTextField(
                     value = if (state.code.isNotBlank()) "${state.name} (${state.code})" else "",
                     onValueChange = {},
-                    label = { Text("黄金品种") },
-                    placeholder = { Text("请选择黄金品种") },
+                    label = { Text(stringResource(R.string.gold_product)) },
+                    placeholder = { Text(stringResource(R.string.select_gold_product)) },
                     readOnly = true,
                     singleLine = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goldExpanded) },
@@ -123,14 +126,14 @@ fun HoldingForm(
                 OutlinedTextField(
                     value = state.code,
                     onValueChange = onCodeChange,
-                    label = { Text("证券代码") },
+                    label = { Text(stringResource(R.string.security_code)) },
                     placeholder = {
                         Text(
                             when (state.marketType) {
-                                MarketType.A_STOCK -> "输入代码或名称搜索，如 600519"
-                                MarketType.HK_STOCK -> "输入代码或名称搜索，如 hk00700"
-                                MarketType.US_STOCK -> "输入代码或名称搜索"
-                                MarketType.FUND -> "输入代码或名称搜索，如 110011"
+                                MarketType.A_STOCK -> stringResource(R.string.search_a_stock_hint)
+                                MarketType.HK_STOCK -> stringResource(R.string.search_hk_stock_hint)
+                                MarketType.US_STOCK -> stringResource(R.string.search_us_stock_hint)
+                                MarketType.FUND -> stringResource(R.string.search_fund_hint)
                                 MarketType.GOLD -> ""
                             }
                         )
@@ -141,7 +144,7 @@ fun HoldingForm(
                         .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = !state.isEditing),
                     enabled = !state.isEditing,
                     supportingText = if (state.isSearching) {
-                        { Text("搜索中...") }
+                        { Text(stringResource(R.string.searching)) }
                     } else if (state.searchError != null) {
                         { Text(state.searchError) }
                     } else null,
@@ -156,7 +159,7 @@ fun HoldingForm(
                                 Column {
                                     Text(result.name)
                                     Text(
-                                        "${result.displayCode} · ${result.marketType.label}",
+                                        "${result.displayCode} · ${result.marketType.localizedLabel()}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -173,8 +176,8 @@ fun HoldingForm(
             OutlinedTextField(
                 value = state.name,
                 onValueChange = onNameChange,
-                label = { Text("证券名称") },
-                placeholder = { Text("选择证券后自动填充") },
+                label = { Text(stringResource(R.string.security_name)) },
+                placeholder = { Text(stringResource(R.string.security_name_auto_fill)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = state.isEditing,
@@ -183,12 +186,13 @@ fun HoldingForm(
 
         if (state.isEditing) {
             val currentSharesLabel = when (state.marketType) {
-                MarketType.FUND -> "当前份额"
-                MarketType.GOLD -> "当前数量"
-                else -> "当前股数"
+                MarketType.FUND -> stringResource(R.string.current_fund_shares)
+                MarketType.GOLD -> stringResource(R.string.current_gold_quantity)
+                else -> stringResource(R.string.current_stock_shares)
             }
             Text(
-                text = "%s：%,.2f   成本价：%.4f".format(
+                text = stringResource(
+                    R.string.current_position_format,
                     currentSharesLabel,
                     state.originalHoldingShares,
                     state.originalCostPrice,
@@ -203,17 +207,17 @@ fun HoldingForm(
                     FilterChip(
                         selected = state.tradeAction == action,
                         onClick = { onTradeActionChange(action) },
-                        label = { Text(action.label) },
+                        label = { Text(action.localizedLabel()) },
                     )
                 }
             }
         }
 
         val costLabel = when {
-            state.isEditing && state.marketType == MarketType.GOLD -> "成交单价（元/克）"
-            state.isEditing -> "成交单价"
-            state.marketType == MarketType.GOLD -> "成本价（元/克）"
-            else -> "成本价"
+            state.isEditing && state.marketType == MarketType.GOLD -> stringResource(R.string.trade_price_gold)
+            state.isEditing -> stringResource(R.string.trade_price)
+            state.marketType == MarketType.GOLD -> stringResource(R.string.cost_price_gold)
+            else -> stringResource(R.string.cost_price)
         }
         OutlinedTextField(
             value = state.costPrice,
@@ -226,9 +230,21 @@ fun HoldingForm(
         )
 
         val sharesLabel = when (state.marketType) {
-            MarketType.FUND -> if (state.isEditing) "本次份额" else "持仓份额"
-            MarketType.GOLD -> if (state.isEditing) "本次数量（克）" else "持仓数量（克）"
-            else -> if (state.isEditing) "本次数量（股）" else "持仓数量（股）"
+            MarketType.FUND -> if (state.isEditing) {
+                stringResource(R.string.trade_fund_shares)
+            } else {
+                stringResource(R.string.holding_fund_shares)
+            }
+            MarketType.GOLD -> if (state.isEditing) {
+                stringResource(R.string.trade_gold_quantity)
+            } else {
+                stringResource(R.string.holding_gold_quantity)
+            }
+            else -> if (state.isEditing) {
+                stringResource(R.string.trade_stock_quantity)
+            } else {
+                stringResource(R.string.holding_stock_quantity)
+            }
         }
         OutlinedTextField(
             value = state.holdingShares,
@@ -245,7 +261,11 @@ fun HoldingForm(
         val amount = state.holdingAmount
         if (amount > 0) {
             Text(
-                text = if (state.isEditing) "成交金额（自动计算）" else "投资金额（自动计算）",
+                text = if (state.isEditing) {
+                    stringResource(R.string.trade_amount_auto)
+                } else {
+                    stringResource(R.string.invest_amount_auto)
+                },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -261,7 +281,7 @@ fun HoldingForm(
             (state.holdingShares.toDoubleOrNull() ?: 0.0) > state.originalHoldingShares
         ) {
             Text(
-                text = "减少数量不能超过当前持仓",
+                text = stringResource(R.string.sell_exceeds_holding),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )

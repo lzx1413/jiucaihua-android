@@ -14,8 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.SortOrder
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @Composable
 fun SortSelector(
@@ -30,14 +33,14 @@ fun SortSelector(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "排序: ",
+            text = stringResource(R.string.sort_label),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         FilterChip(
             selected = currentSort != SortOrder.DEFAULT,
             onClick = { expanded = true },
-            label = { Text(currentSort.label, style = MaterialTheme.typography.bodySmall) },
+            label = { Text(currentSort.localizedLabel(), style = MaterialTheme.typography.bodySmall) },
         )
         DropdownMenu(
             expanded = expanded,
@@ -45,7 +48,7 @@ fun SortSelector(
         ) {
             SortOrder.entries.forEach { order ->
                 DropdownMenuItem(
-                    text = { Text(order.label) },
+                    text = { Text(order.localizedLabel()) },
                     onClick = {
                         onSortChanged(order)
                         expanded = false

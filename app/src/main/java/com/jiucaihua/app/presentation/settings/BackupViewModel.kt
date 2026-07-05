@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.R
 import com.jiucaihua.app.data.backup.BackupData
 import com.jiucaihua.app.data.backup.BackupRepository
 import com.jiucaihua.app.data.backup.RestoreResult
@@ -26,7 +27,7 @@ data class BackupUiState(
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val backupRepository: BackupRepository,
 ) : ViewModel() {
 
@@ -46,7 +47,7 @@ class BackupViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isExporting = false,
-                    message = "导出失败: ${e.message}",
+                    message = context.getString(R.string.backup_export_failed, e.message),
                     isSuccess = false,
                 )
             }
@@ -59,7 +60,7 @@ class BackupViewModel @Inject constructor(
             if (backup == null) {
                 _uiState.value = _uiState.value.copy(
                     isExporting = false,
-                    message = "导出失败: 没有待导出的数据",
+                    message = context.getString(R.string.backup_export_no_data),
                     isSuccess = false,
                 )
                 return@launch
@@ -70,7 +71,7 @@ class BackupViewModel @Inject constructor(
                 if (outputStream == null) {
                     _uiState.value = _uiState.value.copy(
                         isExporting = false,
-                        message = "导出失败: 无法打开文件",
+                        message = context.getString(R.string.backup_export_open_failed),
                         isSuccess = false,
                     )
                     return@launch
@@ -79,14 +80,18 @@ class BackupViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isExporting = false,
                     pendingBackup = null,
-                    message = "导出成功: ${backup.holdings.size} 条持仓, ${backup.alerts.size} 条预警",
+                    message = context.getString(
+                        R.string.backup_export_success,
+                        backup.holdings.size,
+                        backup.alerts.size,
+                    ),
                     isSuccess = true,
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isExporting = false,
                     pendingBackup = null,
-                    message = "导出失败: ${e.message}",
+                    message = context.getString(R.string.backup_export_failed, e.message),
                     isSuccess = false,
                 )
             }
@@ -116,7 +121,7 @@ class BackupViewModel @Inject constructor(
                 if (inputStream == null) {
                     _uiState.value = _uiState.value.copy(
                         isImporting = false,
-                        message = "导入失败: 无法打开文件",
+                        message = context.getString(R.string.backup_import_open_failed),
                         isSuccess = false,
                     )
                     return@launch
@@ -127,13 +132,17 @@ class BackupViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isImporting = false,
                     lastRestoreResult = result,
-                    message = "导入成功: ${result.holdingsCount} 条持仓, ${result.alertsCount} 条预警",
+                    message = context.getString(
+                        R.string.backup_import_success,
+                        result.holdingsCount,
+                        result.alertsCount,
+                    ),
                     isSuccess = true,
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isImporting = false,
-                    message = "导入失败: ${e.message}",
+                    message = context.getString(R.string.backup_import_failed, e.message),
                     isSuccess = false,
                 )
             }

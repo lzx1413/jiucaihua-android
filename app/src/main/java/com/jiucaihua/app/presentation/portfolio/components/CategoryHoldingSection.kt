@@ -27,12 +27,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
+import java.util.Locale
 
 @Composable
 fun CategoryHoldingSection(
@@ -65,7 +69,7 @@ fun CategoryHoldingSection(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = categorySummary.label,
+                        text = categorySummary.marketType.localizedLabel(),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -81,27 +85,31 @@ fun CategoryHoldingSection(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     StatColumn(
-                        label = "市值",
+                        label = stringResource(R.string.market_value),
                         value = formatMoney(categorySummary.totalMarketValue),
                         color = MaterialTheme.colorScheme.onSurface,
                         width = 90.dp,
                     )
                     StatColumn(
-                        label = "收益",
+                        label = stringResource(R.string.earnings),
                         value = formatSignedMoney(categorySummary.totalEarnings),
                         subValue = formatPercent(categorySummary.totalEarningsPercent),
                         color = getValueColor(categorySummary.totalEarnings),
                         width = 100.dp,
                     )
                     StatColumn(
-                        label = "今日",
+                        label = stringResource(R.string.today),
                         value = formatSignedMoney(categorySummary.todayEarnings),
                         color = getValueColor(categorySummary.todayEarnings),
                         width = 80.dp,
                     )
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (isExpanded) "折叠" else "展开",
+                        contentDescription = if (isExpanded) {
+                            stringResource(R.string.action_collapse)
+                        } else {
+                            stringResource(R.string.action_expand)
+                        },
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -172,6 +180,13 @@ private fun getValueColor(value: Double): androidx.compose.ui.graphics.Color {
 }
 
 private fun formatMoney(value: Double): String {
+    if (!isChineseLocale()) {
+        return when {
+            value >= 1_000_000 -> "¥%.1fM".format(value / 1_000_000)
+            value >= 1_000 -> "¥%.1fK".format(value / 1_000)
+            else -> "¥%.0f".format(value)
+        }
+    }
     if (value >= 10000) {
         return "¥%.1f万".format(value / 10000)
     }
@@ -181,6 +196,13 @@ private fun formatMoney(value: Double): String {
 private fun formatSignedMoney(value: Double): String {
     val sign = if (value >= 0) "+" else ""
     val absValue = kotlin.math.abs(value)
+    if (!isChineseLocale()) {
+        return when {
+            absValue >= 1_000_000 -> "$sign¥%.1fM".format(absValue / 1_000_000)
+            absValue >= 1_000 -> "$sign¥%.1fK".format(absValue / 1_000)
+            else -> "$sign¥%.0f".format(absValue)
+        }
+    }
     if (absValue >= 10000) {
         return "$sign¥%.1f万".format(absValue / 10000)
     }
@@ -191,3 +213,5 @@ private fun formatPercent(value: Double): String {
     val sign = if (value >= 0) "+" else ""
     return "$sign%.2f%%".format(value)
 }
+
+private fun isChineseLocale(): Boolean = Locale.getDefault().language == Locale.CHINESE.language

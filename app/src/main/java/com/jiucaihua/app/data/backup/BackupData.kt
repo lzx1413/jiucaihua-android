@@ -27,6 +27,7 @@ data class BackupData(
 data class AppSettingsBackup(
     val refreshIntervalSeconds: Int = 10,
     val isDarkMode: Boolean? = null,
+    val languageTag: String = "",
     val oledMode: Boolean = false,
     val alertsEnabled: Boolean = true,
     val cash: Float = 0f,

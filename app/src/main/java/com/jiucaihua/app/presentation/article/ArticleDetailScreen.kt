@@ -18,7 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +37,7 @@ fun ArticleDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = articleTitle.ifBlank { "资讯详情" },
+                        text = articleTitle.ifBlank { stringResource(R.string.article_detail) },
                         maxLines = 1,
                     )
                 },
@@ -43,7 +45,7 @@ fun ArticleDetailScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.action_back),
                         )
                     }
                 },
@@ -58,7 +60,7 @@ fun ArticleDetailScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Text(
-                text = articleTitle.ifBlank { "资讯详情" },
+                text = articleTitle.ifBlank { stringResource(R.string.article_detail) },
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -74,7 +76,7 @@ fun ArticleDetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             Text(
-                text = articleContent.ifBlank { articleSummary.ifBlank { "暂无正文" } },
+                text = articleContent.ifBlank { articleSummary.ifBlank { stringResource(R.string.no_article_content) } },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )

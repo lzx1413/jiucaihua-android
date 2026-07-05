@@ -31,10 +31,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.R
 
 val AiTabIcon = Icons.Outlined.SmartToy
 
@@ -57,12 +59,12 @@ fun AiChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AI 助手") },
+                title = { Text(stringResource(R.string.ai_assistant)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.action_back),
                         )
                     }
                 },
@@ -115,15 +117,21 @@ fun AiChatContent(
                 value = uiState.input,
                 onValueChange = onInputChange,
                 modifier = Modifier.weight(1f),
-                label = { Text("输入问题") },
-                placeholder = { Text("例如：总结一下我当前持仓") },
+                label = { Text(stringResource(R.string.ai_input_label)) },
+                placeholder = { Text(stringResource(R.string.ai_input_placeholder)) },
                 enabled = !uiState.isSending,
             )
             Button(
                 onClick = onSend,
                 enabled = uiState.input.isNotBlank() && !uiState.isSending,
             ) {
-                Text(if (uiState.isSending) "发送中" else "发送")
+                Text(
+                    if (uiState.isSending) {
+                        stringResource(R.string.ai_sending)
+                    } else {
+                        stringResource(R.string.ai_send)
+                    }
+                )
             }
         }
     }
@@ -143,9 +151,9 @@ private fun ChatBubble(message: AiChatMessageItem) {
     ) {
         Text(
             text = when (message.role) {
-                AiChatRole.USER -> "你"
+                AiChatRole.USER -> stringResource(R.string.ai_role_user)
                 AiChatRole.ASSISTANT -> "AI"
-                AiChatRole.TOOL -> "工具调用"
+                AiChatRole.TOOL -> stringResource(R.string.ai_role_tool)
             },
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,

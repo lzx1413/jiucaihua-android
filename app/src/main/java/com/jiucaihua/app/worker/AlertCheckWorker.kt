@@ -66,7 +66,7 @@ class AlertCheckWorker @AssistedInject constructor(
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("${alert.name} 预警触发")
+            .setContentTitle(context.getString(R.string.notification_alert_title, alert.name))
             .setContentText(formatNotificationText(triggeredAlert))
             .setStyle(
                 NotificationCompat.BigTextStyle()
@@ -83,32 +83,32 @@ class AlertCheckWorker @AssistedInject constructor(
     private fun formatNotificationText(triggeredAlert: TriggeredAlert): String {
         val alert = triggeredAlert.alert
         val typeLabel = when (alert.alertType) {
-            AlertType.PRICE_ABOVE -> "价格已达 ${triggeredAlert.currentValue}，超过预警值 ${alert.threshold}"
-            AlertType.PRICE_BELOW -> "价格已跌至 ${triggeredAlert.currentValue}，低于预警值 ${alert.threshold}"
-            AlertType.CHANGE_ABOVE -> "涨幅已达 ${triggeredAlert.currentValue}%，超过预警值 ${alert.threshold}%"
-            AlertType.CHANGE_BELOW -> "跌幅已达 ${triggeredAlert.currentValue}%，超过预警值 ${alert.threshold}%"
-            AlertType.VOLUME_ABOVE -> "成交量已达 ${triggeredAlert.currentValue}，超过预警值 ${alert.threshold}"
+            AlertType.PRICE_ABOVE -> context.getString(R.string.notification_price_above, triggeredAlert.currentValue.toString(), alert.threshold.toString())
+            AlertType.PRICE_BELOW -> context.getString(R.string.notification_price_below, triggeredAlert.currentValue.toString(), alert.threshold.toString())
+            AlertType.CHANGE_ABOVE -> context.getString(R.string.notification_change_above, triggeredAlert.currentValue.toString(), alert.threshold.toString())
+            AlertType.CHANGE_BELOW -> context.getString(R.string.notification_change_below, triggeredAlert.currentValue.toString(), alert.threshold.toString())
+            AlertType.VOLUME_ABOVE -> context.getString(R.string.notification_volume_above, triggeredAlert.currentValue.toString(), alert.threshold.toString())
             AlertType.NEW_HIGH -> {
                 val period = alert.params["period"] ?: "20"
-                "创${period}日新高，当前价格 ${triggeredAlert.currentValue}"
+                context.getString(R.string.notification_new_high, period, triggeredAlert.currentValue.toString())
             }
             AlertType.NEW_LOW -> {
                 val period = alert.params["period"] ?: "20"
-                "创${period}日新低，当前价格 ${triggeredAlert.currentValue}"
+                context.getString(R.string.notification_new_low, period, triggeredAlert.currentValue.toString())
             }
             AlertType.MA_CROSS_ABOVE -> {
                 val shortPeriod = alert.params["short_period"] ?: "5"
                 val longPeriod = alert.params["long_period"] ?: "20"
-                "MA${shortPeriod} 上穿 MA${longPeriod} 金叉信号"
+                context.getString(R.string.notification_ma_cross_above, shortPeriod, longPeriod)
             }
             AlertType.MA_CROSS_BELOW -> {
                 val shortPeriod = alert.params["short_period"] ?: "5"
                 val longPeriod = alert.params["long_period"] ?: "20"
-                "MA${shortPeriod} 下穿 MA${longPeriod} 死叉信号"
+                context.getString(R.string.notification_ma_cross_below, shortPeriod, longPeriod)
             }
         }
         return if (alert.actionHint != null) {
-            "$typeLabel\n建议操作：${alert.actionHint}"
+            context.getString(R.string.notification_action_hint, typeLabel, alert.actionHint)
         } else {
             typeLabel
         }
@@ -118,10 +118,10 @@ class AlertCheckWorker @AssistedInject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "价格预警",
+                context.getString(R.string.notification_alert_channel_name),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "证券价格预警通知"
+                description = context.getString(R.string.notification_alert_channel_description)
             }
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)

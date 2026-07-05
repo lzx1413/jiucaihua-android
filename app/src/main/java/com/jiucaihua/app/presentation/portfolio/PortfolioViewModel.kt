@@ -1,8 +1,10 @@
 package com.jiucaihua.app.presentation.portfolio
 
 import android.content.SharedPreferences
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketSession
@@ -20,6 +22,7 @@ import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import com.jiucaihua.app.domain.usecase.ManageHoldingUseCase
 import com.jiucaihua.app.domain.usecase.RecordSnapshotUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,13 +57,14 @@ data class PortfolioUiState(
 
 @HiltViewModel
 class PortfolioViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val manageHoldingUseCase: ManageHoldingUseCase,
     private val getPortfolioUseCase: GetPortfolioUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     private val newsRepository: NewsRepository,
     private val snapshotRepository: PortfolioSnapshotRepository,
     private val recordSnapshotUseCase: RecordSnapshotUseCase,
-    @Named("appPrefs") private val prefs: SharedPreferences,
+    @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PortfolioUiState())
@@ -116,7 +120,7 @@ class PortfolioViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     marketNews = newsList,
                     isNewsLoading = false,
-                    newsError = if (newsList.isEmpty()) "暂无资讯" else null,
+                    newsError = if (newsList.isEmpty()) context.getString(R.string.no_news) else null,
                 )
             }
         }
@@ -209,7 +213,7 @@ class PortfolioViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isRefreshing = false,
-                    error = "行情获取失败: ${e.message}",
+                    error = context.getString(R.string.quote_load_failed, e.message),
                 )
             }
         }

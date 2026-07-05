@@ -40,11 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.WatchlistItem
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
@@ -71,13 +73,13 @@ fun WatchlistTabContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "该分组暂无自选",
+                    text = stringResource(R.string.watchlist_group_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { onGroupSelected(null) }) {
-                    Text("查看全部")
+                    Text(stringResource(R.string.view_all))
                 }
             }
         }
@@ -119,7 +121,7 @@ private fun GroupFilterRow(
             FilterChip(
                 selected = selectedGroup == null,
                 onClick = { onGroupSelected(null) },
-                label = { Text("全部") },
+                label = { Text(stringResource(R.string.all)) },
             )
         }
         items(groups) { group ->
@@ -140,13 +142,13 @@ private fun EmptyWatchlistState(onAddClick: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "暂无自选",
+                text = stringResource(R.string.no_watchlist),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onAddClick) {
-                Text("添加自选")
+                Text(stringResource(R.string.watchlist_add))
             }
         }
     }
@@ -159,7 +161,8 @@ private fun WatchlistList(
     onItemLongClick: (WatchlistItem) -> Unit,
 ) {
     // Group items by group field, show group headers
-    val groupedItems = items.groupBy { it.group.ifEmpty { "未分组" } }
+    val ungroupedLabel = stringResource(R.string.ungrouped)
+    val groupedItems = items.groupBy { it.group.ifEmpty { ungroupedLabel } }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -167,7 +170,7 @@ private fun WatchlistList(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         groupedItems.forEach { (group, groupItems) ->
-            if (group != "未分组" || groupedItems.size > 1) {
+            if (group != ungroupedLabel || groupedItems.size > 1) {
                 item(key = "group_$group") {
                     Text(
                         text = group,
@@ -277,13 +280,13 @@ fun AddWatchlistDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加自选") },
+        title = { Text(stringResource(R.string.watchlist_add)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = uiState.searchQuery,
                     onValueChange = onQueryChange,
-                    label = { Text("搜索证券名称或代码") },
+                    label = { Text(stringResource(R.string.search_security_name_or_code)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -294,8 +297,8 @@ fun AddWatchlistDialog(
                 OutlinedTextField(
                     value = uiState.addDialogGroup,
                     onValueChange = onGroupChange,
-                    label = { Text("分组（可选）") },
-                    placeholder = { Text("例如：银行、科技") },
+                    label = { Text(stringResource(R.string.group_optional)) },
+                    placeholder = { Text(stringResource(R.string.group_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -357,7 +360,7 @@ fun AddWatchlistDialog(
                 }
                 if (uiState.searchQuery.isNotBlank() && !uiState.isSearching && uiState.searchResults.isEmpty()) {
                     Text(
-                        text = "未找到匹配的证券",
+                        text = stringResource(R.string.no_matching_security),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp),
@@ -368,7 +371,7 @@ fun AddWatchlistDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭")
+                Text(stringResource(R.string.action_close))
             }
         },
     )
@@ -385,7 +388,7 @@ fun WatchlistGroupDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("设置分组") },
+        title = { Text(stringResource(R.string.set_group)) },
         text = {
             Column {
                 Text(
@@ -396,8 +399,8 @@ fun WatchlistGroupDialog(
                 OutlinedTextField(
                     value = groupInput,
                     onValueChange = { groupInput = it },
-                    label = { Text("分组名称") },
-                    placeholder = { Text("输入分组名，留空取消分组") },
+                    label = { Text(stringResource(R.string.group_name)) },
+                    placeholder = { Text(stringResource(R.string.group_name_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -419,12 +422,12 @@ fun WatchlistGroupDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(groupInput) }) {
-                Text("确认")
+                Text(stringResource(R.string.action_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
             }
         },
     )

@@ -1,11 +1,14 @@
 package com.jiucaihua.app.presentation.market
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.MarketGroup
 import com.jiucaihua.app.domain.model.MarketTab
 import com.jiucaihua.app.domain.repository.MarketRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -25,6 +28,7 @@ data class MarketUiState(
 
 @HiltViewModel
 class MarketViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val marketRepository: MarketRepository,
 ) : ViewModel() {
 
@@ -58,7 +62,12 @@ class MarketViewModel @Inject constructor(
 
                 _uiState.update { it.copy(groups = groups, isLoading = false, error = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "数据加载失败: ${e.message}", isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        error = context.getString(R.string.data_load_failed, e.message),
+                        isLoading = false,
+                    )
+                }
             }
         }
     }

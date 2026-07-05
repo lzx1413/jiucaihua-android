@@ -22,13 +22,13 @@ import javax.inject.Inject
 import javax.inject.Named
 
 class BackupRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val holdingDao: HoldingDao,
     private val alertDao: AlertDao,
     private val snapshotDao: PortfolioSnapshotDao,
     private val watchlistDao: WatchlistDao,
     private val newsFlashDao: NewsFlashDao,
-    @Named("appPrefs") private val prefs: SharedPreferences,
+    @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) {
 
     private val json = Json {
@@ -48,6 +48,7 @@ class BackupRepository @Inject constructor(
             isDarkMode = if (prefs.contains(SettingsViewModel.KEY_DARK_MODE)) {
                 prefs.getBoolean(SettingsViewModel.KEY_DARK_MODE, false)
             } else null,
+            languageTag = prefs.getString(SettingsViewModel.KEY_LANGUAGE, "").orEmpty(),
             oledMode = prefs.getBoolean(SettingsViewModel.KEY_OLED_MODE, false),
             alertsEnabled = prefs.getBoolean(SettingsViewModel.KEY_ALERTS_ENABLED, true),
             cash = prefs.getFloat("cash", 0f),
@@ -116,6 +117,11 @@ class BackupRepository @Inject constructor(
                 putBoolean(SettingsViewModel.KEY_DARK_MODE, backup.settings.isDarkMode)
             } else {
                 remove(SettingsViewModel.KEY_DARK_MODE)
+            }
+            if (backup.settings.languageTag.isBlank()) {
+                remove(SettingsViewModel.KEY_LANGUAGE)
+            } else {
+                putString(SettingsViewModel.KEY_LANGUAGE, backup.settings.languageTag)
             }
             putBoolean(SettingsViewModel.KEY_OLED_MODE, backup.settings.oledMode)
             putBoolean(SettingsViewModel.KEY_ALERTS_ENABLED, backup.settings.alertsEnabled)

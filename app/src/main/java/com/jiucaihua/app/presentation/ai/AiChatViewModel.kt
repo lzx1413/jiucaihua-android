@@ -1,12 +1,15 @@
 package com.jiucaihua.app.presentation.ai
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.R
 import com.jiucaihua.app.ai.model.AgentIteration
 import com.jiucaihua.app.ai.model.AgentRunResult
 import com.jiucaihua.app.ai.model.ChatMessage
 import com.jiucaihua.app.ai.orchestrator.AiAgentOrchestrator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +37,7 @@ data class AiChatUiState(
 
 @HiltViewModel
 class AiChatViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val aiAgentOrchestrator: AiAgentOrchestrator,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AiChatUiState())
@@ -72,7 +76,7 @@ class AiChatViewModel @Inject constructor(
             }.onFailure {
                 _uiState.value = _uiState.value.copy(
                     isSending = false,
-                    error = it.message ?: "发送失败",
+                    error = it.message ?: context.getString(R.string.ai_send_failed),
                 )
             }
         }

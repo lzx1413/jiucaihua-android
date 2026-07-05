@@ -12,7 +12,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.presentation.theme.FallGreen
@@ -46,7 +48,7 @@ fun HoldingInfoCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "我的持仓",
+                text = stringResource(R.string.detail_my_holding),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 12.dp),
             )
@@ -55,12 +57,16 @@ fun HoldingInfoCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                InfoItem("成本价", "$currencyPrefix%.2f".format(holding.costPrice))
-                val sharesLabel = if (holding.marketType == MarketType.FUND) "份额" else "股数"
-                val sharesText = if (holding.marketType == MarketType.FUND) {
-                    "%.2f份".format(holding.holdingShares)
+                InfoItem(stringResource(R.string.cost_price), "$currencyPrefix%.2f".format(holding.costPrice))
+                val sharesLabel = if (holding.marketType == MarketType.FUND) {
+                    stringResource(R.string.detail_shares_label_fund)
                 } else {
-                    "%.0f股".format(holding.holdingShares)
+                    stringResource(R.string.detail_shares_label_stock)
+                }
+                val sharesText = if (holding.marketType == MarketType.FUND) {
+                    stringResource(R.string.detail_fund_shares_format, holding.holdingShares)
+                } else {
+                    stringResource(R.string.detail_stock_shares_format, holding.holdingShares)
                 }
                 InfoItem(sharesLabel, sharesText)
             }
@@ -71,9 +77,9 @@ fun HoldingInfoCard(
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                InfoItem("市值", "¥%,.2f".format(holding.marketValueCNY))
+                InfoItem(stringResource(R.string.detail_market_value), "¥%,.2f".format(holding.marketValueCNY))
                 InfoItem(
-                    label = "盈亏",
+                    label = stringResource(R.string.detail_profit_loss),
                     value = formatSignedMoney(holding.earningsCNY),
                     valueColor = earningsColor,
                 )
@@ -87,7 +93,7 @@ fun HoldingInfoCard(
             ) {
                 val sign = if (holding.earningsPercent >= 0) "+" else ""
                 InfoItem(
-                    label = "收益率",
+                    label = stringResource(R.string.detail_return_rate),
                     value = "$sign%.2f%%".format(holding.earningsPercent),
                     valueColor = earningsColor,
                 )

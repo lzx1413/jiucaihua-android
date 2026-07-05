@@ -2,6 +2,7 @@ package com.jiucaihua.app
 
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.jiucaihua.app.i18n.AppLocaleManager
 import com.jiucaihua.app.presentation.navigation.AppNavHost
 import com.jiucaihua.app.presentation.settings.SettingsViewModel
 import com.jiucaihua.app.presentation.theme.JiucaihuaTheme
@@ -27,6 +29,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     @Named("appPrefs")
     lateinit var prefs: SharedPreferences
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocaleManager.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +59,9 @@ class MainActivity : ComponentActivity() {
                         }
                         SettingsViewModel.KEY_OLED_MODE -> {
                             oledModePref = sharedPreferences.getBoolean(key, false)
+                        }
+                        SettingsViewModel.KEY_LANGUAGE -> {
+                            recreate()
                         }
                     }
                 }

@@ -29,10 +29,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.StockQuote
@@ -71,7 +73,7 @@ fun DetailScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.action_back),
                         )
                     }
                 },
@@ -91,7 +93,7 @@ fun DetailScreen(
                     LoadingIndicator()
                 }
                 uiState.error != null && uiState.stockQuote == null && uiState.fundQuote == null -> {
-                    ErrorMessage(message = uiState.error ?: "加载失败")
+                    ErrorMessage(message = uiState.error ?: stringResource(R.string.loading_failed))
                 }
                 else -> {
                     Column(
@@ -137,7 +139,7 @@ fun DetailScreen(
                                 FilterChip(
                                     selected = showMA,
                                     onClick = { showMA = !showMA },
-                                    label = { Text("均线") },
+                                    label = { Text(stringResource(R.string.moving_average)) },
                                 )
                             }
                         }
@@ -167,7 +169,11 @@ fun DetailScreen(
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
-                                            text = if (isFund) "暂无净值数据" else "暂无K线数据",
+                                            text = if (isFund) {
+                                                stringResource(R.string.no_nav_data)
+                                            } else {
+                                                stringResource(R.string.no_kline_data)
+                                            },
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }

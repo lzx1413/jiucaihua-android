@@ -17,13 +17,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.FundFlowData
 import com.jiucaihua.app.domain.model.NorthFlowData
 import com.jiucaihua.app.domain.model.SouthFlowData
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
+import java.util.Locale
 
 @Composable
 fun FundFlowCard(
@@ -47,7 +50,7 @@ fun FundFlowCard(
                 .padding(16.dp),
         ) {
             Text(
-                text = "资金流向",
+                text = stringResource(R.string.fund_flow),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -71,21 +74,21 @@ fun FundFlowCard(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     FundFlowItem(
-                        title = "北向资金",
+                        title = stringResource(R.string.northbound_funds),
                         totalFlow = fundFlowData.northFlow.totalNetInflow,
                         hgtFlow = fundFlowData.northFlow.hgtNetInflow,
                         sgtFlow = fundFlowData.northFlow.sgtNetInflow,
-                        hgtLabel = "沪股通",
-                        sgtLabel = "深股通",
+                        hgtLabel = stringResource(R.string.shanghai_stock_connect),
+                        sgtLabel = stringResource(R.string.shenzhen_stock_connect),
                     )
 
                     FundFlowItem(
-                        title = "南向资金",
+                        title = stringResource(R.string.southbound_funds),
                         totalFlow = fundFlowData.southFlow.totalNetInflow,
                         hgtFlow = fundFlowData.southFlow.ggtShNetInflow,
                         sgtFlow = fundFlowData.southFlow.ggtSzNetInflow,
-                        hgtLabel = "港股通(沪)",
-                        sgtLabel = "港股通(深)",
+                        hgtLabel = stringResource(R.string.hk_connect_shanghai),
+                        sgtLabel = stringResource(R.string.hk_connect_shenzhen),
                     )
                 }
             }
@@ -122,7 +125,7 @@ private fun FundFlowItem(
         val sign = if (totalFlow >= 0) "+" else ""
 
         Text(
-            text = "$sign${formatFlowAmount(totalFlow)}亿",
+            text = formatSignedFlowAmount(totalFlow),
             style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
             color = totalColor,
         )
@@ -163,7 +166,7 @@ private fun FlowDetailItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = "$sign${formatFlowAmount(flow)}亿",
+            text = formatSignedFlowAmount(flow),
             style = MaterialTheme.typography.bodyMedium,
             color = color,
         )
@@ -173,4 +176,14 @@ private fun FlowDetailItem(
 private fun formatFlowAmount(amount: Double): String {
     val billionAmount = amount / 10000.0
     return "%.2f".format(billionAmount)
+}
+
+private fun formatSignedFlowAmount(amount: Double): String {
+    val sign = if (amount >= 0) "+" else ""
+    val value = formatFlowAmount(amount)
+    return if (Locale.getDefault().language == Locale.CHINESE.language) {
+        "$sign${value}亿"
+    } else {
+        "$sign${value}B"
+    }
 }

@@ -1,3 +1,7 @@
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +9,9 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
 }
+
+val buildDate: String = LocalDate.now(ZoneId.of("Asia/Shanghai"))
+    .format(DateTimeFormatter.ISO_LOCAL_DATE)
 
 android {
     namespace = "com.jiucaihua.app"
@@ -18,7 +25,7 @@ android {
         versionName = "1.2.0"
 
         buildConfigField("String", "GITHUB_URL", "\"https://github.com/lzx1413/jiucaihua-android\"")
-        buildConfigField("String", "BUILD_DATE", "\"2026-06-14 15:30\"")
+        buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

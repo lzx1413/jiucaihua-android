@@ -1,9 +1,11 @@
 package com.jiucaihua.app.presentation.detail
 
+import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.FundQuote
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.KLineData
@@ -19,6 +21,7 @@ import com.jiucaihua.app.domain.repository.StockRepository
 import com.jiucaihua.app.domain.usecase.GetKLineDataUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +52,7 @@ data class DetailUiState(
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val stockRepository: StockRepository,
     private val fundRepository: FundRepository,
@@ -57,7 +61,7 @@ class DetailViewModel @Inject constructor(
     private val newsRepository: NewsRepository,
     private val getKLineDataUseCase: GetKLineDataUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
-    @Named("appPrefs") private val prefs: SharedPreferences,
+    @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
     private val code: String = savedStateHandle.get<String>("code") ?: ""
@@ -83,7 +87,9 @@ class DetailViewModel @Inject constructor(
                 loadKLine(_uiState.value.selectedPeriod)
                 loadNews()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "数据加载失败: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    error = context.getString(R.string.data_load_failed, e.message),
+                )
             } finally {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }

@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.LineChart
@@ -15,6 +16,7 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.KLineData
 
 private const val LINE_COLOR = 0xFF1565C0.toInt()
@@ -31,6 +33,7 @@ fun FundNavChartView(
     val dates = points.map { it.date }
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f).toArgb()
+    val navTrendLabel = stringResource(R.string.fund_nav_trend)
 
     AndroidView(
         modifier = modifier
@@ -85,7 +88,7 @@ fun FundNavChartView(
                 Entry(i.toFloat(), p.close.toFloat())
             }
 
-            val dataSet = LineDataSet(entries, "净值走势").apply {
+            val dataSet = LineDataSet(entries, navTrendLabel).apply {
                 color = LINE_COLOR
                 setDrawCircles(false)
                 setDrawValues(false)

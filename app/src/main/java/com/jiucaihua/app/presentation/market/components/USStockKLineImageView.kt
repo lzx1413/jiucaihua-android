@@ -9,9 +9,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.KLinePeriod
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @Composable
 fun USStockKLineImageView(
@@ -28,14 +31,10 @@ fun USStockKLineImageView(
         KLinePeriod.MONTHLY -> "https://image.sinajs.cn/newchart/v5/usstock/monthly/${indexCode}.gif?t=$timestamp"
     }
 
-    val periodLabel = when (period) {
-        KLinePeriod.DAILY -> "日K"
-        KLinePeriod.WEEKLY -> "周K"
-        KLinePeriod.MONTHLY -> "月K"
-    }
+    val periodLabel = period.localizedLabel()
 
     Text(
-        text = "${periodLabel}线图",
+        text = stringResource(R.string.kline_chart_title, periodLabel),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -43,7 +42,7 @@ fun USStockKLineImageView(
 
     AsyncImage(
         model = imageUrl,
-        contentDescription = "K线图",
+        contentDescription = stringResource(R.string.kline_chart),
         contentScale = ContentScale.FillWidth,
         modifier = modifier
             .fillMaxWidth()

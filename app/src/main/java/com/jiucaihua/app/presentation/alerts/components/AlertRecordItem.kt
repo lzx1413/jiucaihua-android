@@ -12,10 +12,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.AlertRecord
 import com.jiucaihua.app.domain.model.AlertType
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -73,20 +76,28 @@ private fun formatTriggerTime(timestamp: Long): String {
     return sdf.format(Date(timestamp))
 }
 
+@Composable
 private fun formatRecordDetail(record: AlertRecord): String {
     val suffix = when (record.alertType) {
         AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> ""
         AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "%"
-        AlertType.VOLUME_ABOVE -> "手"
+        AlertType.VOLUME_ABOVE -> stringResource(R.string.unit_lot)
         AlertType.NEW_HIGH, AlertType.NEW_LOW -> ""
         AlertType.MA_CROSS_ABOVE, AlertType.MA_CROSS_BELOW -> ""
     }
     val currentSuffix = when (record.alertType) {
         AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> ""
         AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "%"
-        AlertType.VOLUME_ABOVE -> "手"
-        AlertType.NEW_HIGH, AlertType.NEW_LOW -> "元"
+        AlertType.VOLUME_ABOVE -> stringResource(R.string.unit_lot)
+        AlertType.NEW_HIGH, AlertType.NEW_LOW -> stringResource(R.string.unit_yuan)
         AlertType.MA_CROSS_ABOVE, AlertType.MA_CROSS_BELOW -> ""
     }
-    return "${record.alertType.label} ${record.threshold}$suffix，触发值 ${record.currentValue}$currentSuffix"
+    return stringResource(
+        R.string.alert_record_detail,
+        record.alertType.localizedLabel(),
+        record.threshold.toString(),
+        suffix,
+        record.currentValue.toString(),
+        currentSuffix,
+    )
 }

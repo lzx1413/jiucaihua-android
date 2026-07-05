@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @Composable
 fun MarketStatusBadge(
@@ -59,7 +60,7 @@ private fun MarketBadge(
                 ) {}
             }
             Text(
-                text = "${marketType.label} ${session.label}",
+                text = "${marketType.localizedLabel()} ${session.localizedLabel()}",
                 style = MaterialTheme.typography.labelSmall,
                 color = textColor,
             )

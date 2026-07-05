@@ -74,11 +74,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.Holding
@@ -95,6 +97,7 @@ import com.jiucaihua.app.presentation.market.MarketViewModel
 import com.jiucaihua.app.presentation.common.components.EmptyState
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 import com.jiucaihua.app.presentation.common.components.MarketStatusBadge
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 import com.jiucaihua.app.presentation.portfolio.components.CategoryHoldingSection
 import com.jiucaihua.app.presentation.portfolio.components.EarningsChartView
 import com.jiucaihua.app.presentation.portfolio.components.HoldingListItem
@@ -133,10 +136,10 @@ fun PortfolioScreen(
     var selectedTabIndex by rememberSaveable { mutableStateOf(HoldingsTabIndex) }
     val snackbarHostState = remember { SnackbarHostState() }
     val tabItems = listOf(
-        "持仓" to Icons.Outlined.AccountBalanceWallet,
-        "资讯" to Icons.AutoMirrored.Outlined.Article,
-        "自选" to Icons.Outlined.StarOutline,
-        "大盘" to Icons.Outlined.TrendingUp,
+        stringResource(R.string.tab_holdings) to Icons.Outlined.AccountBalanceWallet,
+        stringResource(R.string.tab_news) to Icons.AutoMirrored.Outlined.Article,
+        stringResource(R.string.tab_watchlist) to Icons.Outlined.StarOutline,
+        stringResource(R.string.tab_market) to Icons.Outlined.TrendingUp,
     )
 
     LaunchedEffect(uiState.error) {
@@ -151,15 +154,15 @@ fun PortfolioScreen(
         drawerContent = {
             ModalDrawerSheet {
                 Text(
-                    "九财花",
+                    stringResource(R.string.app_name),
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
                 HorizontalDivider()
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Outlined.Notifications, contentDescription = "预警管理") },
-                    label = { Text("预警管理") },
+                    icon = { Icon(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.alerts)) },
+                    label = { Text(stringResource(R.string.alerts)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -168,8 +171,8 @@ fun PortfolioScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Outlined.Settings, contentDescription = "设置") },
-                    label = { Text("设置") },
+                    icon = { Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings)) },
+                    label = { Text(stringResource(R.string.settings)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -187,17 +190,19 @@ fun PortfolioScreen(
                     IconButton(onClick = { scope.launch { drawerState.open() } }) {
                         Icon(
                             imageVector = Icons.Default.Menu,
-                            contentDescription = "菜单",
+                            contentDescription = stringResource(R.string.action_menu),
                         )
                     }
                 },
                 title = {
                     Column {
-                        Text("九财花")
+                        Text(stringResource(R.string.app_name))
                         val subtitle = when (selectedTabIndex) {
-                            HoldingsTabIndex -> uiState.summary.lastUpdateTime.takeIf { it != "--" }?.let { "更新于 $it" }
-                            NewsTabIndex -> "市场资讯"
-                            WatchlistTabIndex -> "自选行情"
+                            HoldingsTabIndex -> uiState.summary.lastUpdateTime.takeIf { it != "--" }?.let {
+                                stringResource(R.string.updated_at, it)
+                            }
+                            NewsTabIndex -> stringResource(R.string.market_news)
+                            WatchlistTabIndex -> stringResource(R.string.watchlist_quotes)
                             else -> null
                         }
                         subtitle?.let {
@@ -214,7 +219,7 @@ fun PortfolioScreen(
                         IconButton(onClick = onAddHolding) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = "添加持仓",
+                                contentDescription = stringResource(R.string.add_holding),
                             )
                         }
                     }
@@ -222,7 +227,7 @@ fun PortfolioScreen(
                         IconButton(onClick = watchlistViewModel::showAddDialog) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = "添加自选",
+                                contentDescription = stringResource(R.string.add_watchlist),
                             )
                         }
                     }
@@ -317,7 +322,7 @@ fun PortfolioScreen(
     holdingToDelete?.let { holding ->
         AlertDialog(
             onDismissRequest = { holdingToDelete = null },
-            title = { Text("管理持仓") },
+            title = { Text(stringResource(R.string.manage_holding)) },
             text = { Text("${holding.name}(${holding.code})") },
             confirmButton = {
                 TextButton(
@@ -326,13 +331,13 @@ fun PortfolioScreen(
                         holdingToDelete = null
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = { holdingToDelete = null }) {
-                        Text("取消")
+                        Text(stringResource(R.string.action_cancel))
                     }
                     TextButton(
                         onClick = {
@@ -341,7 +346,7 @@ fun PortfolioScreen(
                             onEditHolding(id)
                         }
                     ) {
-                        Text("编辑")
+                        Text(stringResource(R.string.action_edit))
                     }
                 }
             }
@@ -367,7 +372,7 @@ fun PortfolioScreen(
         } else {
             AlertDialog(
                 onDismissRequest = { watchlistToDelete = null },
-                title = { Text("管理自选") },
+                title = { Text(stringResource(R.string.manage_watchlist)) },
                 text = { Text("${item.name}(${item.code})") },
                 confirmButton = {
                     TextButton(
@@ -376,20 +381,20 @@ fun PortfolioScreen(
                             watchlistToDelete = null
                         }
                     ) {
-                        Text("删除", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     Row {
                         TextButton(onClick = { watchlistToDelete = null }) {
-                            Text("取消")
+                            Text(stringResource(R.string.action_cancel))
                         }
                         TextButton(
                             onClick = {
                                 showGroupDialog = true
                             }
                         ) {
-                            Text("分组")
+                            Text(stringResource(R.string.set_group))
                         }
                     }
                 },
@@ -531,11 +536,11 @@ private fun NewsTabContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                placeholder = { Text("搜索资讯") },
+                placeholder = { Text(stringResource(R.string.search_news)) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "搜索",
+                        contentDescription = stringResource(R.string.action_search),
                     )
                 },
                 trailingIcon = {
@@ -543,7 +548,7 @@ private fun NewsTabContent(
                         IconButton(onClick = onClearSearch) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "清空",
+                                contentDescription = stringResource(R.string.action_clear),
                             )
                         }
                     }
@@ -566,11 +571,11 @@ private fun NewsTabContent(
                 FilterChip(
                     selected = showBookmarkedOnly,
                     onClick = { onShowBookmarkedOnly(!showBookmarkedOnly) },
-                    label = { Text("仅收藏") },
+                    label = { Text(stringResource(R.string.bookmarked_only)) },
                     leadingIcon = {
                         Icon(
                             imageVector = if (showBookmarkedOnly) Icons.Filled.Star else Icons.Outlined.StarOutline,
-                            contentDescription = "收藏",
+                            contentDescription = stringResource(R.string.action_bookmark),
                             modifier = Modifier.size(16.dp),
                         )
                     },
@@ -607,9 +612,13 @@ private fun NewsTabContent(
                 }
                 filtered.isEmpty() -> {
                     Text(
-                        text = if (searchedNews != null) "未找到相关资讯"
-                            else if (showBookmarkedOnly) "暂无收藏资讯"
-                            else "暂无资讯",
+                        text = if (searchedNews != null) {
+                            stringResource(R.string.news_not_found)
+                        } else if (showBookmarkedOnly) {
+                            stringResource(R.string.no_bookmarked_news)
+                        } else {
+                            stringResource(R.string.no_news)
+                        },
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -665,7 +674,11 @@ private fun NewsListItem(
             ) {
                 Icon(
                     imageVector = if (article.isBookmarked) Icons.Filled.Star else Icons.Outlined.StarOutline,
-                    contentDescription = if (article.isBookmarked) "取消收藏" else "收藏",
+                    contentDescription = if (article.isBookmarked) {
+                        stringResource(R.string.action_unbookmark)
+                    } else {
+                        stringResource(R.string.action_bookmark)
+                    },
                     tint = if (article.isBookmarked) Color(0xFFFFC107) else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )
@@ -740,7 +753,7 @@ private fun NewsSourceFilterRow(
             FilterChip(
                 selected = selectedSource == source,
                 onClick = { onSourceSelected(source) },
-                label = { Text(source?.displayName ?: "全部") },
+                label = { Text(source?.displayName ?: stringResource(R.string.all)) },
             )
         }
     }
@@ -789,14 +802,14 @@ private fun EarningsChartSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "收益走势",
+                    text = stringResource(R.string.earnings_trend),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                 )
                 Spacer(Modifier.width(12.dp))
                 if (benchmarkPercent != 0.0) {
                     Text(
-                        text = "沪深300 ${String.format("%.2f%%", benchmarkPercent)}",
+                        text = stringResource(R.string.csi300_percent, String.format("%.2f%%", benchmarkPercent)),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFFF9800),
                     )
@@ -804,7 +817,11 @@ private fun EarningsChartSection(
                 Spacer(Modifier.weight(1f))
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) "收起" else "展开",
+                    contentDescription = if (expanded) {
+                        stringResource(R.string.action_collapse)
+                    } else {
+                        stringResource(R.string.action_expand)
+                    },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -822,7 +839,7 @@ private fun EarningsChartSection(
                             FilterChip(
                                 selected = selectedChartRange == range,
                                 onClick = { onChartRangeChanged(range) },
-                                label = { Text(range.label) },
+                                label = { Text(range.localizedLabel()) },
                             )
                         }
                     }

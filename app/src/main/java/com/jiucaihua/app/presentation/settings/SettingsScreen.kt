@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -47,10 +48,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.R
 import com.jiucaihua.app.ai.model.AiProvider
 import com.jiucaihua.app.ai.model.metadata
 import com.jiucaihua.app.BuildConfig
 import com.jiucaihua.app.data.backup.BackupRepository
+import com.jiucaihua.app.i18n.AppLocaleManager
 
 private const val SHOW_AI_SETTINGS = false
 
@@ -109,12 +112,12 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("设置") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.action_back),
                         )
                     }
                 },
@@ -130,7 +133,7 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SectionHeader("行情刷新")
+            SectionHeader(stringResource(R.string.settings_refresh))
             RefreshIntervalSelector(
                 currentInterval = uiState.refreshIntervalSeconds,
                 onSelect = { viewModel.setRefreshInterval(it) },
@@ -138,15 +141,23 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            SectionHeader("外观")
+            SectionHeader(stringResource(R.string.settings_language))
+            LanguageSelector(
+                selectedLanguage = uiState.languageTag,
+                onSelect = { viewModel.setLanguage(it) },
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            SectionHeader(stringResource(R.string.settings_appearance))
             ThemeSelector(
                 isDarkMode = uiState.isDarkMode,
                 onSelect = { viewModel.setDarkMode(it) },
             )
             if (uiState.isDarkMode != false) {
                 SettingSwitch(
-                    title = "OLED 纯黑模式",
-                    subtitle = "在深色模式下使用纯黑背景，适合 OLED 屏幕",
+                    title = stringResource(R.string.settings_oled_mode),
+                    subtitle = stringResource(R.string.settings_oled_mode_subtitle),
                     checked = uiState.oledMode,
                     onCheckedChange = { viewModel.setOledMode(it) },
                 )
@@ -154,10 +165,10 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            SectionHeader("通知")
+            SectionHeader(stringResource(R.string.settings_notifications))
             SettingSwitch(
-                title = "价格预警通知",
-                subtitle = "当证券价格达到预警阈值时推送通知",
+                title = stringResource(R.string.settings_alert_notifications),
+                subtitle = stringResource(R.string.settings_alert_notifications_subtitle),
                 checked = uiState.alertsEnabled,
                 onCheckedChange = { viewModel.setAlertsEnabled(it) },
             )
@@ -165,7 +176,7 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             if (SHOW_AI_SETTINGS) {
-                SectionHeader("AI 助手")
+                SectionHeader(stringResource(R.string.settings_ai))
                 AiProviderSelector(
                     selectedProvider = uiState.aiConfig.provider,
                     onSelect = { viewModel.setAiProvider(it) },
@@ -174,7 +185,7 @@ fun SettingsScreen(
                     title = "API Key",
                     value = uiState.aiConfig.apiKey,
                     onValueChange = viewModel::setAiApiKey,
-                    placeholder = "输入 API Key",
+                    placeholder = stringResource(R.string.settings_api_key_placeholder),
                     isSecret = true,
                 )
                 SettingTextField(
@@ -185,7 +196,7 @@ fun SettingsScreen(
                     enabled = uiState.aiConfig.provider == AiProvider.CUSTOM,
                 )
                 SettingTextField(
-                    title = "模型",
+                    title = stringResource(R.string.settings_model),
                     value = uiState.aiConfig.preferredModel,
                     onValueChange = viewModel::setAiModel,
                     placeholder = uiState.aiConfig.provider.metadata.recommendedModel,
@@ -208,14 +219,26 @@ fun SettingsScreen(
                         enabled = !uiState.isLoadingModels && uiState.aiConfig.apiKey.isNotBlank(),
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text(if (uiState.isLoadingModels) "获取中..." else "获取可用模型")
+                        Text(
+                            if (uiState.isLoadingModels) {
+                                stringResource(R.string.settings_loading_models)
+                            } else {
+                                stringResource(R.string.settings_fetch_models)
+                            }
+                        )
                     }
                     Button(
                         onClick = viewModel::testAiConnection,
                         enabled = !uiState.isTestingConnection && uiState.aiConfig.apiKey.isNotBlank(),
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text(if (uiState.isTestingConnection) "测试中..." else "测试连通性")
+                        Text(
+                            if (uiState.isTestingConnection) {
+                                stringResource(R.string.settings_testing_connection)
+                            } else {
+                                stringResource(R.string.settings_test_connection)
+                            }
+                        )
                     }
                 }
                 uiState.connectivityMessage?.let {
@@ -227,8 +250,8 @@ fun SettingsScreen(
                     )
                 }
                 SettingSwitch(
-                    title = "启用深度思考",
-                    subtitle = "允许 provider 使用更高推理强度",
+                    title = stringResource(R.string.settings_enable_thinking),
+                    subtitle = stringResource(R.string.settings_enable_thinking_subtitle),
                     checked = uiState.aiConfig.enableThinking,
                     onCheckedChange = { viewModel.setAiThinkingEnabled(it) },
                 )
@@ -236,7 +259,7 @@ fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            SectionHeader("数据备份")
+            SectionHeader(stringResource(R.string.settings_backup))
             if (backupState.isExporting || backupState.isImporting) {
                 LinearProgressIndicator(
                     modifier = Modifier
@@ -264,24 +287,24 @@ fun SettingsScreen(
                     enabled = !backupState.isExporting && !backupState.isImporting,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("导出数据")
+                    Text(stringResource(R.string.settings_export_data))
                 }
                 Button(
                     onClick = { backupViewModel.startImport(openDocumentLauncher) },
                     enabled = !backupState.isExporting && !backupState.isImporting,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("导入数据")
+                    Text(stringResource(R.string.settings_import_data))
                 }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            SectionHeader("关于")
-            SettingItem(title = "版本", subtitle = BuildConfig.VERSION_NAME)
-            SettingItem(title = "应用名称", subtitle = "九财花")
+            SectionHeader(stringResource(R.string.settings_about))
+            SettingItem(title = stringResource(R.string.settings_version), subtitle = BuildConfig.VERSION_NAME)
+            SettingItem(title = stringResource(R.string.settings_app_name), subtitle = stringResource(R.string.app_name))
             SettingItem(title = "GitHub", subtitle = BuildConfig.GITHUB_URL)
-            SettingItem(title = "编译日期", subtitle = BuildConfig.BUILD_DATE)
+            SettingItem(title = stringResource(R.string.settings_build_date), subtitle = BuildConfig.BUILD_DATE)
         }
     }
 }
@@ -294,10 +317,10 @@ private fun RestoreModeDialog(
     var selectedMode by remember { mutableStateOf(BackupRepository.RestoreMode.REPLACE) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("导入模式") },
+        title = { Text(stringResource(R.string.restore_mode)) },
         text = {
             Column {
-                Text("请选择导入数据的处理方式:", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.restore_mode_prompt), style = MaterialTheme.typography.bodyMedium)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -310,9 +333,9 @@ private fun RestoreModeDialog(
                         onClick = { selectedMode = BackupRepository.RestoreMode.REPLACE },
                     )
                     Column(modifier = Modifier.padding(start = 8.dp)) {
-                        Text("替换全部", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.restore_replace), style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "清空现有数据后导入备份数据",
+                            stringResource(R.string.restore_replace_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -330,9 +353,9 @@ private fun RestoreModeDialog(
                         onClick = { selectedMode = BackupRepository.RestoreMode.MERGE },
                     )
                     Column(modifier = Modifier.padding(start = 8.dp)) {
-                        Text("合并数据", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.restore_merge), style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "保留现有数据，仅添加不存在的内容",
+                            stringResource(R.string.restore_merge_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -342,12 +365,12 @@ private fun RestoreModeDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selectedMode) }) {
-                Text("确认导入")
+                Text(stringResource(R.string.restore_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
             }
         },
     )
@@ -369,7 +392,12 @@ private fun RefreshIntervalSelector(
     currentInterval: Int,
     onSelect: (Int) -> Unit,
 ) {
-    val options = listOf(5 to "5秒", 10 to "10秒", 15 to "15秒", 30 to "30秒")
+    val options = listOf(
+        5 to stringResource(R.string.interval_5_seconds),
+        10 to stringResource(R.string.interval_10_seconds),
+        15 to stringResource(R.string.interval_15_seconds),
+        30 to stringResource(R.string.interval_30_seconds),
+    )
     options.forEach { (seconds, label) ->
         Row(
             modifier = Modifier
@@ -397,9 +425,9 @@ private fun ThemeSelector(
     onSelect: (Boolean?) -> Unit,
 ) {
     val options = listOf(
-        null to "跟随系统",
-        false to "浅色模式",
-        true to "深色模式",
+        null to stringResource(R.string.theme_system),
+        false to stringResource(R.string.theme_light),
+        true to stringResource(R.string.theme_dark),
     )
     options.forEach { (mode, label) ->
         Row(
@@ -412,6 +440,37 @@ private fun ThemeSelector(
             RadioButton(
                 selected = isDarkMode == mode,
                 onClick = { onSelect(mode) },
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LanguageSelector(
+    selectedLanguage: String,
+    onSelect: (String) -> Unit,
+) {
+    val options = listOf(
+        AppLocaleManager.LANGUAGE_SYSTEM to stringResource(R.string.language_system),
+        AppLocaleManager.LANGUAGE_ZH to stringResource(R.string.language_chinese),
+        AppLocaleManager.LANGUAGE_EN to stringResource(R.string.language_english),
+    )
+    options.forEach { (languageTag, label) ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelect(languageTag) }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(
+                selected = selectedLanguage == languageTag,
+                onClick = { onSelect(languageTag) },
             )
             Text(
                 text = label,

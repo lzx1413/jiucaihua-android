@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.BarChart
@@ -30,7 +31,9 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.listener.ChartTouchListener
 import com.github.mikephil.charting.listener.OnChartGestureListener
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.KLineData
+import java.util.Locale
 
 private const val RISE_COLOR = 0xFFEF5350.toInt()
 private const val FALL_COLOR = 0xFF26A69A.toInt()
@@ -51,6 +54,8 @@ fun KLineChartView(
     val dates = points.map { it.date }
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f).toArgb()
+    val kLineLabel = stringResource(R.string.kline_dataset)
+    val volumeLabel = stringResource(R.string.volume_dataset)
 
     val visibleCount = VISIBLE_COUNT.coerceAtMost(points.size)
     val initialPosition = remember(kLineData) {
@@ -129,7 +134,7 @@ fun KLineChartView(
                     )
                 }
 
-                val candleDataSet = CandleDataSet(candleEntries, "K线").apply {
+                val candleDataSet = CandleDataSet(candleEntries, kLineLabel).apply {
                     setDrawValues(false)
                     shadowColorSameAsCandle = true
                     decreasingColor = FALL_COLOR
@@ -207,6 +212,14 @@ fun KLineChartView(
                         setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
                         valueFormatter = object : ValueFormatter() {
                             override fun getFormattedValue(value: Float): String {
+                                if (!isChineseLocale()) {
+                                    return when {
+                                        value >= 1_000_000_000 -> "%.1fB".format(value / 1_000_000_000)
+                                        value >= 1_000_000 -> "%.1fM".format(value / 1_000_000)
+                                        value >= 1_000 -> "%.0fK".format(value / 1_000)
+                                        else -> "%.0f".format(value)
+                                    }
+                                }
                                 return when {
                                     value >= 1_0000_0000 -> "%.1f亿".format(value / 1_0000_0000)
                                     value >= 1_0000 -> "%.0f万".format(value / 1_0000)
@@ -247,7 +260,7 @@ fun KLineChartView(
                     if (p.close >= p.open) RISE_COLOR else FALL_COLOR
                 }
 
-                val barDataSet = BarDataSet(barEntries, "成交量").apply {
+                val barDataSet = BarDataSet(barEntries, volumeLabel).apply {
                     setDrawValues(false)
                     colors = barColors
                     axisDependency = YAxis.AxisDependency.LEFT
@@ -294,6 +307,8 @@ private class ChartSyncHelper {
         }
     }
 }
+
+private fun isChineseLocale(): Boolean = Locale.getDefault().language == Locale.CHINESE.language
 
 private fun maEntries(points: List<com.jiucaihua.app.domain.model.KLinePoint>, selector: (com.jiucaihua.app.domain.model.KLinePoint) -> Double?): List<Entry> =
     points.mapIndexedNotNull { i, p -> selector(p)?.let { Entry(i.toFloat(), it.toFloat()) } }

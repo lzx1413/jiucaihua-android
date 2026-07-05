@@ -24,8 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.presentation.theme.FallGreen
@@ -33,7 +35,7 @@ import com.jiucaihua.app.presentation.theme.RiseRed
 
 @Composable
 fun StockNewsSection(
-    title: String = "资讯",
+    title: String? = null,
     articles: List<NewsFlash>,
     isLoading: Boolean,
     error: String?,
@@ -52,7 +54,7 @@ fun StockNewsSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = title,
+                text = title ?: stringResource(R.string.stock_news_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -78,7 +80,7 @@ fun StockNewsSection(
                 }
                 articles.isEmpty() -> {
                     Text(
-                        text = "暂无资讯",
+                        text = stringResource(R.string.no_news),
                         modifier = Modifier.padding(top = 12.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

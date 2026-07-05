@@ -10,12 +10,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.StockQuote
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
+import java.util.Locale
 
 @Composable
 fun QuoteHeader(
@@ -40,7 +43,7 @@ fun QuoteHeader(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        val priceLabel = if (isFund) "估算净值" else ""
+        val priceLabel = if (isFund) stringResource(R.string.quote_estimated_nav) else ""
         if (isFund) {
             Text(
                 text = priceLabel,
@@ -78,14 +81,14 @@ fun QuoteHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column {
-                    QuoteInfoRow("今开", formatPrice(quote.open))
-                    QuoteInfoRow("昨收", formatPrice(quote.yestClose))
-                    QuoteInfoRow("最高", formatPrice(quote.high))
+                    QuoteInfoRow(stringResource(R.string.quote_open), formatPrice(quote.open))
+                    QuoteInfoRow(stringResource(R.string.quote_yest_close), formatPrice(quote.yestClose))
+                    QuoteInfoRow(stringResource(R.string.quote_high), formatPrice(quote.high))
                 }
                 Column {
-                    QuoteInfoRow("最低", formatPrice(quote.low))
-                    QuoteInfoRow("成交量", formatVolume(quote.volume))
-                    QuoteInfoRow("成交额", formatAmount(quote.amount))
+                    QuoteInfoRow(stringResource(R.string.quote_low), formatPrice(quote.low))
+                    QuoteInfoRow(stringResource(R.string.quote_volume), formatVolume(quote.volume))
+                    QuoteInfoRow(stringResource(R.string.quote_amount), formatAmount(quote.amount))
                 }
             }
         } else {
@@ -95,7 +98,7 @@ fun QuoteHeader(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                QuoteInfoRow("上一日净值", "%.4f".format(quote.yestClose))
+                QuoteInfoRow(stringResource(R.string.quote_previous_nav), "%.4f".format(quote.yestClose))
             }
         }
     }
@@ -119,6 +122,14 @@ private fun QuoteInfoRow(label: String, value: String) {
 private fun formatPrice(price: Double): String = "%.2f".format(price)
 
 private fun formatVolume(volume: Double): String {
+    if (!isChineseLocale()) {
+        return when {
+            volume >= 1_000_000_000 -> "%.2fB".format(volume / 1_000_000_000)
+            volume >= 1_000_000 -> "%.2fM".format(volume / 1_000_000)
+            volume >= 1_000 -> "%.2fK".format(volume / 1_000)
+            else -> "%.0f".format(volume)
+        }
+    }
     return when {
         volume >= 100_000_000 -> "%.2f亿".format(volume / 100_000_000)
         volume >= 10_000 -> "%.2f万".format(volume / 10_000)
@@ -127,9 +138,19 @@ private fun formatVolume(volume: Double): String {
 }
 
 private fun formatAmount(amount: Double): String {
+    if (!isChineseLocale()) {
+        return when {
+            amount >= 1_000_000_000 -> "%.2fB".format(amount / 1_000_000_000)
+            amount >= 1_000_000 -> "%.2fM".format(amount / 1_000_000)
+            amount >= 1_000 -> "%.2fK".format(amount / 1_000)
+            else -> "%.0f".format(amount)
+        }
+    }
     return when {
         amount >= 100_000_000 -> "%.2f亿".format(amount / 100_000_000)
         amount >= 10_000 -> "%.2f万".format(amount / 10_000)
         else -> "%.0f".format(amount)
     }
 }
+
+private fun isChineseLocale(): Boolean = Locale.getDefault().language == Locale.CHINESE.language

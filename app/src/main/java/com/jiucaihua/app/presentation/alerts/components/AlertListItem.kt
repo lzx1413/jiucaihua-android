@@ -19,10 +19,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.AlertType
 import com.jiucaihua.app.domain.model.PriceAlert
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @Composable
 fun AlertListItem(
@@ -73,14 +76,14 @@ fun AlertListItem(
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Default.Edit,
-                    contentDescription = "编辑预警",
+                    contentDescription = stringResource(R.string.edit_alert_cd),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "删除预警",
+                    contentDescription = stringResource(R.string.delete_alert_cd),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -88,14 +91,15 @@ fun AlertListItem(
     }
 }
 
+@Composable
 private fun formatAlertCondition(alert: PriceAlert): String {
     val suffix = when (alert.alertType) {
         AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> ""
         AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "%"
-        AlertType.VOLUME_ABOVE -> "手"
+        AlertType.VOLUME_ABOVE -> stringResource(R.string.unit_lot)
         AlertType.NEW_HIGH, AlertType.NEW_LOW -> {
             val period = alert.params["period"] ?: "20"
-            "(${period}日)"
+            stringResource(R.string.period_days_suffix, period.toIntOrNull() ?: 20)
         }
         AlertType.MA_CROSS_ABOVE, AlertType.MA_CROSS_BELOW -> {
             val shortPeriod = alert.params["short_period"] ?: "5"
@@ -103,5 +107,5 @@ private fun formatAlertCondition(alert: PriceAlert): String {
             "(MA${shortPeriod}/MA${longPeriod})"
         }
     }
-    return "${alert.alertType.label} ${alert.threshold}$suffix"
+    return "${alert.alertType.localizedLabel()} ${alert.threshold}$suffix"
 }

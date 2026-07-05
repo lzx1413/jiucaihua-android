@@ -20,14 +20,17 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.MarketIndex
 import com.jiucaihua.app.presentation.common.components.ErrorMessage
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 import com.jiucaihua.app.presentation.market.components.IndexCardGrid
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,12 +51,12 @@ fun MarketScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("大盘概览") },
+                title = { Text(stringResource(R.string.market_overview)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.action_back),
                         )
                     }
                 },
@@ -61,7 +64,7 @@ fun MarketScreen(
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "刷新",
+                            contentDescription = stringResource(R.string.action_refresh),
                         )
                     }
                 },
@@ -76,7 +79,7 @@ fun MarketScreen(
                 LoadingIndicator()
             }
             uiState.error != null && uiState.groups.isEmpty() -> {
-                ErrorMessage(message = uiState.error ?: "加载失败")
+                ErrorMessage(message = uiState.error ?: stringResource(R.string.loading_failed))
             }
             else -> {
                 MarketScreenContent(
@@ -102,7 +105,7 @@ fun MarketScreenContent(
             LoadingIndicator()
         }
         uiState.error != null && uiState.groups.isEmpty() -> {
-            ErrorMessage(message = uiState.error ?: "加载失败")
+            ErrorMessage(message = uiState.error ?: stringResource(R.string.loading_failed))
         }
         else -> {
             Column(
@@ -112,7 +115,7 @@ fun MarketScreenContent(
             ) {
                 uiState.groups.forEach { group ->
                     Text(
-                        text = group.tab.label,
+                        text = group.tab.localizedLabel(),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),

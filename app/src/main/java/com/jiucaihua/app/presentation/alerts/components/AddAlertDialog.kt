@@ -23,10 +23,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.AlertType
 import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.presentation.i18n.localizedLabel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -62,7 +65,7 @@ fun AddAlertDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加预警") },
+        title = { Text(stringResource(R.string.add_alert)) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -76,7 +79,7 @@ fun AddAlertDialog(
                         value = selectedHolding?.let { "${it.name} (${it.code})" } ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("选择证券") },
+                        label = { Text(stringResource(R.string.select_security)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = holdingDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -99,7 +102,7 @@ fun AddAlertDialog(
                 }
 
                 Text(
-                    text = "预警类型",
+                    text = stringResource(R.string.alert_type),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -110,17 +113,17 @@ fun AddAlertDialog(
                         FilterChip(
                             selected = selectedAlertType == type,
                             onClick = { selectedAlertType = type },
-                            label = { Text(type.label) },
+                            label = { Text(type.localizedLabel()) },
                         )
                     }
                 }
 
                 if (needsThreshold) {
                     val thresholdLabel = when (selectedAlertType) {
-                        AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> "阈值价格"
-                        AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> "阈值百分比 (%)"
-                        AlertType.VOLUME_ABOVE -> "成交量阈值"
-                        else -> "阈值"
+                        AlertType.PRICE_ABOVE, AlertType.PRICE_BELOW -> stringResource(R.string.threshold_price)
+                        AlertType.CHANGE_ABOVE, AlertType.CHANGE_BELOW -> stringResource(R.string.threshold_percent)
+                        AlertType.VOLUME_ABOVE -> stringResource(R.string.threshold_volume)
+                        else -> stringResource(R.string.threshold)
                     }
                     OutlinedTextField(
                         value = thresholdText,
@@ -135,7 +138,7 @@ fun AddAlertDialog(
                     OutlinedTextField(
                         value = periodText,
                         onValueChange = { periodText = it },
-                        label = { Text("天数N（如创20日新高则输入20）") },
+                        label = { Text(stringResource(R.string.days_n_hint)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -145,14 +148,14 @@ fun AddAlertDialog(
                     OutlinedTextField(
                         value = shortPeriodText,
                         onValueChange = { shortPeriodText = it },
-                        label = { Text("短周期（如5）") },
+                        label = { Text(stringResource(R.string.short_period_hint)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = longPeriodText,
                         onValueChange = { longPeriodText = it },
-                        label = { Text("长周期（如20）") },
+                        label = { Text(stringResource(R.string.long_period_hint)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -161,8 +164,8 @@ fun AddAlertDialog(
                 OutlinedTextField(
                     value = actionHintText,
                     onValueChange = { actionHintText = it },
-                    label = { Text("操作提示（如：加仓500股）") },
-                    placeholder = { Text("可选，触发时的操作建议") },
+                    label = { Text(stringResource(R.string.action_hint_label)) },
+                    placeholder = { Text(stringResource(R.string.action_hint_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -186,12 +189,12 @@ fun AddAlertDialog(
                 },
                 enabled = isValid,
             ) {
-                Text("保存")
+                Text(stringResource(R.string.action_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
             }
         },
     )

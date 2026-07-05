@@ -19,11 +19,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.presentation.theme.RiseRed
@@ -103,7 +105,7 @@ fun EarningsChartView(
                 }
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "持仓收益",
+                    text = stringResource(R.string.portfolio_summary_holding_earnings),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -118,7 +120,7 @@ fun EarningsChartView(
                 }
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "沪深300",
+                    text = stringResource(R.string.benchmark_csi300),
                     style = MaterialTheme.typography.labelSmall,
                     color = BenchmarkColor,
                 )
