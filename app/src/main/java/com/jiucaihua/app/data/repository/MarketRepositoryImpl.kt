@@ -464,12 +464,12 @@ class MarketRepositoryImpl @Inject constructor(
             val sgtNetBuy = hk2sz.optDouble("netBuyAmt", 0.0)
             val sgtRemain = hk2sz.optDouble("dayAmtRemain", 0.0)
 
-            val ggtShNetInflow = sh2hk.optDouble("dayNetAmtIn", 0.0)
             val ggtShNetBuy = sh2hk.optDouble("netBuyAmt", 0.0)
+            val ggtShNetInflow = normalizeSouthboundNetInflow(sh2hk, ggtShNetBuy)
             val ggtShRemain = sh2hk.optDouble("dayAmtRemain", 0.0)
 
-            val ggtSzNetInflow = sz2hk.optDouble("dayNetAmtIn", 0.0)
             val ggtSzNetBuy = sz2hk.optDouble("netBuyAmt", 0.0)
+            val ggtSzNetInflow = normalizeSouthboundNetInflow(sz2hk, ggtSzNetBuy)
             val ggtSzRemain = sz2hk.optDouble("dayAmtRemain", 0.0)
 
             return FundFlowData(
@@ -496,6 +496,15 @@ class MarketRepositoryImpl @Inject constructor(
         } catch (_: Exception) {
             return FundFlowData()
         }
+    }
+
+    private fun normalizeSouthboundNetInflow(channel: JSONObject, netBuyAmt: Double): Double {
+        return normalizeSouthboundNetInflow(
+            dayNetAmtIn = channel.optDouble("dayNetAmtIn", 0.0),
+            dayAmtRemain = channel.optDouble("dayAmtRemain", 0.0),
+            dayAmtThreshold = channel.optDouble("dayAmtThreshold", 0.0),
+            netBuyAmt = netBuyAmt,
+        )
     }
 
     private fun parseSinaGoldIndices(response: String, codes: List<String>): List<MarketIndex> {
@@ -557,5 +566,18 @@ class MarketRepositoryImpl @Inject constructor(
             time = "$date $time",
             marketType = MarketType.GOLD,
         )
+    }
+}
+
+internal fun normalizeSouthboundNetInflow(
+    dayNetAmtIn: Double,
+    dayAmtRemain: Double,
+    dayAmtThreshold: Double,
+    netBuyAmt: Double,
+): Double {
+    return if (dayAmtThreshold > 0.0 && dayAmtRemain == 0.0 && dayNetAmtIn >= dayAmtThreshold) {
+        netBuyAmt
+    } else {
+        dayNetAmtIn
     }
 }
