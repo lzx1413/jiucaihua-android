@@ -2,11 +2,16 @@ package com.jiucaihua.app.data.backup
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.room.withTransaction
 import com.jiucaihua.app.data.local.dao.AlertDao
+import com.jiucaihua.app.data.local.dao.AlertRecordDao
+import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
+import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
+import com.jiucaihua.app.data.local.AppDatabase
 import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.HoldingEntity
 import com.jiucaihua.app.presentation.settings.SettingsViewModel
@@ -23,8 +28,12 @@ import javax.inject.Named
 
 class BackupRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val database: AppDatabase,
     private val holdingDao: HoldingDao,
+    private val stockCacheDao: StockCacheDao,
+    private val fundCacheDao: FundCacheDao,
     private val alertDao: AlertDao,
+    private val alertRecordDao: AlertRecordDao,
     private val snapshotDao: PortfolioSnapshotDao,
     private val watchlistDao: WatchlistDao,
     private val newsFlashDao: NewsFlashDao,
@@ -39,10 +48,13 @@ class BackupRepository @Inject constructor(
 
     suspend fun exportData(): BackupData = withContext(Dispatchers.IO) {
         val holdings = holdingDao.getAllHoldingsOnce()
+        val stockCache = stockCacheDao.getAllOnce()
+        val fundCache = fundCacheDao.getAllOnce()
         val alerts = alertDao.getAllAlertsOnce()
+        val alertRecords = alertRecordDao.getAllRecordsOnce()
         val snapshots = snapshotDao.getAllOnce()
         val watchlistItems = watchlistDao.getAllWatchlistOnce()
-        val bookmarkedNews = newsFlashDao.getBookmarkedOnce()
+        val newsFlash = newsFlashDao.getAllOnce()
         val settings = AppSettingsBackup(
             refreshIntervalSeconds = prefs.getInt(SettingsViewModel.KEY_REFRESH_INTERVAL, 10),
             isDarkMode = if (prefs.contains(SettingsViewModel.KEY_DARK_MODE)) {
@@ -57,11 +69,14 @@ class BackupRepository @Inject constructor(
         BackupData(
             exportTime = System.currentTimeMillis(),
             holdings = holdings,
+            stockCache = stockCache,
+            fundCache = fundCache,
             alerts = alerts,
+            alertRecords = alertRecords,
             settings = settings,
             portfolioSnapshots = snapshots,
             watchlistItems = watchlistItems,
-            newsFlash = bookmarkedNews,
+            newsFlash = newsFlash,
         )
     }
 
@@ -82,32 +97,10 @@ class BackupRepository @Inject constructor(
         backup: BackupData,
         mode: RestoreMode = RestoreMode.REPLACE,
     ): RestoreResult = withContext(Dispatchers.IO) {
-        val holdingsInserted = when (mode) {
-            RestoreMode.REPLACE -> {
-                holdingDao.clearAllHoldings()
-                alertDao.clearAllAlerts()
-                holdingDao.insertAllHoldings(backup.holdings.map { it.copy(id = 0) })
-                backup.holdings.size
-            }
-            RestoreMode.MERGE -> {
-                val existingCodes = holdingDao.getAllHoldingsOnce().map { it.code }.toSet()
-                val newHoldings = backup.holdings.filter { it.code !in existingCodes }
-                holdingDao.insertAllHoldings(newHoldings.map { it.copy(id = 0) })
-                newHoldings.size
-            }
-        }
-
-        val alertsInserted = when (mode) {
-            RestoreMode.REPLACE -> {
-                alertDao.insertAllAlerts(backup.alerts.map { it.copy(id = 0) })
-                backup.alerts.size
-            }
-            RestoreMode.MERGE -> {
-                val existingAlerts = alertDao.getAllAlertsOnce()
-                val existingAlertKeys = existingAlerts.map { "${it.code}:${it.alertType}:${it.threshold}" }.toSet()
-                val newAlerts = backup.alerts.filter { "${it.code}:${it.alertType}:${it.threshold}" !in existingAlertKeys }
-                alertDao.insertAllAlerts(newAlerts.map { it.copy(id = 0) })
-                newAlerts.size
+        val result = database.withTransaction {
+            when (mode) {
+                RestoreMode.REPLACE -> restoreReplace(backup)
+                RestoreMode.MERGE -> restoreMerge(backup)
             }
         }
 
@@ -130,11 +123,115 @@ class BackupRepository @Inject constructor(
             apply()
         }
 
-        RestoreResult(
-            holdingsCount = holdingsInserted,
-            alertsCount = alertsInserted,
-            settingsRestored = true,
+        result.copy(settingsRestored = true)
+    }
+
+    private suspend fun restoreReplace(backup: BackupData): RestoreResult {
+        holdingDao.clearAllHoldings()
+        stockCacheDao.clearAll()
+        fundCacheDao.clearAll()
+        alertDao.clearAllAlerts()
+        alertRecordDao.clearAllRecords()
+        watchlistDao.clearAll()
+        newsFlashDao.clearAll()
+        snapshotDao.clearAll()
+
+        val holdings = backup.holdings.map { it.copy(id = 0) }
+        val alerts = backup.alerts.map { it.copy(id = 0) }
+        val alertRecords = backup.alertRecords.map { it.copy(id = 0) }
+        val watchlistItems = backup.watchlistItems.map { it.copy(id = 0) }
+        val newsFlash = backup.newsFlash.map { it.copy(id = 0) }
+        val snapshots = backup.portfolioSnapshots.map { it.copy(id = 0) }
+
+        holdingDao.insertAllHoldings(holdings)
+        stockCacheDao.insertAll(backup.stockCache)
+        fundCacheDao.insertAll(backup.fundCache)
+        alertDao.insertAllAlerts(alerts)
+        alertRecordDao.insertAll(alertRecords)
+        watchlistDao.insertAll(watchlistItems)
+        newsFlashDao.insertAll(newsFlash)
+        snapshotDao.insertAll(snapshots)
+
+        return RestoreResult(
+            holdingsCount = holdings.size,
+            alertsCount = alerts.size,
+            alertRecordsCount = alertRecords.size,
+            watchlistCount = watchlistItems.size,
+            newsFlashCount = newsFlash.size,
+            portfolioSnapshotsCount = snapshots.size,
+            stockCacheCount = backup.stockCache.size,
+            fundCacheCount = backup.fundCache.size,
+            settingsRestored = false,
         )
+    }
+
+    private suspend fun restoreMerge(backup: BackupData): RestoreResult {
+        val existingHoldingKeys = holdingDao.getAllHoldingsOnce()
+            .map { holdingKey(it) }
+            .toSet()
+        val newHoldings = backup.holdings
+            .filter { holdingKey(it) !in existingHoldingKeys }
+            .map { it.copy(id = 0) }
+        holdingDao.insertAllHoldings(newHoldings)
+
+        stockCacheDao.insertAll(backup.stockCache)
+        fundCacheDao.insertAll(backup.fundCache)
+
+        val existingAlertKeys = alertDao.getAllAlertsOnce()
+            .map { alertKey(it) }
+            .toSet()
+        val newAlerts = backup.alerts
+            .filter { alertKey(it) !in existingAlertKeys }
+            .map { it.copy(id = 0) }
+        alertDao.insertAllAlerts(newAlerts)
+
+        val existingAlertRecordKeys = alertRecordDao.getAllRecordsOnce()
+            .map { "${it.code}:${it.alertType}:${it.threshold}:${it.currentValue}:${it.triggeredAt}" }
+            .toSet()
+        val newAlertRecords = backup.alertRecords
+            .filter { "${it.code}:${it.alertType}:${it.threshold}:${it.currentValue}:${it.triggeredAt}" !in existingAlertRecordKeys }
+            .map { it.copy(id = 0) }
+        alertRecordDao.insertAll(newAlertRecords)
+
+        val existingWatchlistCodes = watchlistDao.getAllWatchlistOnce().map { it.code }.toSet()
+        val newWatchlistItems = backup.watchlistItems
+            .filter { it.code !in existingWatchlistCodes }
+            .map { it.copy(id = 0) }
+        watchlistDao.insertAll(newWatchlistItems)
+
+        val existingNewsKeys = newsFlashDao.getAllOnce()
+            .map { "${it.newsId}:${it.sourceType}" }
+            .toSet()
+        val newNewsFlash = backup.newsFlash
+            .filter { "${it.newsId}:${it.sourceType}" !in existingNewsKeys }
+            .map { it.copy(id = 0) }
+        newsFlashDao.insertAll(newNewsFlash)
+
+        val existingSnapshotDates = snapshotDao.getAllOnce().map { it.date }.toSet()
+        val newSnapshots = backup.portfolioSnapshots
+            .filter { it.date !in existingSnapshotDates }
+            .map { it.copy(id = 0) }
+        snapshotDao.insertAll(newSnapshots)
+
+        return RestoreResult(
+            holdingsCount = newHoldings.size,
+            alertsCount = newAlerts.size,
+            alertRecordsCount = newAlertRecords.size,
+            watchlistCount = newWatchlistItems.size,
+            newsFlashCount = newNewsFlash.size,
+            portfolioSnapshotsCount = newSnapshots.size,
+            stockCacheCount = backup.stockCache.size,
+            fundCacheCount = backup.fundCache.size,
+            settingsRestored = false,
+        )
+    }
+
+    private fun alertKey(alert: AlertEntity): String {
+        return "${alert.code}:${alert.alertType}:${alert.threshold}:${alert.params}:${alert.actionHint.orEmpty()}"
+    }
+
+    private fun holdingKey(holding: HoldingEntity): String {
+        return "${holding.code}:${holding.marketType}:${holding.createdAt}:${holding.updatedAt}:${holding.isSoldOut}"
     }
 
     suspend fun writeToUri(outputStream: OutputStream, content: String) = withContext(Dispatchers.IO) {

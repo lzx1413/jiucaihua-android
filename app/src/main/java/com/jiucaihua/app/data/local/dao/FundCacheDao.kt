@@ -15,6 +15,9 @@ interface FundCacheDao {
     @Query("SELECT * FROM fund_cache WHERE code IN (:codes)")
     suspend fun getByCodes(codes: List<String>): List<FundCacheEntity>
 
+    @Query("SELECT * FROM fund_cache")
+    suspend fun getAllOnce(): List<FundCacheEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(cache: FundCacheEntity)
 
@@ -23,4 +26,7 @@ interface FundCacheDao {
 
     @Query("DELETE FROM fund_cache WHERE code = :code")
     suspend fun deleteByCode(code: String)
+
+    @Query("DELETE FROM fund_cache")
+    suspend fun clearAll()
 }

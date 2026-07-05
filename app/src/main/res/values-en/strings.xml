@@ -253,9 +253,9 @@
     <string name="backup_export_failed">Export failed: %1$s</string>
     <string name="backup_export_no_data">Export failed: no data to export</string>
     <string name="backup_export_open_failed">Export failed: cannot open file</string>
-    <string name="backup_export_success">Exported: %1$d holdings, %2$d alerts</string>
+    <string name="backup_export_success">Exported: %1$d holdings, %2$d alerts, %3$d watchlist items, %4$d news items, %5$d snapshots, %6$d records</string>
     <string name="backup_import_open_failed">Import failed: cannot open file</string>
-    <string name="backup_import_success">Imported: %1$d holdings, %2$d alerts</string>
+    <string name="backup_import_success">Imported: %1$d holdings, %2$d alerts, %3$d watchlist items, %4$d news items, %5$d snapshots, %6$d records</string>
     <string name="backup_import_failed">Import failed: %1$s</string>
     <string name="notification_alert_channel_name">Price alerts</string>
     <string name="notification_alert_channel_description">Security price alert notifications</string>

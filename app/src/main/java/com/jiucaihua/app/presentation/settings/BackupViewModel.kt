@@ -84,6 +84,10 @@ class BackupViewModel @Inject constructor(
                         R.string.backup_export_success,
                         backup.holdings.size,
                         backup.alerts.size,
+                        backup.watchlistItems.size,
+                        backup.newsFlash.size,
+                        backup.portfolioSnapshots.size,
+                        backup.alertRecords.size,
                     ),
                     isSuccess = true,
                 )
@@ -136,6 +140,10 @@ class BackupViewModel @Inject constructor(
                         R.string.backup_import_success,
                         result.holdingsCount,
                         result.alertsCount,
+                        result.watchlistCount,
+                        result.newsFlashCount,
+                        result.portfolioSnapshotsCount,
+                        result.alertRecordsCount,
                     ),
                     isSuccess = true,
                 )

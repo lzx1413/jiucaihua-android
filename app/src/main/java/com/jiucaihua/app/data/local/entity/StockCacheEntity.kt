@@ -2,7 +2,9 @@ package com.jiucaihua.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "stock_cache")
 data class StockCacheEntity(
     @PrimaryKey

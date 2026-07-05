@@ -265,9 +265,9 @@
     <string name="backup_export_failed">导出失败: %1$s</string>
     <string name="backup_export_no_data">导出失败: 没有待导出的数据</string>
     <string name="backup_export_open_failed">导出失败: 无法打开文件</string>
-    <string name="backup_export_success">导出成功: %1$d 条持仓, %2$d 条预警</string>
+    <string name="backup_export_success">导出成功: %1$d 条持仓, %2$d 条预警, %3$d 条自选, %4$d 条资讯, %5$d 条快照, %6$d 条记录</string>
     <string name="backup_import_open_failed">导入失败: 无法打开文件</string>
-    <string name="backup_import_success">导入成功: %1$d 条持仓, %2$d 条预警</string>
+    <string name="backup_import_success">导入成功: %1$d 条持仓, %2$d 条预警, %3$d 条自选, %4$d 条资讯, %5$d 条快照, %6$d 条记录</string>
     <string name="backup_import_failed">导入失败: %1$s</string>
 
     <string name="notification_alert_channel_name">价格预警</string>

@@ -16,6 +16,9 @@ interface NewsFlashDao {
     @Query("SELECT * FROM news_flash WHERE epochMillis > :cutoff ORDER BY epochMillis DESC")
     suspend fun getAllOnce(cutoff: Long): List<NewsFlashEntity>
 
+    @Query("SELECT * FROM news_flash ORDER BY epochMillis DESC")
+    suspend fun getAllOnce(): List<NewsFlashEntity>
+
     @Query("SELECT * FROM news_flash WHERE sourceType = :sourceType ORDER BY epochMillis DESC")
     fun getBySourceType(sourceType: String): Flow<List<NewsFlashEntity>>
 
@@ -24,6 +27,9 @@ interface NewsFlashDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(news: List<NewsFlashEntity>)
+
+    @Query("DELETE FROM news_flash")
+    suspend fun clearAll()
 
     @Query("DELETE FROM news_flash WHERE epochMillis < :cutoff")
     suspend fun deleteOlderThan(cutoff: Long)

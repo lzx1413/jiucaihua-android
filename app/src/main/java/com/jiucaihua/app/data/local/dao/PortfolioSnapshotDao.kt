@@ -28,6 +28,12 @@ interface PortfolioSnapshotDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(snapshot: PortfolioSnapshotEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(snapshots: List<PortfolioSnapshotEntity>)
+
+    @Query("DELETE FROM portfolio_snapshots")
+    suspend fun clearAll()
+
     @Query("DELETE FROM portfolio_snapshots WHERE timestamp < :beforeTimestamp")
     suspend fun deleteBefore(beforeTimestamp: Long): Int
 }
