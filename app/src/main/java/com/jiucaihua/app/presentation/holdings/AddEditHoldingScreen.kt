@@ -72,6 +72,7 @@ fun AddEditHoldingScreen(
             onMarketTypeChange = viewModel::onMarketTypeChange,
             onCostPriceChange = viewModel::onCostPriceChange,
             onHoldingSharesChange = viewModel::onHoldingSharesChange,
+            onTradeActionChange = viewModel::onTradeActionChange,
             onSelectResult = viewModel::applySearchResult,
             onDismissSearch = viewModel::dismissSearch,
             onGoldPresetSelected = viewModel::selectGoldPreset,

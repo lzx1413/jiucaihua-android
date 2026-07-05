@@ -20,6 +20,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Named
 
+enum class HoldingTradeAction(val label: String) {
+    BUY("增加"),
+    SELL("减少"),
+}
+
 data class AddEditHoldingUiState(
     val isEditing: Boolean = false,
     val holdingId: Long = -1L,
@@ -28,6 +33,9 @@ data class AddEditHoldingUiState(
     val marketType: MarketType = MarketType.A_STOCK,
     val costPrice: String = "",
     val holdingShares: String = "",
+    val tradeAction: HoldingTradeAction = HoldingTradeAction.BUY,
+    val originalCostPrice: Double = 0.0,
+    val originalHoldingShares: Double = 0.0,
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null,
@@ -44,9 +52,14 @@ data class AddEditHoldingUiState(
         }
 
     val isValid: Boolean
-        get() = code.isNotBlank() && name.isNotBlank() &&
-                (costPrice.toDoubleOrNull() ?: 0.0) > 0 &&
-                (holdingShares.toDoubleOrNull() ?: 0.0) > 0
+        get() {
+            val price = costPrice.toDoubleOrNull() ?: 0.0
+            val shares = holdingShares.toDoubleOrNull() ?: 0.0
+            return code.isNotBlank() && name.isNotBlank() &&
+                    price > 0 &&
+                    shares > 0 &&
+                    (!isEditing || tradeAction == HoldingTradeAction.BUY || shares <= originalHoldingShares)
+        }
 }
 
 @HiltViewModel
@@ -58,7 +71,7 @@ class AddEditHoldingViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val holdingId: Long = savedStateHandle.get<Long>("holdingId") ?: -1L
-    private var originalHoldingAmount: Double = 0.0
+    private var originalHolding: Holding? = null
     private var searchJob: Job? = null
 
     private val _uiState = MutableStateFlow(AddEditHoldingUiState())
@@ -75,7 +88,7 @@ class AddEditHoldingViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val holding = manageHoldingUseCase.getHoldingById(id)
             if (holding != null) {
-                originalHoldingAmount = holding.holdingAmount
+                originalHolding = holding
                 _uiState.update {
                     it.copy(
                         isEditing = true,
@@ -83,8 +96,10 @@ class AddEditHoldingViewModel @Inject constructor(
                         code = holding.code,
                         name = holding.name,
                         marketType = holding.marketType,
-                        costPrice = holding.costPrice.toString(),
-                        holdingShares = holding.holdingShares.toString(),
+                        costPrice = "",
+                        holdingShares = "",
+                        originalCostPrice = holding.costPrice,
+                        originalHoldingShares = holding.holdingShares,
                         isLoading = false,
                     )
                 }
@@ -142,6 +157,10 @@ class AddEditHoldingViewModel @Inject constructor(
         if (value.isEmpty() || value.matches(Regex("^\\d*\\.?\\d*$"))) {
             _uiState.update { it.copy(holdingShares = value) }
         }
+    }
+
+    fun onTradeActionChange(action: HoldingTradeAction) {
+        _uiState.update { it.copy(tradeAction = action) }
     }
 
     fun applySearchResult(result: SecuritySearchResult) {
@@ -229,14 +248,49 @@ class AddEditHoldingViewModel @Inject constructor(
                 holdingShares = state.holdingShares.toDouble(),
             )
             if (state.isEditing) {
-                manageHoldingUseCase.updateHolding(holding)
-                val diff = state.holdingAmount - originalHoldingAmount
-                if (diff != 0.0) adjustCash(-diff)
+                val currentHolding = originalHolding ?: run {
+                    _uiState.update { it.copy(isLoading = false, error = "持仓记录不存在") }
+                    return@launch
+                }
+                val updatedHolding = buildUpdatedHolding(currentHolding, state)
+                manageHoldingUseCase.updateHolding(updatedHolding)
+                val cashDiff = if (state.tradeAction == HoldingTradeAction.BUY) {
+                    -state.holdingAmount
+                } else {
+                    state.holdingAmount
+                }
+                adjustCash(cashDiff)
             } else {
                 manageHoldingUseCase.addHolding(holding)
                 adjustCash(-state.holdingAmount)
             }
             _uiState.update { it.copy(isLoading = false, isSaved = true) }
+        }
+    }
+
+    private fun buildUpdatedHolding(current: Holding, state: AddEditHoldingUiState): Holding {
+        val tradePrice = state.costPrice.toDouble()
+        val tradeShares = state.holdingShares.toDouble()
+        return when (state.tradeAction) {
+            HoldingTradeAction.BUY -> {
+                val newShares = current.holdingShares + tradeShares
+                val newCostAmount = current.costPrice * current.holdingShares + tradePrice * tradeShares
+                val newCostPrice = if (newShares > 0) newCostAmount / newShares else 0.0
+                current.copy(
+                    costPrice = newCostPrice,
+                    holdingShares = newShares,
+                    holdingAmount = newCostPrice * newShares,
+                    isSoldOut = false,
+                )
+            }
+            HoldingTradeAction.SELL -> {
+                val newShares = (current.holdingShares - tradeShares).coerceAtLeast(0.0)
+                current.copy(
+                    holdingShares = newShares,
+                    holdingAmount = current.costPrice * newShares,
+                    isSoldOut = newShares <= 0.0,
+                )
+            }
         }
     }
 
