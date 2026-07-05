@@ -116,6 +116,7 @@ Tool pattern: implement `ToolExecutor` interface (`definition` + `execute`), reg
 1. **Propose before execute** — Always propose a solution before implementing changes
 2. **Build and test** — After completing changes, build and install to device
 3. **Ask before ending** — Use AskUserQuestion when finished or encountering issues
+4. **Commit style** — Use Angular/Conventional Commits format (e.g. `feat(scope): summary`) and do not add co-author trailers
 
 ## Documentation
 
