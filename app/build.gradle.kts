@@ -1,6 +1,7 @@
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -12,6 +13,27 @@ plugins {
 
 val buildDate: String = LocalDate.now(ZoneId.of("Asia/Shanghai"))
     .format(DateTimeFormatter.ISO_LOCAL_DATE)
+val releaseKeystoreProperties = Properties()
+val releaseKeystorePropertiesFile = rootProject.file("keystore.properties")
+if (releaseKeystorePropertiesFile.isFile) {
+    releaseKeystorePropertiesFile.inputStream().use(releaseKeystoreProperties::load)
+}
+
+fun releaseSigningValue(propertyName: String, environmentName: String): String? {
+    return providers.environmentVariable(environmentName).orNull
+        ?: releaseKeystoreProperties.getProperty(propertyName)
+}
+
+val releaseStoreFilePath = releaseSigningValue("storeFile", "RELEASE_KEYSTORE_PATH")
+val releaseStorePassword = releaseSigningValue("storePassword", "RELEASE_KEYSTORE_PASSWORD")
+val releaseKeyAlias = releaseSigningValue("keyAlias", "RELEASE_KEY_ALIAS")
+val releaseKeyPassword = releaseSigningValue("keyPassword", "RELEASE_KEY_PASSWORD")
+val hasReleaseSigningConfig = listOf(
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "com.jiucaihua.app"
@@ -30,9 +52,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -8,6 +8,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+keystore.properties
+keystore/
 *.apk
 *.aab
 *.ap_
