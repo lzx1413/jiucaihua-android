@@ -57,13 +57,14 @@ jobs:
 
       - name: Prepare release asset
         run: |
+          set -euo pipefail
           TAG_NAME="${GITHUB_REF_NAME}"
-          APK_SOURCE="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          APK_SOURCE="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*arm64-v8a*.apk' | head -n 1)"
           if [ -z "${APK_SOURCE}" ]; then
-            echo "No release APK found" >&2
+            echo "No arm64-v8a release APK found" >&2
             exit 1
           fi
-          APK_NAME="jiucaihua-${TAG_NAME}.apk"
+          APK_NAME="jiucaihua-${TAG_NAME}-arm64-v8a.apk"
           cp "${APK_SOURCE}" "${APK_NAME}"
           echo "APK_NAME=${APK_NAME}" >> "${GITHUB_ENV}"
 
