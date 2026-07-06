@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -31,7 +32,7 @@ import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.presentation.theme.RiseRed
 import com.jiucaihua.app.presentation.theme.FallGreen
 import java.text.SimpleDateFormat
-import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.max
 
 private val BenchmarkColor = Color(0xFFFF9800)
@@ -59,7 +60,7 @@ fun EarningsChartView(
         fontSize = 10.sp,
     )
 
-    val dateFormat = SimpleDateFormat("MM/dd", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("MM/dd", LocalLocale.current.platformLocale)
 
     val earningsPercentValues = snapshots.map { it.totalEarningsPercent }
     val benchmarkPercentValues = if (hasBenchmark) snapshots.map { it.benchmarkPercent } else null
@@ -142,6 +143,25 @@ fun EarningsChartView(
             val bottomPadding = 35f
             val drawableWidth = chartWidth - leftPadding - rightPadding
             val drawableHeight = chartHeightPx - topPadding - bottomPadding
+            fun drawBoundedText(
+                text: String,
+                preferredTopLeft: Offset,
+                style: TextStyle,
+            ) {
+                val textLayout = textMeasurer.measure(text, style)
+                val boundedX = preferredTopLeft.x.coerceIn(
+                    0f,
+                    max(chartWidth - textLayout.size.width, 0f),
+                )
+                val boundedY = preferredTopLeft.y.coerceIn(
+                    0f,
+                    max(chartHeightPx - textLayout.size.height, 0f),
+                )
+                drawText(
+                    textLayoutResult = textLayout,
+                    topLeft = Offset(boundedX, boundedY),
+                )
+            }
 
             // Draw zero line
             val zeroY = topPadding + drawableHeight * ((adjustedMax - 0.0) / adjustedRange).toFloat()
@@ -162,19 +182,21 @@ fun EarningsChartView(
             val gridCount = 4
             for (i in 1..gridCount) {
                 val y = topPadding + drawableHeight * (i.toFloat() / gridCount)
-                drawLine(
-                    color = gridColor,
-                    start = Offset(leftPadding, y),
-                    end = Offset(chartWidth - rightPadding, y),
-                    strokeWidth = 0.5f,
-                )
                 val gridValue = adjustedMax - adjustedRange * i / gridCount
-                drawText(
-                    textMeasurer = textMeasurer,
-                    text = "${gridValue.toInt()}%",
-                    topLeft = Offset(0f, y - 6f),
-                    style = textStyle,
-                )
+                if (abs(y - zeroY) > 1f && gridValue.toInt() != 0) {
+                    drawLine(
+                        color = gridColor,
+                        start = Offset(leftPadding, y),
+                        end = Offset(chartWidth - rightPadding, y),
+                        strokeWidth = 0.5f,
+                    )
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = "${gridValue.toInt()}%",
+                        topLeft = Offset(0f, y - 6f),
+                        style = textStyle,
+                    )
+                }
             }
 
             // Calculate portfolio points
@@ -249,10 +271,9 @@ fun EarningsChartView(
                     )
                     val lastBenchmarkValue = benchmarkPercentValues.last()
                     val benchmarkValueText = "${(lastBenchmarkValue * 100).toInt() / 100.0}%"
-                    drawText(
-                        textMeasurer = textMeasurer,
+                    drawBoundedText(
                         text = benchmarkValueText,
-                        topLeft = Offset(lastBenchmark.x + 5f, lastBenchmark.y + 2f),
+                        preferredTopLeft = Offset(lastBenchmark.x + 5f, lastBenchmark.y + 2f),
                         style = TextStyle(
                             color = BenchmarkColor,
                             fontSize = 10.sp,
@@ -284,10 +305,9 @@ fun EarningsChartView(
                     center = lastPoint,
                 )
                 val lastValueText = "${(lastEarningsPercent * 100).toInt() / 100.0}%"
-                drawText(
-                    textMeasurer = textMeasurer,
+                drawBoundedText(
                     text = lastValueText,
-                    topLeft = Offset(lastPoint.x + 5f, lastPoint.y - 10f),
+                    preferredTopLeft = Offset(lastPoint.x + 5f, lastPoint.y - 10f),
                     style = TextStyle(
                         color = chartLineColor,
                         fontSize = 11.sp,

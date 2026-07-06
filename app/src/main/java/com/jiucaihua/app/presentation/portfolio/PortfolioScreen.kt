@@ -779,8 +779,11 @@ private fun EarningsChartSection(
     onChartRangeChanged: (ChartRange) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val visibleSnapshots = remember(snapshots, selectedChartRange) {
+        snapshots.filterByRange(selectedChartRange)
+    }
 
-    val latestSnapshot = snapshots.lastOrNull()
+    val latestSnapshot = visibleSnapshots.lastOrNull()
     val benchmarkPercent = latestSnapshot?.benchmarkPercent ?: 0.0
 
     Card(
@@ -844,7 +847,7 @@ private fun EarningsChartSection(
                         }
                     }
                     EarningsChartView(
-                        snapshots = snapshots,
+                        snapshots = visibleSnapshots,
                         selectedRange = selectedChartRange,
                         modifier = Modifier.padding(vertical = 4.dp),
                     )
@@ -852,4 +855,19 @@ private fun EarningsChartSection(
             }
         }
     }
+}
+
+private fun List<PortfolioSnapshot>.filterByRange(range: ChartRange): List<PortfolioSnapshot> {
+    if (range == ChartRange.ALL || isEmpty()) return this
+
+    val latestTimestamp = maxOf { it.timestamp }
+    val rangeDuration = when (range) {
+        ChartRange.SEVEN_DAYS -> 7L * 24 * 60 * 60 * 1000
+        ChartRange.THIRTY_DAYS -> 30L * 24 * 60 * 60 * 1000
+        ChartRange.NINETY_DAYS -> 90L * 24 * 60 * 60 * 1000
+        ChartRange.ALL -> 0L
+    }
+    val fromTimestamp = latestTimestamp - rangeDuration
+
+    return filter { it.timestamp >= fromTimestamp }
 }
