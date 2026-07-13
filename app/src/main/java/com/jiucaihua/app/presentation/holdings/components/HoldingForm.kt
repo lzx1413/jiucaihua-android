@@ -214,6 +214,7 @@ fun HoldingForm(
         }
 
         val costLabel = when {
+            state.isEditing && state.tradeAction == HoldingTradeAction.DIVIDEND -> stringResource(R.string.dividend_amount)
             state.isEditing && state.marketType == MarketType.GOLD -> stringResource(R.string.trade_price_gold)
             state.isEditing -> stringResource(R.string.trade_price)
             state.marketType == MarketType.GOLD -> stringResource(R.string.cost_price_gold)
@@ -229,39 +230,47 @@ fun HoldingForm(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         )
 
-        val sharesLabel = when (state.marketType) {
-            MarketType.FUND -> if (state.isEditing) {
-                stringResource(R.string.trade_fund_shares)
-            } else {
-                stringResource(R.string.holding_fund_shares)
+        if (!state.isEditing || state.tradeAction != HoldingTradeAction.DIVIDEND) {
+            val sharesLabel = when (state.marketType) {
+                MarketType.FUND -> if (state.isEditing) {
+                    stringResource(R.string.trade_fund_shares)
+                } else {
+                    stringResource(R.string.holding_fund_shares)
+                }
+                MarketType.GOLD -> if (state.isEditing) {
+                    stringResource(R.string.trade_gold_quantity)
+                } else {
+                    stringResource(R.string.holding_gold_quantity)
+                }
+                else -> if (state.isEditing) {
+                    stringResource(R.string.trade_stock_quantity)
+                } else {
+                    stringResource(R.string.holding_stock_quantity)
+                }
             }
-            MarketType.GOLD -> if (state.isEditing) {
-                stringResource(R.string.trade_gold_quantity)
-            } else {
-                stringResource(R.string.holding_gold_quantity)
-            }
-            else -> if (state.isEditing) {
-                stringResource(R.string.trade_stock_quantity)
-            } else {
-                stringResource(R.string.holding_stock_quantity)
-            }
+            OutlinedTextField(
+                value = state.holdingShares,
+                onValueChange = onHoldingSharesChange,
+                label = { Text(sharesLabel) },
+                placeholder = { Text("0") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            )
         }
-        OutlinedTextField(
-            value = state.holdingShares,
-            onValueChange = onHoldingSharesChange,
-            label = { Text(sharesLabel) },
-            placeholder = { Text("0") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        val amount = state.holdingAmount
+        val amount = if (state.isEditing && state.tradeAction == HoldingTradeAction.DIVIDEND) {
+            state.costPrice.toDoubleOrNull() ?: 0.0
+        } else {
+            state.holdingAmount
+        }
         if (amount > 0) {
             Text(
-                text = if (state.isEditing) {
+                text = if (state.isEditing && state.tradeAction == HoldingTradeAction.DIVIDEND) {
+                    stringResource(R.string.dividend_cash_in)
+                } else if (state.isEditing) {
                     stringResource(R.string.trade_amount_auto)
                 } else {
                     stringResource(R.string.invest_amount_auto)

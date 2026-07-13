@@ -16,7 +16,7 @@ CetpToolProvider (ContentProvider)
   │  EntryPointAccessors → ToolRegistry
   ▼
 ToolRegistry (Hilt Singleton)
-  │  15 个 ToolExecutor
+  │  19 个 ToolExecutor
   ▼
 Use Cases → Repositories → API / Room
 ```
@@ -42,6 +42,10 @@ Use Cases → Repositories → API / Room
 | `jiucaihua__get_fund_flow` | `get_fund_flow` | 沪深港通资金流向 | 无 |
 | `jiucaihua__search_securities` | `search_securities` | 按关键词搜索证券 | `keyword` (必须), `limit` |
 | `jiucaihua__get_market_status` | `get_market_status` | 市场交易状态与汇率 | 无 |
+| `jiucaihua__get_transactions` | `get_transactions` | 交易流水明细 | `code`, `market_type`, `type`, `from`, `to`, `limit`, `offset` |
+| `jiucaihua__get_transaction_summary` | `get_transaction_summary` | 交易聚合摘要，含 FIFO 已实现收益、分红、费用税费和现金流 | `code`, `market_type`, `from`, `to` |
+| `jiucaihua__get_holding_transaction_history` | `get_holding_transaction_history` | 单标的交易历史和收益拆解 | `code` (必须), `market_type`, `limit` |
+| `jiucaihua__get_portfolio_performance` | `get_portfolio_performance` | 组合真实收益概览，按总资产和现金流变化分析 | `from`, `to` |
 
 ## 协议接口
 
@@ -86,7 +90,7 @@ content call --uri content://com.jiucaihua.app.clawseed.tools --method get_provi
 | `cetp/CetpDiscoveryService.kt` | 发现服务，供 Consumer 扫描 |
 | `ai/tool/ToolRegistry.kt` | 工具注册表（Hilt Singleton） |
 | `ai/tool/ToolExecutor.kt` | 工具执行接口 |
-| `ai/tool/*.kt` | 15 个 ToolExecutor 实现 |
+| `ai/tool/*.kt` | 19 个 ToolExecutor 实现 |
 | `ai/model/CetpToolSnapshots.kt` | 新增 4 个工具的输出模型 |
 | `ai/usecase/BuildCetpToolSnapshotsUseCase.kt` | 新增 4 个工具的 Use Case |
 

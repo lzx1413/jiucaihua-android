@@ -95,5 +95,6 @@ fun HoldingTradeAction.localizedLabel(): String = stringResource(
     when (this) {
         HoldingTradeAction.BUY -> R.string.trade_buy
         HoldingTradeAction.SELL -> R.string.trade_sell
+        HoldingTradeAction.DIVIDEND -> R.string.trade_dividend
     }
 )

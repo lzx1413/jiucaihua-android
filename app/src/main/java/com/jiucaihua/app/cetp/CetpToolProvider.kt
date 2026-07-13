@@ -110,6 +110,7 @@ class CetpToolProvider : ContentProvider() {
             put("description", "个人投资管理数据，包含持仓、行情、资讯、预警和市场资金流向")
             put("scopes", JSONArray().apply {
                 put(JSONObject().put("name", "portfolio").put("description", "投资组合与持仓"))
+                put(JSONObject().put("name", "transactions").put("description", "交易记录、FIFO收益和组合真实收益"))
                 put(JSONObject().put("name", "market").put("description", "市场行情与资金流向"))
                 put(JSONObject().put("name", "news").put("description", "市场资讯"))
                 put(JSONObject().put("name", "alerts").put("description", "价格预警"))
@@ -171,6 +172,10 @@ class CetpToolProvider : ContentProvider() {
             "search_securities",
             "get_market_status",
             "get_watchlist",
+            "get_transactions",
+            "get_transaction_summary",
+            "get_holding_transaction_history",
+            "get_portfolio_performance",
         )
     }
 }

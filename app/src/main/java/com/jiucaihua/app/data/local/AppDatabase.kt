@@ -11,6 +11,7 @@ import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
+import com.jiucaihua.app.data.local.dao.TransactionDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
 import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.AlertRecordEntity
@@ -19,11 +20,12 @@ import com.jiucaihua.app.data.local.entity.HoldingEntity
 import com.jiucaihua.app.data.local.entity.NewsFlashEntity
 import com.jiucaihua.app.data.local.entity.PortfolioSnapshotEntity
 import com.jiucaihua.app.data.local.entity.StockCacheEntity
+import com.jiucaihua.app.data.local.entity.TransactionEntity
 import com.jiucaihua.app.data.local.entity.WatchlistEntity
 
 @Database(
-    entities = [HoldingEntity::class, StockCacheEntity::class, FundCacheEntity::class, AlertEntity::class, AlertRecordEntity::class, WatchlistEntity::class, NewsFlashEntity::class, PortfolioSnapshotEntity::class],
-    version = 13,
+    entities = [HoldingEntity::class, StockCacheEntity::class, FundCacheEntity::class, AlertEntity::class, AlertRecordEntity::class, WatchlistEntity::class, NewsFlashEntity::class, PortfolioSnapshotEntity::class, TransactionEntity::class],
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -36,4 +38,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun watchlistDao(): WatchlistDao
     abstract fun newsFlashDao(): NewsFlashDao
     abstract fun portfolioSnapshotDao(): PortfolioSnapshotDao
+    abstract fun transactionDao(): TransactionDao
 }

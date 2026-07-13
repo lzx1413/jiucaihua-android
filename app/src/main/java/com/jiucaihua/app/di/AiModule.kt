@@ -12,13 +12,17 @@ import com.jiucaihua.app.ai.tool.DeleteAlertTool
 import com.jiucaihua.app.ai.tool.GetAlertsTool
 import com.jiucaihua.app.ai.tool.GetFundFlowTool
 import com.jiucaihua.app.ai.tool.GetHoldingAnalysisTool
+import com.jiucaihua.app.ai.tool.GetHoldingTransactionHistoryTool
 import com.jiucaihua.app.ai.tool.GetIndicatorSnapshotTool
 import com.jiucaihua.app.ai.tool.GetKLineDataTool
 import com.jiucaihua.app.ai.tool.GetMarketIndicesTool
 import com.jiucaihua.app.ai.tool.GetMarketNewsTool
 import com.jiucaihua.app.ai.tool.GetMarketStatusTool
 import com.jiucaihua.app.ai.tool.GetPortfolioAnalysisTool
+import com.jiucaihua.app.ai.tool.GetPortfolioPerformanceTool
 import com.jiucaihua.app.ai.tool.GetStockNewsTool
+import com.jiucaihua.app.ai.tool.GetTransactionSummaryTool
+import com.jiucaihua.app.ai.tool.GetTransactionsTool
 import com.jiucaihua.app.ai.tool.GetWatchlistTool
 import com.jiucaihua.app.ai.tool.SearchSecuritiesTool
 import com.jiucaihua.app.ai.tool.ToolExecutor
@@ -135,5 +139,29 @@ abstract class AiModule {
     @IntoSet
     abstract fun bindGetStockNewsTool(
         tool: GetStockNewsTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetTransactionsTool(
+        tool: GetTransactionsTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetTransactionSummaryTool(
+        tool: GetTransactionSummaryTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetHoldingTransactionHistoryTool(
+        tool: GetHoldingTransactionHistoryTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetPortfolioPerformanceTool(
+        tool: GetPortfolioPerformanceTool,
     ): ToolExecutor
 }

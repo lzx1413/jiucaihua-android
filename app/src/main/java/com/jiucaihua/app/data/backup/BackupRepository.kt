@@ -10,10 +10,12 @@ import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
+import com.jiucaihua.app.data.local.dao.TransactionDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
 import com.jiucaihua.app.data.local.AppDatabase
 import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.HoldingEntity
+import com.jiucaihua.app.data.local.entity.TransactionEntity
 import com.jiucaihua.app.presentation.settings.SettingsViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +39,7 @@ class BackupRepository @Inject constructor(
     private val snapshotDao: PortfolioSnapshotDao,
     private val watchlistDao: WatchlistDao,
     private val newsFlashDao: NewsFlashDao,
+    private val transactionDao: TransactionDao,
     @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) {
 
@@ -55,6 +58,7 @@ class BackupRepository @Inject constructor(
         val snapshots = snapshotDao.getAllOnce()
         val watchlistItems = watchlistDao.getAllWatchlistOnce()
         val newsFlash = newsFlashDao.getAllOnce()
+        val transactions = transactionDao.getAllOnce()
         val settings = AppSettingsBackup(
             refreshIntervalSeconds = prefs.getInt(SettingsViewModel.KEY_REFRESH_INTERVAL, 10),
             isDarkMode = if (prefs.contains(SettingsViewModel.KEY_DARK_MODE)) {
@@ -77,6 +81,7 @@ class BackupRepository @Inject constructor(
             portfolioSnapshots = snapshots,
             watchlistItems = watchlistItems,
             newsFlash = newsFlash,
+            transactions = transactions,
         )
     }
 
@@ -135,6 +140,7 @@ class BackupRepository @Inject constructor(
         watchlistDao.clearAll()
         newsFlashDao.clearAll()
         snapshotDao.clearAll()
+        transactionDao.clearAll()
 
         val holdings = backup.holdings.map { it.copy(id = 0) }
         val alerts = backup.alerts.map { it.copy(id = 0) }
@@ -142,6 +148,7 @@ class BackupRepository @Inject constructor(
         val watchlistItems = backup.watchlistItems.map { it.copy(id = 0) }
         val newsFlash = backup.newsFlash.map { it.copy(id = 0) }
         val snapshots = backup.portfolioSnapshots.map { it.copy(id = 0) }
+        val transactions = restoredTransactions(backup.transactions, holdings)
 
         holdingDao.insertAllHoldings(holdings)
         stockCacheDao.insertAll(backup.stockCache)
@@ -151,6 +158,7 @@ class BackupRepository @Inject constructor(
         watchlistDao.insertAll(watchlistItems)
         newsFlashDao.insertAll(newsFlash)
         snapshotDao.insertAll(snapshots)
+        transactionDao.insertAll(transactions)
 
         return RestoreResult(
             holdingsCount = holdings.size,
@@ -161,6 +169,7 @@ class BackupRepository @Inject constructor(
             portfolioSnapshotsCount = snapshots.size,
             stockCacheCount = backup.stockCache.size,
             fundCacheCount = backup.fundCache.size,
+            transactionsCount = transactions.size,
             settingsRestored = false,
         )
     }
@@ -213,6 +222,15 @@ class BackupRepository @Inject constructor(
             .map { it.copy(id = 0) }
         snapshotDao.insertAll(newSnapshots)
 
+        val existingTransactionKeys = transactionDao.getAllOnce()
+            .map { transactionKey(it) }
+            .toSet()
+        val restoredBackupTransactions = restoredTransactions(backup.transactions, backup.holdings)
+        val newTransactions = restoredBackupTransactions
+            .filter { transactionKey(it) !in existingTransactionKeys }
+            .map { it.copy(id = 0) }
+        transactionDao.insertAll(newTransactions)
+
         return RestoreResult(
             holdingsCount = newHoldings.size,
             alertsCount = newAlerts.size,
@@ -222,6 +240,7 @@ class BackupRepository @Inject constructor(
             portfolioSnapshotsCount = newSnapshots.size,
             stockCacheCount = backup.stockCache.size,
             fundCacheCount = backup.fundCache.size,
+            transactionsCount = newTransactions.size,
             settingsRestored = false,
         )
     }
@@ -232,6 +251,50 @@ class BackupRepository @Inject constructor(
 
     private fun holdingKey(holding: HoldingEntity): String {
         return "${holding.code}:${holding.marketType}:${holding.createdAt}:${holding.updatedAt}:${holding.isSoldOut}"
+    }
+
+    private fun transactionKey(transaction: com.jiucaihua.app.data.local.entity.TransactionEntity): String {
+        return "${transaction.code}:${transaction.marketType}:${transaction.type}:${transaction.tradeDate}:${transaction.quantity}:${transaction.price}:${transaction.amount}:${transaction.createdAt}"
+    }
+
+    private fun restoredTransactions(
+        backupTransactions: List<TransactionEntity>,
+        restoredHoldings: List<HoldingEntity>,
+    ): List<TransactionEntity> {
+        if (backupTransactions.isNotEmpty()) {
+            return backupTransactions.map { it.copy(id = 0) }
+        }
+        return restoredHoldings
+            .filter { !it.isSoldOut && it.holdingShares > 0.0 }
+            .map { holding ->
+                TransactionEntity(
+                    code = holding.code,
+                    name = holding.name,
+                    marketType = holding.marketType,
+                    type = "BUY",
+                    tradeDate = holding.createdAt,
+                    quantity = holding.holdingShares,
+                    price = holding.costPrice,
+                    amount = holding.holdingAmount,
+                    currency = holding.currency,
+                    exchangeRate = legacyExchangeRate(holding.marketType),
+                    note = LEGACY_HOLDING_TRANSACTION_NOTE,
+                    createdAt = holding.createdAt,
+                    updatedAt = holding.updatedAt,
+                )
+            }
+    }
+
+    private fun legacyExchangeRate(marketType: String): Double {
+        return when (marketType) {
+            "HK_STOCK" -> 0.92
+            "US_STOCK" -> 7.2
+            else -> 1.0
+        }
+    }
+
+    private companion object {
+        const val LEGACY_HOLDING_TRANSACTION_NOTE = "备份恢复初始化持仓"
     }
 
     suspend fun writeToUri(outputStream: OutputStream, content: String) = withContext(Dispatchers.IO) {

@@ -1,15 +1,17 @@
 package com.jiucaihua.app.presentation.holdings
 
-import android.content.SharedPreferences
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.domain.model.InvestmentTransaction
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.SecuritySearchResult
+import com.jiucaihua.app.domain.model.TransactionType
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
+import com.jiucaihua.app.domain.usecase.AddTransactionUseCase
 import com.jiucaihua.app.domain.usecase.ManageHoldingUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,11 +23,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Named
 
 enum class HoldingTradeAction(val label: String) {
     BUY("增加"),
     SELL("减少"),
+    DIVIDEND("分红"),
 }
 
 data class AddEditHoldingUiState(
@@ -58,6 +60,9 @@ data class AddEditHoldingUiState(
         get() {
             val price = costPrice.toDoubleOrNull() ?: 0.0
             val shares = holdingShares.toDoubleOrNull() ?: 0.0
+            if (isEditing && tradeAction == HoldingTradeAction.DIVIDEND) {
+                return code.isNotBlank() && name.isNotBlank() && price > 0
+            }
             return code.isNotBlank() && name.isNotBlank() &&
                     price > 0 &&
                     shares > 0 &&
@@ -70,8 +75,8 @@ class AddEditHoldingViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
     private val manageHoldingUseCase: ManageHoldingUseCase,
+    private val addTransactionUseCase: AddTransactionUseCase,
     private val securitySearchRepository: SecuritySearchRepository,
-    @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
     private val holdingId: Long = savedStateHandle.get<Long>("holdingId") ?: -1L
@@ -204,11 +209,6 @@ class AddEditHoldingViewModel @Inject constructor(
         }
     }
 
-    private fun adjustCash(diff: Double) {
-        val current = prefs.getFloat(KEY_CASH, 0f).toDouble()
-        prefs.edit().putFloat(KEY_CASH, (current + diff).toFloat()).apply()
-    }
-
     private suspend fun performSearch(query: String) {
         _uiState.update { it.copy(isSearching = true, searchError = null, searchExpanded = true) }
         try {
@@ -245,19 +245,37 @@ class AddEditHoldingViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val currency = if (state.marketType == MarketType.HK_STOCK) "HKD" else "CNY"
-            val holding = Holding(
-                id = if (state.isEditing) state.holdingId else 0,
+            val currentHolding = originalHolding
+            val transactionType = when {
+                state.isEditing && state.tradeAction == HoldingTradeAction.SELL -> TransactionType.SELL
+                state.isEditing && state.tradeAction == HoldingTradeAction.DIVIDEND -> TransactionType.DIVIDEND
+                else -> TransactionType.BUY
+            }
+            val amount = if (transactionType == TransactionType.DIVIDEND) {
+                state.costPrice.toDouble()
+            } else {
+                state.holdingAmount
+            }
+            val transaction = InvestmentTransaction(
                 code = state.code.trim(),
                 name = state.name.trim(),
                 marketType = state.marketType,
-                currency = currency,
-                costPrice = state.costPrice.toDouble(),
-                holdingAmount = state.holdingAmount,
-                holdingShares = state.holdingShares.toDouble(),
+                type = transactionType,
+                tradeDate = System.currentTimeMillis(),
+                quantity = if (transactionType == TransactionType.DIVIDEND) 0.0 else state.holdingShares.toDouble(),
+                price = if (transactionType == TransactionType.DIVIDEND) 0.0 else state.costPrice.toDouble(),
+                amount = amount,
+                currency = currencyFor(state.marketType),
+                exchangeRate = exchangeRateFor(state.marketType),
+                note = when {
+                    !state.isEditing -> context.getString(R.string.add_holding)
+                    transactionType == TransactionType.BUY -> context.getString(R.string.trade_buy)
+                    transactionType == TransactionType.DIVIDEND -> context.getString(R.string.trade_dividend)
+                    else -> context.getString(R.string.trade_sell)
+                },
             )
             if (state.isEditing) {
-                val currentHolding = originalHolding ?: run {
+                if (currentHolding == null) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -266,49 +284,30 @@ class AddEditHoldingViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                val updatedHolding = buildUpdatedHolding(currentHolding, state)
-                manageHoldingUseCase.updateHolding(updatedHolding)
-                val cashDiff = if (state.tradeAction == HoldingTradeAction.BUY) {
-                    -state.holdingAmount
-                } else {
-                    state.holdingAmount
-                }
-                adjustCash(cashDiff)
-            } else {
-                manageHoldingUseCase.addHolding(holding)
-                adjustCash(-state.holdingAmount)
             }
+            addTransactionUseCase(transaction)
             _uiState.update { it.copy(isLoading = false, isSaved = true) }
         }
     }
 
-    private fun buildUpdatedHolding(current: Holding, state: AddEditHoldingUiState): Holding {
-        val tradePrice = state.costPrice.toDouble()
-        val tradeShares = state.holdingShares.toDouble()
-        return when (state.tradeAction) {
-            HoldingTradeAction.BUY -> {
-                val newShares = current.holdingShares + tradeShares
-                val newCostAmount = current.costPrice * current.holdingShares + tradePrice * tradeShares
-                val newCostPrice = if (newShares > 0) newCostAmount / newShares else 0.0
-                current.copy(
-                    costPrice = newCostPrice,
-                    holdingShares = newShares,
-                    holdingAmount = newCostPrice * newShares,
-                    isSoldOut = false,
-                )
-            }
-            HoldingTradeAction.SELL -> {
-                val newShares = (current.holdingShares - tradeShares).coerceAtLeast(0.0)
-                current.copy(
-                    holdingShares = newShares,
-                    holdingAmount = current.costPrice * newShares,
-                    isSoldOut = newShares <= 0.0,
-                )
-            }
+    private fun currencyFor(marketType: MarketType): String {
+        return when (marketType) {
+            MarketType.HK_STOCK -> "HKD"
+            MarketType.US_STOCK -> "USD"
+            else -> "CNY"
+        }
+    }
+
+    private fun exchangeRateFor(marketType: MarketType): Double {
+        return when (marketType) {
+            MarketType.HK_STOCK -> DEFAULT_HKD_RATE
+            MarketType.US_STOCK -> DEFAULT_USD_RATE
+            else -> 1.0
         }
     }
 
     companion object {
-        private const val KEY_CASH = "cash"
+        private const val DEFAULT_HKD_RATE = 0.92
+        private const val DEFAULT_USD_RATE = 7.2
     }
 }

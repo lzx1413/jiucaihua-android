@@ -15,6 +15,7 @@ import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
+import com.jiucaihua.app.data.local.dao.TransactionDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
 import dagger.Module
 import dagger.Provides
@@ -36,7 +37,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -112,6 +113,56 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `transactions` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `code` TEXT,
+                    `name` TEXT,
+                    `marketType` TEXT,
+                    `type` TEXT NOT NULL,
+                    `tradeDate` INTEGER NOT NULL,
+                    `quantity` REAL NOT NULL DEFAULT 0.0,
+                    `price` REAL NOT NULL DEFAULT 0.0,
+                    `amount` REAL NOT NULL DEFAULT 0.0,
+                    `fee` REAL NOT NULL DEFAULT 0.0,
+                    `tax` REAL NOT NULL DEFAULT 0.0,
+                    `currency` TEXT NOT NULL DEFAULT 'CNY',
+                    `exchangeRate` REAL NOT NULL DEFAULT 1.0,
+                    `note` TEXT,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_code_marketType` ON `transactions` (`code`, `marketType`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_tradeDate` ON `transactions` (`tradeDate`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_type` ON `transactions` (`type`)")
+            db.execSQL(
+                """
+                INSERT INTO `transactions` (
+                    `code`, `name`, `marketType`, `type`, `tradeDate`, `quantity`,
+                    `price`, `amount`, `fee`, `tax`, `currency`, `exchangeRate`,
+                    `note`, `createdAt`, `updatedAt`
+                )
+                SELECT
+                    `code`, `name`, `marketType`, 'BUY', `createdAt`, `holdingShares`,
+                    `costPrice`, `holdingAmount`, 0.0, 0.0, `currency`,
+                    CASE
+                        WHEN `currency` = 'HKD' THEN 0.92
+                        WHEN `currency` = 'USD' THEN 7.2
+                        ELSE 1.0
+                    END,
+                    '初始化持仓', `createdAt`, `updatedAt`
+                FROM `holdings`
+                WHERE `holdingShares` > 0
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     fun provideHoldingDao(database: AppDatabase): HoldingDao {
         return database.holdingDao()
@@ -150,6 +201,11 @@ object AppModule {
     @Provides
     fun providePortfolioSnapshotDao(database: AppDatabase): PortfolioSnapshotDao {
         return database.portfolioSnapshotDao()
+    }
+
+    @Provides
+    fun provideTransactionDao(database: AppDatabase): TransactionDao {
+        return database.transactionDao()
     }
 
     @Provides

@@ -44,7 +44,7 @@ fun AddEditHoldingScreen(
                 title = {
                     Text(
                         if (uiState.isEditing) {
-                            stringResource(R.string.holding_edit_title)
+                            stringResource(R.string.holding_trade_title)
                         } else {
                             stringResource(R.string.holding_add_title)
                         }
@@ -64,7 +64,11 @@ fun AddEditHoldingScreen(
                         enabled = uiState.isValid && !uiState.isLoading,
                     ) {
                         Text(
-                            stringResource(R.string.action_save),
+                            if (uiState.isEditing) {
+                                stringResource(R.string.action_record_trade)
+                            } else {
+                                stringResource(R.string.action_save)
+                            },
                             color = if (uiState.isValid) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )

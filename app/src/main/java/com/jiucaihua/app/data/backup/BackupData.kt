@@ -7,6 +7,7 @@ import com.jiucaihua.app.data.local.entity.HoldingEntity
 import com.jiucaihua.app.data.local.entity.NewsFlashEntity
 import com.jiucaihua.app.data.local.entity.PortfolioSnapshotEntity
 import com.jiucaihua.app.data.local.entity.StockCacheEntity
+import com.jiucaihua.app.data.local.entity.TransactionEntity
 import com.jiucaihua.app.data.local.entity.WatchlistEntity
 import kotlinx.serialization.Serializable
 
@@ -23,9 +24,10 @@ data class BackupData(
     val portfolioSnapshots: List<PortfolioSnapshotEntity> = emptyList(),
     val watchlistItems: List<WatchlistEntity> = emptyList(),
     val newsFlash: List<NewsFlashEntity> = emptyList(),
+    val transactions: List<TransactionEntity> = emptyList(),
 ) {
     companion object {
-        const val BACKUP_VERSION = 6
+        const val BACKUP_VERSION = 7
     }
 }
 
@@ -50,5 +52,6 @@ data class RestoreResult(
     val portfolioSnapshotsCount: Int = 0,
     val stockCacheCount: Int = 0,
     val fundCacheCount: Int = 0,
+    val transactionsCount: Int = 0,
     val settingsRestored: Boolean,
 )

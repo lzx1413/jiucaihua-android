@@ -17,6 +17,7 @@
     <string name="action_menu">Menu</string>
     <string name="action_bookmark">Bookmark</string>
     <string name="action_unbookmark">Remove bookmark</string>
+    <string name="action_record_trade">Record</string>
     <string name="tab_holdings">Holdings</string>
     <string name="tab_news">News</string>
     <string name="tab_watchlist">Watchlist</string>
@@ -101,6 +102,7 @@
     <string name="quote_load_failed">Quote loading failed: %1$s</string>
     <string name="holding_add_title">New holding</string>
     <string name="holding_edit_title">Edit holding</string>
+    <string name="holding_trade_title">Record trade</string>
     <string name="market_type">Market type</string>
     <string name="gold_product">Gold product</string>
     <string name="select_gold_product">Select a gold product</string>
@@ -118,6 +120,9 @@
     <string name="current_position_format">%1$s: %2$,.2f   Cost: %3$.4f</string>
     <string name="trade_buy">Add</string>
     <string name="trade_sell">Reduce</string>
+    <string name="trade_dividend">Dividend</string>
+    <string name="dividend_amount">Dividend amount</string>
+    <string name="dividend_cash_in">Cash increase</string>
     <string name="trade_price_gold">Trade price (CNY/g)</string>
     <string name="trade_price">Trade price</string>
     <string name="cost_price_gold">Cost price (CNY/g)</string>
@@ -169,6 +174,13 @@
     <string name="detail_market_value">Value</string>
     <string name="detail_profit_loss">P/L</string>
     <string name="detail_return_rate">Return</string>
+    <string name="detail_transaction_history">Transaction history</string>
+    <string name="no_transaction_history">No transaction records</string>
+    <string name="transaction_cost_basis">Cost</string>
+    <string name="transaction_proceeds">Proceeds</string>
+    <string name="transaction_fifo_realized_pnl">FIFO realized P/L</string>
+    <string name="transaction_dividend_income">Dividend income</string>
+    <string name="transaction_unmatched_quantity">Unmatched quantity: %1$s</string>
     <string name="quote_estimated_nav">Estimated NAV</string>
     <string name="quote_open">Open</string>
     <string name="quote_yest_close">Prev close</string>

@@ -13,11 +13,13 @@ import com.jiucaihua.app.domain.model.KLinePeriod
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.StockQuote
+import com.jiucaihua.app.domain.model.TransactionHistoryItem
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.HoldingRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.repository.StockRepository
+import com.jiucaihua.app.domain.usecase.GetHoldingTransactionHistoryUseCase
 import com.jiucaihua.app.domain.usecase.GetKLineDataUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,6 +50,7 @@ data class DetailUiState(
     val isNewsLoading: Boolean = false,
     val newsError: String? = null,
     val newsLoaded: Boolean = false,
+    val transactionHistory: List<TransactionHistoryItem> = emptyList(),
 )
 
 @HiltViewModel
@@ -59,6 +62,7 @@ class DetailViewModel @Inject constructor(
     private val holdingRepository: HoldingRepository,
     private val exchangeRateRepository: ExchangeRateRepository,
     private val newsRepository: NewsRepository,
+    private val getHoldingTransactionHistoryUseCase: GetHoldingTransactionHistoryUseCase,
     private val getKLineDataUseCase: GetKLineDataUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     @param:Named("appPrefs") private val prefs: SharedPreferences,
@@ -83,6 +87,7 @@ class DetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 loadHolding()
+                loadTransactionHistory()
                 loadQuote()
                 loadKLine(_uiState.value.selectedPeriod)
                 loadNews()
@@ -123,14 +128,21 @@ class DetailViewModel @Inject constructor(
 
     private suspend fun loadHolding() {
         val holding = holdingRepository.getHoldingByCode(code) ?: return
-        val marketType = MarketType.fromCode(code)
+        val marketType = holding.marketType
         val exchangeRate = if (marketType == MarketType.HK_STOCK) {
             try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { DEFAULT_HKD_RATE }
         } else 1.0
         _uiState.value = _uiState.value.copy(
+            marketType = marketType,
             holding = holding.copy(exchangeRate = exchangeRate),
             name = holding.name,
         )
+    }
+
+    private suspend fun loadTransactionHistory() {
+        val marketType = _uiState.value.holding?.marketType ?: _uiState.value.marketType
+        val history = getHoldingTransactionHistoryUseCase(code, marketType)
+        _uiState.value = _uiState.value.copy(transactionHistory = history)
     }
 
     private suspend fun loadQuote() {

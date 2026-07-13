@@ -17,6 +17,7 @@
     <string name="action_menu">菜单</string>
     <string name="action_bookmark">收藏</string>
     <string name="action_unbookmark">取消收藏</string>
+    <string name="action_record_trade">记录</string>
 
     <string name="tab_holdings">持仓</string>
     <string name="tab_news">资讯</string>
@@ -106,6 +107,7 @@
 
     <string name="holding_add_title">新增持仓</string>
     <string name="holding_edit_title">编辑持仓</string>
+    <string name="holding_trade_title">记录交易</string>
     <string name="market_type">市场类型</string>
     <string name="gold_product">黄金品种</string>
     <string name="select_gold_product">请选择黄金品种</string>
@@ -123,6 +125,9 @@
     <string name="current_position_format">%1$s：%2$,.2f   成本价：%3$.4f</string>
     <string name="trade_buy">增加</string>
     <string name="trade_sell">减少</string>
+    <string name="trade_dividend">分红</string>
+    <string name="dividend_amount">分红金额</string>
+    <string name="dividend_cash_in">现金增加</string>
     <string name="trade_price_gold">成交单价（元/克）</string>
     <string name="trade_price">成交单价</string>
     <string name="cost_price_gold">成本价（元/克）</string>
@@ -177,6 +182,13 @@
     <string name="detail_market_value">市值</string>
     <string name="detail_profit_loss">盈亏</string>
     <string name="detail_return_rate">收益率</string>
+    <string name="detail_transaction_history">交易历史</string>
+    <string name="no_transaction_history">暂无交易记录</string>
+    <string name="transaction_cost_basis">成本</string>
+    <string name="transaction_proceeds">收入</string>
+    <string name="transaction_fifo_realized_pnl">FIFO已实现收益</string>
+    <string name="transaction_dividend_income">分红收入</string>
+    <string name="transaction_unmatched_quantity">超出可匹配持仓：%1$s</string>
     <string name="quote_estimated_nav">估算净值</string>
     <string name="quote_open">今开</string>
     <string name="quote_yest_close">昨收</string>
