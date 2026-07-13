@@ -16,6 +16,7 @@ import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.dao.TransactionDao
+import com.jiucaihua.app.data.local.dao.TransactionLotMatchDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
 import dagger.Module
 import dagger.Provides
@@ -37,7 +38,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -163,6 +164,32 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `transaction_lot_matches` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `code` TEXT NOT NULL,
+                    `marketType` TEXT NOT NULL,
+                    `sellTransactionId` INTEGER NOT NULL,
+                    `buyTransactionId` INTEGER NOT NULL,
+                    `quantity` REAL NOT NULL,
+                    `buyUnitCostCny` REAL NOT NULL,
+                    `sellUnitProceedsCny` REAL NOT NULL,
+                    `costBasisCny` REAL NOT NULL,
+                    `proceedsCny` REAL NOT NULL,
+                    `realizedPnlCny` REAL NOT NULL,
+                    `createdAt` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_transaction_lot_matches_code_marketType` ON `transaction_lot_matches` (`code`, `marketType`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_transaction_lot_matches_sellTransactionId` ON `transaction_lot_matches` (`sellTransactionId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_transaction_lot_matches_buyTransactionId` ON `transaction_lot_matches` (`buyTransactionId`)")
+        }
+    }
+
     @Provides
     fun provideHoldingDao(database: AppDatabase): HoldingDao {
         return database.holdingDao()
@@ -206,6 +233,11 @@ object AppModule {
     @Provides
     fun provideTransactionDao(database: AppDatabase): TransactionDao {
         return database.transactionDao()
+    }
+
+    @Provides
+    fun provideTransactionLotMatchDao(database: AppDatabase): TransactionLotMatchDao {
+        return database.transactionLotMatchDao()
     }
 
     @Provides

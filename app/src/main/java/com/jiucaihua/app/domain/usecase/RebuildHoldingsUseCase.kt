@@ -5,16 +5,21 @@ import com.jiucaihua.app.domain.model.InvestmentTransaction
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.TransactionType
 import com.jiucaihua.app.domain.repository.HoldingRepository
+import com.jiucaihua.app.domain.repository.TransactionLotMatchRepository
 import com.jiucaihua.app.domain.repository.TransactionRepository
 import javax.inject.Inject
 import kotlin.math.abs
 
 class RebuildHoldingsUseCase @Inject constructor(
     private val transactionRepository: TransactionRepository,
+    private val transactionLotMatchRepository: TransactionLotMatchRepository,
     private val holdingRepository: HoldingRepository,
 ) {
     suspend fun rebuildOne(code: String, marketType: MarketType) {
         val transactions = transactionRepository.getBySecurity(code, marketType)
+        val lotMatches = TransactionFifoCalculator.calculate(transactions)
+            .flatMap { it.lotMatches }
+        transactionLotMatchRepository.replaceForSecurity(code, marketType, lotMatches)
         val projection = project(transactions) ?: return
         val current = holdingRepository.getHoldingByCode(code)
         if (current != null) {

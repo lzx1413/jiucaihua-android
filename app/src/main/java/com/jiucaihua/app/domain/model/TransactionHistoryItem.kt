@@ -7,4 +7,5 @@ data class TransactionHistoryItem(
     val realizedPnlCny: Double = 0.0,
     val dividendIncomeCny: Double = 0.0,
     val unmatchedQuantity: Double = 0.0,
+    val lotMatches: List<TransactionLotMatch> = emptyList(),
 )

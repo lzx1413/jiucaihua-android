@@ -11,6 +11,7 @@ import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.dao.TransactionDao
+import com.jiucaihua.app.data.local.dao.TransactionLotMatchDao
 import com.jiucaihua.app.data.local.dao.WatchlistDao
 import com.jiucaihua.app.data.local.AppDatabase
 import com.jiucaihua.app.data.local.entity.AlertEntity
@@ -40,6 +41,7 @@ class BackupRepository @Inject constructor(
     private val watchlistDao: WatchlistDao,
     private val newsFlashDao: NewsFlashDao,
     private val transactionDao: TransactionDao,
+    private val transactionLotMatchDao: TransactionLotMatchDao,
     @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) {
 
@@ -141,6 +143,7 @@ class BackupRepository @Inject constructor(
         newsFlashDao.clearAll()
         snapshotDao.clearAll()
         transactionDao.clearAll()
+        transactionLotMatchDao.clearAll()
 
         val holdings = backup.holdings.map { it.copy(id = 0) }
         val alerts = backup.alerts.map { it.copy(id = 0) }

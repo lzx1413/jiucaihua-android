@@ -189,6 +189,9 @@
     <string name="transaction_fifo_realized_pnl">FIFO已实现收益</string>
     <string name="transaction_dividend_income">分红收入</string>
     <string name="transaction_unmatched_quantity">超出可匹配持仓：%1$s</string>
+    <string name="transaction_lot_matches_expand">查看匹配批次（%1$d）</string>
+    <string name="transaction_lot_matches_collapse">收起匹配批次（%1$d）</string>
+    <string name="transaction_lot_match_detail">买入#%1$d · %2$s · 成本%3$s · 收入%4$s · 收益%5$s</string>
     <string name="quote_estimated_nav">估算净值</string>
     <string name="quote_open">今开</string>
     <string name="quote_yest_close">昨收</string>

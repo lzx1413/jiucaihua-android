@@ -27,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -295,6 +296,7 @@ private fun TransactionHistoryRow(
     tradeDate: String,
 ) {
     val transaction = item.transaction
+    var lotExpanded by rememberSaveable(transaction.id) { mutableStateOf(false) }
     val valueColor = when {
         item.realizedPnlCny > 0 -> RiseRed
         item.realizedPnlCny < 0 -> FallGreen
@@ -348,6 +350,41 @@ private fun TransactionHistoryRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                }
+                if (item.lotMatches.isNotEmpty()) {
+                    TextButton(
+                        onClick = { lotExpanded = !lotExpanded },
+                        modifier = Modifier.padding(top = 2.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (lotExpanded) R.string.transaction_lot_matches_collapse
+                                else R.string.transaction_lot_matches_expand,
+                                item.lotMatches.size,
+                            ),
+                        )
+                    }
+                    if (lotExpanded) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(start = 8.dp),
+                        ) {
+                            item.lotMatches.forEach { match ->
+                                Text(
+                                    text = stringResource(
+                                        R.string.transaction_lot_match_detail,
+                                        match.buyTransactionId,
+                                        formatPlainQuantity(match.quantity),
+                                        formatMoney(match.costBasisCny),
+                                        formatMoney(match.proceedsCny),
+                                        formatSignedMoney(match.realizedPnlCny),
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
             }
             TransactionType.DIVIDEND -> {

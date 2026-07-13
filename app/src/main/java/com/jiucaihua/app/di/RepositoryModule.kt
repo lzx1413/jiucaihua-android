@@ -11,6 +11,7 @@ import com.jiucaihua.app.data.repository.PortfolioSnapshotRepositoryImpl
 import com.jiucaihua.app.data.repository.SecuritySearchRepositoryImpl
 import com.jiucaihua.app.data.repository.StockRepositoryImpl
 import com.jiucaihua.app.data.repository.TransactionRepositoryImpl
+import com.jiucaihua.app.data.repository.TransactionLotMatchRepositoryImpl
 import com.jiucaihua.app.data.repository.WatchlistRepositoryImpl
 import com.jiucaihua.app.domain.repository.AlertRepository
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
@@ -23,6 +24,7 @@ import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import com.jiucaihua.app.domain.repository.TransactionRepository
+import com.jiucaihua.app.domain.repository.TransactionLotMatchRepository
 import com.jiucaihua.app.domain.repository.WatchlistRepository
 import dagger.Binds
 import dagger.Module
@@ -105,4 +107,10 @@ abstract class RepositoryModule {
     abstract fun bindTransactionRepository(
         impl: TransactionRepositoryImpl
     ): TransactionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTransactionLotMatchRepository(
+        impl: TransactionLotMatchRepositoryImpl
+    ): TransactionLotMatchRepository
 }

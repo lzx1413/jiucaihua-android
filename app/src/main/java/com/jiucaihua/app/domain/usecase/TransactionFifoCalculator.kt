@@ -1,7 +1,9 @@
 package com.jiucaihua.app.domain.usecase
 
 import com.jiucaihua.app.domain.model.InvestmentTransaction
+import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.TransactionHistoryItem
+import com.jiucaihua.app.domain.model.TransactionLotMatch
 import com.jiucaihua.app.domain.model.TransactionType
 
 object TransactionFifoCalculator {
@@ -17,7 +19,13 @@ object TransactionFifoCalculator {
                         val quantity = transaction.quantity.coerceAtLeast(0.0)
                         val costBasis = transaction.grossAmountCny() + transaction.feeCny + transaction.taxCny
                         if (quantity > EPSILON) {
-                            lots.addLast(Lot(quantity, costBasis / quantity))
+                            lots.addLast(
+                                Lot(
+                                    buyTransactionId = transaction.id,
+                                    remainingQuantity = quantity,
+                                    unitCostCny = costBasis / quantity,
+                                ),
+                            )
                         }
                         TransactionHistoryItem(
                             transaction = transaction,
@@ -57,14 +65,34 @@ object TransactionFifoCalculator {
         var remainingQuantity = sellQuantity
         var matchedQuantity = 0.0
         var costBasis = 0.0
+        val lotMatches = mutableListOf<TransactionLotMatch>()
 
         while (remainingQuantity > EPSILON && lots.isNotEmpty()) {
             val lot = lots.first()
             val consumedQuantity = minOf(remainingQuantity, lot.remainingQuantity)
-            costBasis += consumedQuantity * lot.unitCostCny
+            val matchedCostBasis = consumedQuantity * lot.unitCostCny
+            val matchedProceeds = consumedQuantity * unitProceeds
+            costBasis += matchedCostBasis
             matchedQuantity += consumedQuantity
             remainingQuantity -= consumedQuantity
             lot.remainingQuantity -= consumedQuantity
+            val code = transaction.code
+            val marketType = transaction.marketType
+            if (code != null && marketType != null && transaction.id > 0L && lot.buyTransactionId > 0L) {
+                lotMatches += TransactionLotMatch(
+                    code = code,
+                    marketType = marketType,
+                    sellTransactionId = transaction.id,
+                    buyTransactionId = lot.buyTransactionId,
+                    quantity = consumedQuantity,
+                    buyUnitCostCny = lot.unitCostCny,
+                    sellUnitProceedsCny = unitProceeds,
+                    costBasisCny = matchedCostBasis,
+                    proceedsCny = matchedProceeds,
+                    realizedPnlCny = matchedProceeds - matchedCostBasis,
+                    createdAt = System.currentTimeMillis(),
+                )
+            }
             if (lot.remainingQuantity <= EPSILON) {
                 lots.removeFirst()
             }
@@ -77,6 +105,7 @@ object TransactionFifoCalculator {
             costBasisCny = costBasis,
             realizedPnlCny = matchedProceeds - costBasis,
             unmatchedQuantity = remainingQuantity.coerceAtLeast(0.0),
+            lotMatches = lotMatches,
         )
     }
 
@@ -90,6 +119,7 @@ object TransactionFifoCalculator {
     }
 
     private data class Lot(
+        val buyTransactionId: Long,
         var remainingQuantity: Double,
         var unitCostCny: Double,
     )

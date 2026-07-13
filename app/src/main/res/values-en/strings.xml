@@ -181,6 +181,9 @@
     <string name="transaction_fifo_realized_pnl">FIFO realized P/L</string>
     <string name="transaction_dividend_income">Dividend income</string>
     <string name="transaction_unmatched_quantity">Unmatched quantity: %1$s</string>
+    <string name="transaction_lot_matches_expand">Show matched lots (%1$d)</string>
+    <string name="transaction_lot_matches_collapse">Hide matched lots (%1$d)</string>
+    <string name="transaction_lot_match_detail">Buy #%1$d · %2$s · cost %3$s · proceeds %4$s · P/L %5$s</string>
     <string name="quote_estimated_nav">Estimated NAV</string>
     <string name="quote_open">Open</string>
     <string name="quote_yest_close">Prev close</string>
