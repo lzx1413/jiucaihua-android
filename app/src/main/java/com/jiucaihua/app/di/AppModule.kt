@@ -38,7 +38,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -187,6 +187,29 @@ object AppModule {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_transaction_lot_matches_code_marketType` ON `transaction_lot_matches` (`code`, `marketType`)")
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_transaction_lot_matches_sellTransactionId` ON `transaction_lot_matches` (`sellTransactionId`)")
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_transaction_lot_matches_buyTransactionId` ON `transaction_lot_matches` (`buyTransactionId`)")
+        }
+    }
+
+    private val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `portfolio_snapshots` ADD COLUMN `netExternalCashFlow` REAL NOT NULL DEFAULT 0.0",
+            )
+            // Existing cash-flow transactions can be applied to historical snapshots as well.
+            db.execSQL(
+                """
+                UPDATE `portfolio_snapshots`
+                SET `netExternalCashFlow` = COALESCE((
+                    SELECT SUM(CASE
+                        WHEN `type` = 'CASH_IN' THEN `amount` * `exchangeRate`
+                        WHEN `type` = 'CASH_OUT' THEN -`amount` * `exchangeRate`
+                        ELSE 0.0
+                    END)
+                    FROM `transactions`
+                    WHERE `tradeDate` <= `portfolio_snapshots`.`timestamp`
+                ), 0.0)
+                """.trimIndent(),
+            )
         }
     }
 

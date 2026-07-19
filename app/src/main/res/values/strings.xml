@@ -160,6 +160,14 @@
     <string name="benchmark_csi300">沪深300</string>
     <string name="portfolio_summary_total_earnings">累计收益</string>
     <string name="portfolio_summary_today">今日</string>
+    <string name="period_return_day">日收益</string>
+    <string name="period_return_week">周收益</string>
+    <string name="period_return_month">月收益</string>
+    <string name="period_return_year">年收益</string>
+    <string name="return_history_daily">每日收益</string>
+    <string name="return_history_monthly">每月收益</string>
+    <string name="return_history_yearly">每年收益</string>
+    <string name="return_history_empty">暂无足够的收盘快照数据</string>
     <string name="set_cash">设置现金</string>
     <string name="cash_amount_yuan">现金金额（元）</string>
     <string name="cash_delta_amount">增减金额（可正可负）</string>

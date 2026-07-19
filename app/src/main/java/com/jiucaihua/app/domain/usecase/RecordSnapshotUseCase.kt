@@ -2,30 +2,50 @@ package com.jiucaihua.app.domain.usecase
 
 import android.content.SharedPreferences
 import com.jiucaihua.app.domain.model.ChartRange
+import com.jiucaihua.app.domain.model.DailySnapshotSchedule
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
+import com.jiucaihua.app.domain.model.TransactionQuery
+import com.jiucaihua.app.domain.repository.MarketCalendarRepository
 import com.jiucaihua.app.domain.repository.MarketRepository
 import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import java.text.SimpleDateFormat
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Named
 
 class RecordSnapshotUseCase @Inject constructor(
     private val getPortfolioUseCase: GetPortfolioUseCase,
+    private val getTransactionSummaryUseCase: GetTransactionSummaryUseCase,
     private val snapshotRepository: PortfolioSnapshotRepository,
     private val marketRepository: MarketRepository,
+    private val marketCalendarRepository: MarketCalendarRepository,
     @Named("appPrefs") private val prefs: SharedPreferences,
 ) {
 
+    /**
+     * Stores one end-of-day portfolio value after A-share and Hong Kong markets close.
+     * Intraday refreshes deliberately do not update the return-series baseline.
+     */
     suspend fun recordSnapshot(): Long? {
+        val now = ZonedDateTime.now(SHANGHAI_ZONE)
+        val sessions = marketCalendarRepository.getMarketSessions()
+        if (!DailySnapshotSchedule.shouldRecord(now, sessions)) return null
+
         val summary = getPortfolioUseCase.getPortfolioWithQuotes()
         if (summary.holdings.isEmpty()) return null
 
+        val timestamp = now.toInstant().toEpochMilli()
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val today = dateFormat.format(System.currentTimeMillis())
+        val today = dateFormat.format(timestamp)
 
         // Compute benchmark percent (CSI 300 cumulative return from base)
         val benchmarkPercent = computeBenchmarkPercent()
+        val transactionSummary = getTransactionSummaryUseCase(
+            TransactionQuery(to = timestamp, limit = Int.MAX_VALUE),
+        )
+        val netExternalCashFlow = transactionSummary.cashInCny - transactionSummary.cashOutCny
 
         // Dedup: only keep the latest snapshot for the same day
         val existing = snapshotRepository.getLatest()
@@ -35,7 +55,7 @@ class RecordSnapshotUseCase @Inject constructor(
                 PortfolioSnapshot(
                     id = existing.id,
                     date = today,
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = timestamp,
                     totalMarketValue = summary.totalMarketValue,
                     totalCost = summary.totalCost,
                     totalEarnings = summary.totalEarnings,
@@ -45,6 +65,7 @@ class RecordSnapshotUseCase @Inject constructor(
                     lossCompensation = summary.lossCompensation,
                     categoryValues = summary.categorySummaries.associate { it.marketType.name to it.totalMarketValue },
                     benchmarkPercent = benchmarkPercent,
+                    netExternalCashFlow = netExternalCashFlow,
                 ),
             )
         }
@@ -52,7 +73,7 @@ class RecordSnapshotUseCase @Inject constructor(
         return snapshotRepository.saveSnapshot(
             PortfolioSnapshot(
                 date = today,
-                timestamp = System.currentTimeMillis(),
+                timestamp = timestamp,
                 totalMarketValue = summary.totalMarketValue,
                 totalCost = summary.totalCost,
                 totalEarnings = summary.totalEarnings,
@@ -62,6 +83,7 @@ class RecordSnapshotUseCase @Inject constructor(
                 lossCompensation = summary.lossCompensation,
                 categoryValues = summary.categorySummaries.associate { it.marketType.name to it.totalMarketValue },
                 benchmarkPercent = benchmarkPercent,
+                netExternalCashFlow = netExternalCashFlow,
             ),
         )
     }
@@ -103,6 +125,7 @@ class RecordSnapshotUseCase @Inject constructor(
     }
 
     companion object {
+        private val SHANGHAI_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
         private const val KEY_CASH = "cash"
         private const val KEY_LOSS_COMPENSATION = "loss_compensation"
         private const val KEY_BENCHMARK_BASE = "benchmark_base_csi300"

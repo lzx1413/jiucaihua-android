@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.Holding
+import com.jiucaihua.app.domain.model.InvestmentTransaction
 import com.jiucaihua.app.domain.model.MarketSession
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.NewsFlash
@@ -14,10 +15,18 @@ import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.NewsTopic
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.PortfolioSummary
+import com.jiucaihua.app.domain.model.PortfolioPeriodReturn
+import com.jiucaihua.app.domain.model.ReturnPeriod
+import com.jiucaihua.app.domain.model.ReturnHistoryResult
+import com.jiucaihua.app.domain.model.ReturnHistoryType
 import com.jiucaihua.app.domain.model.SortOrder
+import com.jiucaihua.app.domain.model.TransactionType
 import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
+import com.jiucaihua.app.domain.usecase.GetPortfolioPeriodReturnsUseCase
+import com.jiucaihua.app.domain.usecase.GetPortfolioReturnHistoryUseCase
+import com.jiucaihua.app.domain.usecase.AddTransactionUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import com.jiucaihua.app.domain.usecase.ManageHoldingUseCase
 import com.jiucaihua.app.domain.usecase.RecordSnapshotUseCase
@@ -29,6 +38,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -52,6 +62,8 @@ data class PortfolioUiState(
     val searchedNews: List<NewsFlash>? = null,
     val isNewsSearching: Boolean = false,
     val snapshots: List<PortfolioSnapshot> = emptyList(),
+    val periodReturns: List<PortfolioPeriodReturn?> = List(ReturnPeriod.entries.size) { null },
+    val returnHistory: ReturnHistoryResult? = null,
     val selectedChartRange: ChartRange = ChartRange.SEVEN_DAYS,
 )
 
@@ -60,10 +72,13 @@ class PortfolioViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val manageHoldingUseCase: ManageHoldingUseCase,
     private val getPortfolioUseCase: GetPortfolioUseCase,
+    private val getPortfolioPeriodReturnsUseCase: GetPortfolioPeriodReturnsUseCase,
+    private val getPortfolioReturnHistoryUseCase: GetPortfolioReturnHistoryUseCase,
+    private val recordSnapshotUseCase: RecordSnapshotUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     private val newsRepository: NewsRepository,
     private val snapshotRepository: PortfolioSnapshotRepository,
-    private val recordSnapshotUseCase: RecordSnapshotUseCase,
+    private val addTransactionUseCase: AddTransactionUseCase,
     @param:Named("appPrefs") private val prefs: SharedPreferences,
 ) : ViewModel() {
 
@@ -93,6 +108,7 @@ class PortfolioViewModel @Inject constructor(
                     summary = applySorting(summary, _uiState.value.sortOrder),
                     isLoading = false,
                 )
+                refreshPeriodReturns()
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
@@ -130,6 +146,7 @@ class PortfolioViewModel @Inject constructor(
         viewModelScope.launch {
             snapshotRepository.observeAll().collect { snapshotList ->
                 _uiState.value = _uiState.value.copy(snapshots = snapshotList)
+                refreshPeriodReturns()
             }
         }
     }
@@ -154,6 +171,23 @@ class PortfolioViewModel @Inject constructor(
 
     fun setChartRange(range: ChartRange) {
         _uiState.value = _uiState.value.copy(selectedChartRange = range)
+    }
+
+    fun openReturnHistory(period: ReturnPeriod) {
+        val type = when (period) {
+            ReturnPeriod.DAY -> ReturnHistoryType.DAILY
+            ReturnPeriod.MONTH -> ReturnHistoryType.MONTHLY
+            ReturnPeriod.YEAR -> ReturnHistoryType.YEARLY
+        }
+        loadReturnHistory(type)
+    }
+
+    fun selectReturnHistoryOption(option: String) {
+        _uiState.value.returnHistory?.let { loadReturnHistory(it.type, option) }
+    }
+
+    fun closeReturnHistory() {
+        _uiState.value = _uiState.value.copy(returnHistory = null)
     }
 
     fun refreshNews() {
@@ -208,8 +242,10 @@ class PortfolioViewModel @Inject constructor(
                     isRefreshing = false,
                     error = null,
                 )
-                // Record snapshot after successful quote refresh
-                recordSnapshotUseCase.recordSnapshot()
+                // This only writes after the scheduled market-close time. It lets a foreground
+                // refresh fill the daily closing snapshot if WorkManager has been deferred.
+                runCatching { recordSnapshotUseCase.recordSnapshot() }
+                refreshPeriodReturns()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isRefreshing = false,
@@ -273,13 +309,59 @@ class PortfolioViewModel @Inject constructor(
     }
 
     fun setCash(value: Double) {
-        prefs.edit().putFloat(KEY_CASH, value.toFloat()).apply()
-        refreshQuotes()
+        val currentCash = prefs.getFloat(KEY_CASH, 0f).toDouble()
+        val cashChange = value - currentCash
+        if (cashChange == 0.0) {
+            refreshQuotes()
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                addTransactionUseCase(
+                    InvestmentTransaction(
+                        type = if (cashChange > 0.0) TransactionType.CASH_IN else TransactionType.CASH_OUT,
+                        tradeDate = now,
+                        amount = kotlin.math.abs(cashChange),
+                        note = "首页现金调整",
+                        createdAt = now,
+                        updatedAt = now,
+                    ),
+                )
+                refreshQuotes()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
     }
 
     fun setLossCompensation(value: Double) {
         prefs.edit().putFloat(KEY_LOSS_COMPENSATION, value.toFloat()).apply()
         refreshQuotes()
+    }
+
+    private fun refreshPeriodReturns() {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val currentAssetValue = state.summary.totalMarketValue + state.summary.cash
+            val periodReturns = getPortfolioPeriodReturnsUseCase(
+                snapshots = state.snapshots,
+                currentAssetValue = currentAssetValue,
+            )
+            _uiState.update { it.copy(periodReturns = periodReturns) }
+        }
+    }
+
+    private fun loadReturnHistory(type: ReturnHistoryType, selectedOption: String? = null) {
+        viewModelScope.launch {
+            val result = getPortfolioReturnHistoryUseCase(
+                snapshots = _uiState.value.snapshots,
+                type = type,
+                selectedOption = selectedOption,
+            )
+            _uiState.value = _uiState.value.copy(returnHistory = result)
+        }
     }
 
     private fun applySorting(summary: PortfolioSummary, order: SortOrder): PortfolioSummary {

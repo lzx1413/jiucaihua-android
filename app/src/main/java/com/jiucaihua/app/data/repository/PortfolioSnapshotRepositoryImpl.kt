@@ -62,6 +62,7 @@ class PortfolioSnapshotRepositoryImpl @Inject constructor(
             lossCompensation = lossCompensation,
             categoryValues = categoryMap,
             benchmarkPercent = benchmarkValue,
+            netExternalCashFlow = netExternalCashFlow,
         )
     }
 
@@ -82,6 +83,7 @@ class PortfolioSnapshotRepositoryImpl @Inject constructor(
                 categoryValues,
             ),
             benchmarkValue = benchmarkPercent,
+            netExternalCashFlow = netExternalCashFlow,
         )
     }
 }

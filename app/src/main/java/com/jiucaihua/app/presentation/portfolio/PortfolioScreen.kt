@@ -87,6 +87,8 @@ import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
+import com.jiucaihua.app.domain.model.PortfolioPeriodReturn
+import com.jiucaihua.app.domain.model.ReturnPeriod
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
 import com.jiucaihua.app.presentation.theme.FallGreen
@@ -102,6 +104,8 @@ import com.jiucaihua.app.presentation.portfolio.components.CategoryHoldingSectio
 import com.jiucaihua.app.presentation.portfolio.components.EarningsChartView
 import com.jiucaihua.app.presentation.portfolio.components.HoldingListItem
 import com.jiucaihua.app.presentation.portfolio.components.PortfolioSummaryCard
+import com.jiucaihua.app.presentation.portfolio.components.PeriodReturnsGrid
+import com.jiucaihua.app.presentation.portfolio.components.ReturnHistoryDialog
 import com.jiucaihua.app.presentation.portfolio.components.SortSelector
 import com.jiucaihua.app.presentation.watchlist.AddWatchlistDialog
 import com.jiucaihua.app.presentation.watchlist.WatchlistGroupDialog
@@ -281,6 +285,9 @@ fun PortfolioScreen(
                     onSetCash = viewModel::setCash,
                     onSetLossCompensation = viewModel::setLossCompensation,
                     onChartRangeChanged = viewModel::setChartRange,
+                    onPeriodReturnClick = viewModel::openReturnHistory,
+                    onReturnHistoryOptionSelect = viewModel::selectReturnHistoryOption,
+                    onReturnHistoryDismiss = viewModel::closeReturnHistory,
                 )
 
                 NewsTabIndex -> NewsTabContent(
@@ -422,7 +429,17 @@ private fun HoldingsTabContent(
     onSetCash: (Double) -> Unit,
     onSetLossCompensation: (Double) -> Unit,
     onChartRangeChanged: (ChartRange) -> Unit,
+    onPeriodReturnClick: (ReturnPeriod) -> Unit,
+    onReturnHistoryOptionSelect: (String) -> Unit,
+    onReturnHistoryDismiss: () -> Unit,
 ) {
+    uiState.returnHistory?.let { history ->
+        ReturnHistoryDialog(
+            result = history,
+            onOptionSelected = onReturnHistoryOptionSelect,
+            onDismiss = onReturnHistoryDismiss,
+        )
+    }
     when {
         uiState.isLoading -> {
             LoadingIndicator()
@@ -435,6 +452,7 @@ private fun HoldingsTabContent(
         else -> {
             HoldingsList(
                 summary = uiState.summary,
+                periodReturns = uiState.periodReturns,
                 sortOrder = uiState.sortOrder,
                 snapshots = uiState.snapshots,
                 selectedChartRange = uiState.selectedChartRange,
@@ -444,6 +462,7 @@ private fun HoldingsTabContent(
                 onSetCash = onSetCash,
                 onSetLossCompensation = onSetLossCompensation,
                 onChartRangeChanged = onChartRangeChanged,
+                onPeriodReturnClick = onPeriodReturnClick,
             )
         }
     }
@@ -452,6 +471,7 @@ private fun HoldingsTabContent(
 @Composable
 private fun HoldingsList(
     summary: PortfolioSummary,
+    periodReturns: List<PortfolioPeriodReturn?>,
     sortOrder: SortOrder,
     snapshots: List<PortfolioSnapshot>,
     selectedChartRange: ChartRange,
@@ -461,6 +481,7 @@ private fun HoldingsList(
     onSetCash: (Double) -> Unit,
     onSetLossCompensation: (Double) -> Unit,
     onChartRangeChanged: (ChartRange) -> Unit,
+    onPeriodReturnClick: (ReturnPeriod) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -474,8 +495,10 @@ private fun HoldingsList(
             item {
                 EarningsChartSection(
                     snapshots = snapshots,
+                    periodReturns = periodReturns,
                     selectedChartRange = selectedChartRange,
                     onChartRangeChanged = onChartRangeChanged,
+                    onPeriodReturnClick = onPeriodReturnClick,
                 )
             }
         }
@@ -775,8 +798,10 @@ private fun MarketTabContent(
 @Composable
 private fun EarningsChartSection(
     snapshots: List<PortfolioSnapshot>,
+    periodReturns: List<PortfolioPeriodReturn?>,
     selectedChartRange: ChartRange,
     onChartRangeChanged: (ChartRange) -> Unit,
+    onPeriodReturnClick: (ReturnPeriod) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val visibleSnapshots = remember(snapshots, selectedChartRange) {
@@ -784,7 +809,7 @@ private fun EarningsChartSection(
     }
 
     val latestSnapshot = visibleSnapshots.lastOrNull()
-    val benchmarkPercent = latestSnapshot?.benchmarkPercent ?: 0.0
+    val benchmarkPercent = latestSnapshot?.let { it.benchmarkPercent - (visibleSnapshots.firstOrNull()?.benchmarkPercent ?: 0.0) } ?: 0.0
 
     Card(
         modifier = Modifier
@@ -832,6 +857,11 @@ private fun EarningsChartSection(
             // Expanded content - chart
             AnimatedVisibility(visible = expanded) {
                 Column {
+                    PeriodReturnsGrid(
+                        periodReturns = periodReturns,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        onPeriodClick = onPeriodReturnClick,
+                    )
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

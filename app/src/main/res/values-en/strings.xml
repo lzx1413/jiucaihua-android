@@ -153,6 +153,14 @@
     <string name="benchmark_csi300">CSI 300</string>
     <string name="portfolio_summary_total_earnings">Total P/L</string>
     <string name="portfolio_summary_today">Today</string>
+    <string name="period_return_day">Daily return</string>
+    <string name="period_return_week">Weekly return</string>
+    <string name="period_return_month">Monthly return</string>
+    <string name="period_return_year">Yearly return</string>
+    <string name="return_history_daily">Daily returns</string>
+    <string name="return_history_monthly">Monthly returns</string>
+    <string name="return_history_yearly">Yearly returns</string>
+    <string name="return_history_empty">Not enough closing snapshots yet</string>
     <string name="set_cash">Set cash</string>
     <string name="cash_amount_yuan">Cash amount (CNY)</string>
     <string name="cash_delta_amount">Change amount (+/-)</string>

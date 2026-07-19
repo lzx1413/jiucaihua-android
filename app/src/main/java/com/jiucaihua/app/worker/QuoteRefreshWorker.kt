@@ -21,10 +21,9 @@ class QuoteRefreshWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         return try {
-            if (!isMarketOpenUseCase.isAnyMarketTrading()) {
-                return Result.success()
+            if (isMarketOpenUseCase.isAnyMarketTrading()) {
+                getPortfolioUseCase.getPortfolioWithQuotes()
             }
-            getPortfolioUseCase.getPortfolioWithQuotes()
             recordSnapshotUseCase.recordSnapshot()
             Result.success()
         } catch (_: Exception) {

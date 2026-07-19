@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.PortfolioSummary
+import com.jiucaihua.app.domain.model.PortfolioPeriodReturn
+import com.jiucaihua.app.domain.model.ReturnPeriod
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
 
@@ -282,6 +284,55 @@ fun PortfolioSummaryCard(
                             lossInputText = if (summary.lossCompensation > 0) summary.lossCompensation.toLong().toString() else ""
                             showLossDialog = true
                         }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PeriodReturnsGrid(
+    periodReturns: List<PortfolioPeriodReturn?>,
+    modifier: Modifier = Modifier,
+    onPeriodClick: (ReturnPeriod) -> Unit = {},
+) {
+    if (periodReturns.isEmpty()) return
+
+    val returnsByPeriod = periodReturns.filterNotNull().associateBy { it.period }
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ReturnPeriod.entries.forEach { period ->
+                val value = returnsByPeriod[period]
+                val color = when {
+                    value == null -> MaterialTheme.colorScheme.onSurfaceVariant
+                    value.earnings > 0 -> RiseRed
+                    value.earnings < 0 -> FallGreen
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onPeriodClick(period) },
+                ) {
+                    Text(
+                        text = when (period) {
+                            ReturnPeriod.DAY -> stringResource(R.string.period_return_day)
+                            ReturnPeriod.MONTH -> stringResource(R.string.period_return_month)
+                            ReturnPeriod.YEAR -> stringResource(R.string.period_return_year)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = value?.let {
+                            "${formatSignedMoney(it.earnings)} (${formatPercent(it.earningsPercent)})"
+                        } ?: "--",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = color,
                     )
                 }
             }

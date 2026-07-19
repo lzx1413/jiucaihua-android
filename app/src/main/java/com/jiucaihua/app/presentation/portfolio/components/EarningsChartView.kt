@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
+import com.jiucaihua.app.domain.model.PortfolioReturnCalculator
 import com.jiucaihua.app.presentation.theme.RiseRed
 import com.jiucaihua.app.presentation.theme.FallGreen
 import java.text.SimpleDateFormat
@@ -62,8 +63,13 @@ fun EarningsChartView(
 
     val dateFormat = SimpleDateFormat("MM/dd", LocalLocale.current.platformLocale)
 
-    val earningsPercentValues = snapshots.map { it.totalEarningsPercent }
-    val benchmarkPercentValues = if (hasBenchmark) snapshots.map { it.benchmarkPercent } else null
+    val earningsPercentValues = PortfolioReturnCalculator.returnPercents(snapshots)
+    val benchmarkBase = snapshots.first().benchmarkPercent
+    val benchmarkPercentValues = if (hasBenchmark) {
+        snapshots.map { it.benchmarkPercent - benchmarkBase }
+    } else {
+        null
+    }
 
     // Calculate Y-axis range considering both lines
     val allYValues = if (benchmarkPercentValues != null) {

@@ -13,6 +13,8 @@ data class PortfolioSnapshot(
     val lossCompensation: Double,
     val categoryValues: Map<String, Double>,
     val benchmarkPercent: Double = 0.0,
+    /** Cumulative external cash flow (cash in minus cash out) at snapshot time. */
+    val netExternalCashFlow: Double = 0.0,
 )
 
 enum class ChartRange(val label: String) {
