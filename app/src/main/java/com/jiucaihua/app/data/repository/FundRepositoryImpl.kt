@@ -26,14 +26,19 @@ class FundRepositoryImpl @Inject constructor(
     override suspend fun getFundQuotes(codes: List<String>): List<FundQuote> {
         if (codes.isEmpty()) return emptyList()
 
-        val quotes = coroutineScope {
-            codes.map { code ->
+        val requestedCodes = codes.distinct()
+        val remoteQuotes = coroutineScope {
+            requestedCodes.map { code ->
                 async { fetchSingleFund(code) }
             }.awaitAll().filterNotNull()
         }
+        val usableRemoteQuotes = remoteQuotes.filter { it.hasUsableValue() }
+        val remoteCodes = usableRemoteQuotes.mapTo(mutableSetOf()) { it.code }
+        val cachedQuotes = getCachedFundQuotes(requestedCodes.filterNot { it in remoteCodes })
+        val quotes = usableRemoteQuotes + cachedQuotes.filter { it.hasUsableValue() }
 
-        if (quotes.isNotEmpty()) {
-            val cacheEntities = quotes.map { it.toCacheEntity() }
+        if (usableRemoteQuotes.isNotEmpty()) {
+            val cacheEntities = usableRemoteQuotes.map { it.toCacheEntity() }
             fundCacheDao.insertAll(cacheEntities)
         }
 
@@ -110,12 +115,16 @@ class FundRepositoryImpl @Inject constructor(
     }
 
     private fun FundQuoteDto.toDomain(): FundQuote {
+        val estimatedValue = gsz.toDoubleOrNull()
+        val netAssetValue = dwjz.toDoubleOrNull()
         return FundQuote(
             code = fundcode,
             name = name,
-            estimatedValue = gsz.toDoubleOrNull() ?: 0.0,
+            // During a source outage gsz is often "--" while the last confirmed NAV
+            // is still present. A NAV is preferable to treating the fund as worthless.
+            estimatedValue = estimatedValue?.takeIf { it > 0 } ?: netAssetValue ?: 0.0,
             dailyChangePercent = gszzl.toDoubleOrNull() ?: 0.0,
-            netAssetValue = dwjz.toDoubleOrNull() ?: 0.0,
+            netAssetValue = netAssetValue ?: 0.0,
             estimateTime = gztime,
             navDate = jzrq,
         )
@@ -143,5 +152,9 @@ class FundRepositoryImpl @Inject constructor(
             estimateTime = estimateTime,
             navDate = navDate,
         )
+    }
+
+    private fun FundQuote.hasUsableValue(): Boolean {
+        return estimatedValue > 0 || netAssetValue > 0
     }
 }

@@ -76,6 +76,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM transactions WHERE code = :code AND marketType = :marketType")
+    suspend fun deleteBySecurity(code: String, marketType: String)
+
     @Query("DELETE FROM transactions")
     suspend fun clearAll()
 }

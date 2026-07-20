@@ -1,6 +1,10 @@
 package com.jiucaihua.app.data.repository
 
+import androidx.room.withTransaction
+import com.jiucaihua.app.data.local.AppDatabase
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.TransactionDao
+import com.jiucaihua.app.data.local.dao.TransactionLotMatchDao
 import com.jiucaihua.app.data.local.entity.HoldingEntity
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketType
@@ -12,7 +16,10 @@ import javax.inject.Singleton
 
 @Singleton
 class HoldingRepositoryImpl @Inject constructor(
-    private val holdingDao: HoldingDao
+    private val database: AppDatabase,
+    private val holdingDao: HoldingDao,
+    private val transactionDao: TransactionDao,
+    private val transactionLotMatchDao: TransactionLotMatchDao,
 ) : HoldingRepository {
 
     override fun getActiveHoldings(): Flow<List<Holding>> {
@@ -44,7 +51,12 @@ class HoldingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteHolding(id: Long) {
-        holdingDao.deleteHoldingById(id)
+        database.withTransaction {
+            val holding = holdingDao.getHoldingById(id) ?: return@withTransaction
+            transactionLotMatchDao.deleteBySecurity(holding.code, holding.marketType)
+            transactionDao.deleteBySecurity(holding.code, holding.marketType)
+            holdingDao.deleteHoldingById(id)
+        }
     }
 
     private fun HoldingEntity.toDomain(): Holding {

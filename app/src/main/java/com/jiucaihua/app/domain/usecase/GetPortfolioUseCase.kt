@@ -92,12 +92,13 @@ class GetPortfolioUseCase @Inject constructor(
                 }
                 MarketType.FUND -> {
                     val fq = fundQuoteMap[holding.code]
-                    if (fq != null) {
+                    val price = fq?.effectiveValue()
+                    if (price != null) {
                         holding.copy(
-                            currentPrice = fq.estimatedValue,
+                            currentPrice = price,
                             changePercent = fq.dailyChangePercent,
                         )
-                    } else holding
+                    } else holding.withFundPriceFallback()
                 }
                 MarketType.GOLD -> {
                     val quote = stockQuotes[holding.code]
@@ -166,12 +167,13 @@ class GetPortfolioUseCase @Inject constructor(
                 }
                 MarketType.FUND -> {
                     val fq = fundQuoteMap[holding.code]
-                    if (fq != null) {
+                    val price = fq?.effectiveValue()
+                    if (price != null) {
                         holding.copy(
-                            currentPrice = fq.estimatedValue,
+                            currentPrice = price,
                             changePercent = fq.dailyChangePercent,
                         )
-                    } else holding
+                    } else holding.withFundPriceFallback()
                 }
                 MarketType.GOLD -> {
                     val quote = stockQuotes[holding.code]
@@ -206,7 +208,10 @@ class GetPortfolioUseCase @Inject constructor(
     private suspend fun fetchFundQuotes(codes: List<String>): List<FundQuote> {
         if (codes.isEmpty()) return emptyList()
         return try {
-            fundRepository.getFundQuotes(codes)
+            val remoteQuotes = fundRepository.getFundQuotes(codes).filter { it.effectiveValue() != null }
+            val remoteCodes = remoteQuotes.mapTo(mutableSetOf()) { it.code }
+            val cachedQuotes = fundRepository.getCachedFundQuotes(codes.filterNot { it in remoteCodes })
+            remoteQuotes + cachedQuotes.filter { it.effectiveValue() != null }
         } catch (_: Exception) {
             fundRepository.getCachedFundQuotes(codes)
         }
@@ -301,6 +306,17 @@ class GetPortfolioUseCase @Inject constructor(
 
     private fun calcCostCNY(holding: Holding): Double {
         return holding.costPrice * holding.holdingShares * holding.exchangeRate
+    }
+
+    private fun FundQuote.effectiveValue(): Double? {
+        return estimatedValue.takeIf { it > 0 } ?: netAssetValue.takeIf { it > 0 }
+    }
+
+    private fun Holding.withFundPriceFallback(): Holding {
+        // A new holding has no in-memory quote. Until a valid quote is available,
+        // show it at cost instead of displaying a fictitious 100% loss.
+        val fallbackPrice = currentPrice.takeIf { it > 0 } ?: costPrice
+        return copy(currentPrice = fallbackPrice, changePercent = 0.0)
     }
 
     private fun calcTodayEarnings(holding: Holding, stockQuote: StockQuote?, fundQuote: FundQuote?): Double {
