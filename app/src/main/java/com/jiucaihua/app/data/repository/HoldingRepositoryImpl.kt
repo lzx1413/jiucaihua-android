@@ -3,6 +3,8 @@ package com.jiucaihua.app.data.repository
 import androidx.room.withTransaction
 import com.jiucaihua.app.data.local.AppDatabase
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.HoldingSnapshotDao
+import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.TransactionDao
 import com.jiucaihua.app.data.local.dao.TransactionLotMatchDao
 import com.jiucaihua.app.data.local.entity.HoldingEntity
@@ -18,6 +20,8 @@ import javax.inject.Singleton
 class HoldingRepositoryImpl @Inject constructor(
     private val database: AppDatabase,
     private val holdingDao: HoldingDao,
+    private val portfolioSnapshotDao: PortfolioSnapshotDao,
+    private val holdingSnapshotDao: HoldingSnapshotDao,
     private val transactionDao: TransactionDao,
     private val transactionLotMatchDao: TransactionLotMatchDao,
 ) : HoldingRepository {
@@ -53,8 +57,19 @@ class HoldingRepositoryImpl @Inject constructor(
     override suspend fun deleteHolding(id: Long) {
         database.withTransaction {
             val holding = holdingDao.getHoldingById(id) ?: return@withTransaction
+            val affectedSnapshotDates = holdingSnapshotDao.getDatesBySecurity(holding.code, holding.marketType)
             transactionLotMatchDao.deleteBySecurity(holding.code, holding.marketType)
             transactionDao.deleteBySecurity(holding.code, holding.marketType)
+            holdingSnapshotDao.deleteBySecurity(holding.code, holding.marketType)
+            // Dates captured by the new per-security system are rebuilt from the
+            // remaining rows. If no row remains, discard the aggregate instead of
+            // falling back to a legacy total that still includes the deleted holding.
+            val datesWithoutRemainingHoldings = affectedSnapshotDates.filter { date ->
+                holdingSnapshotDao.getByDate(date).isEmpty()
+            }
+            if (datesWithoutRemainingHoldings.isNotEmpty()) {
+                portfolioSnapshotDao.deleteByDates(datesWithoutRemainingHoldings)
+            }
             holdingDao.deleteHoldingById(id)
         }
     }

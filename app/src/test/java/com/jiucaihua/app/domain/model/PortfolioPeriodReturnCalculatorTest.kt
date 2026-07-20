@@ -38,6 +38,21 @@ class PortfolioPeriodReturnCalculatorTest {
         assertNull(result[ReturnPeriod.DAY.ordinal])
     }
 
+    @Test
+    fun `uses per holding today earnings for the daily return`() {
+        val result = PortfolioPeriodReturnCalculator.calculate(
+            snapshots = listOf(snapshot("2026-07-17T16:10:00+08:00", 1000.0, 0.0)),
+            currentAssetValue = 980.0,
+            transactions = emptyList(),
+            todayEarnings = 20.0,
+            now = ZonedDateTime.parse("2026-07-20T16:30:00+08:00"),
+        )
+
+        val dayReturn = result[ReturnPeriod.DAY.ordinal]!!
+        assertEquals(20.0, dayReturn.earnings, 0.0001)
+        assertEquals(2.0, dayReturn.earningsPercent, 0.0001)
+    }
+
     private fun snapshot(time: String, assetValue: Double, netExternalCashFlow: Double): PortfolioSnapshot {
         return PortfolioSnapshot(
             date = time.take(10),

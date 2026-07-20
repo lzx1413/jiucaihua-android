@@ -41,6 +41,9 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -145,7 +148,9 @@ class PortfolioViewModel @Inject constructor(
     private fun observeSnapshots() {
         viewModelScope.launch {
             snapshotRepository.observeAll().collect { snapshotList ->
-                _uiState.value = _uiState.value.copy(snapshots = snapshotList)
+                _uiState.value = _uiState.value.copy(
+                    snapshots = snapshotList.withCurrentQuoteSnapshot(_uiState.value.summary),
+                )
                 refreshPeriodReturns()
             }
         }
@@ -238,6 +243,7 @@ class PortfolioViewModel @Inject constructor(
                 val summary = getPortfolioUseCase.getPortfolioWithQuotes()
                 _uiState.value = _uiState.value.copy(
                     summary = applySorting(summary, _uiState.value.sortOrder),
+                    snapshots = _uiState.value.snapshots.withCurrentQuoteSnapshot(summary),
                     isLoading = false,
                     isRefreshing = false,
                     error = null,
@@ -246,6 +252,9 @@ class PortfolioViewModel @Inject constructor(
                 // refresh fill the daily closing snapshot if WorkManager has been deferred.
                 runCatching { recordSnapshotUseCase.recordSnapshot() }
                 refreshPeriodReturns()
+                _uiState.value.returnHistory?.let { history ->
+                    loadReturnHistory(history.type, history.selectedOption)
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isRefreshing = false,
@@ -348,6 +357,7 @@ class PortfolioViewModel @Inject constructor(
             val periodReturns = getPortfolioPeriodReturnsUseCase(
                 snapshots = state.snapshots,
                 currentAssetValue = currentAssetValue,
+                todayEarnings = state.summary.todayEarnings,
             )
             _uiState.update { it.copy(periodReturns = periodReturns) }
         }
@@ -359,6 +369,7 @@ class PortfolioViewModel @Inject constructor(
                 snapshots = _uiState.value.snapshots,
                 type = type,
                 selectedOption = selectedOption,
+                todayEarnings = _uiState.value.summary.todayEarnings,
             )
             _uiState.value = _uiState.value.copy(returnHistory = result)
         }
@@ -386,6 +397,34 @@ class PortfolioViewModel @Inject constructor(
             holdings = sortedHoldings,
             categorySummaries = sortedCategories,
         )
+    }
+
+    /**
+     * The stored snapshot is an end-of-day value. During the trading day, replace
+     * today's point with the value calculated from the current per-holding quotes.
+     */
+    private fun List<PortfolioSnapshot>.withCurrentQuoteSnapshot(summary: PortfolioSummary): List<PortfolioSnapshot> {
+        if (summary.holdings.isEmpty()) return this
+
+        val now = System.currentTimeMillis()
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(now))
+        val storedToday = firstOrNull { it.date == today }
+        val currentSnapshot = PortfolioSnapshot(
+            id = storedToday?.id ?: 0,
+            date = today,
+            timestamp = now,
+            totalMarketValue = summary.totalMarketValue,
+            totalCost = summary.totalCost,
+            totalEarnings = summary.totalEarnings,
+            totalEarningsPercent = summary.totalEarningsPercent,
+            todayEarnings = summary.todayEarnings,
+            cash = summary.cash,
+            lossCompensation = summary.lossCompensation,
+            categoryValues = summary.categorySummaries.associate { it.marketType.name to it.totalMarketValue },
+            benchmarkPercent = storedToday?.benchmarkPercent ?: 0.0,
+            netExternalCashFlow = storedToday?.netExternalCashFlow ?: 0.0,
+        )
+        return filterNot { it.date == today }.plus(currentSnapshot).sortedBy { it.timestamp }
     }
 
     override fun onCleared() {

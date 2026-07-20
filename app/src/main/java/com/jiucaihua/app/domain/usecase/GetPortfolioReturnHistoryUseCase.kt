@@ -14,6 +14,7 @@ class GetPortfolioReturnHistoryUseCase @Inject constructor(
         snapshots: List<PortfolioSnapshot>,
         type: ReturnHistoryType,
         selectedOption: String? = null,
+        todayEarnings: Double? = null,
     ): ReturnHistoryResult {
         val options = PortfolioReturnHistoryCalculator.availableOptions(snapshots, type)
         val selected = when (type) {
@@ -29,6 +30,7 @@ class GetPortfolioReturnHistoryUseCase @Inject constructor(
                 transactions = transactionRepository.getAllOnce(),
                 type = type,
                 selectedOption = selected,
+                todayEarnings = todayEarnings,
             ),
         )
     }

@@ -7,6 +7,7 @@ import com.jiucaihua.app.data.local.dao.AlertDao
 import com.jiucaihua.app.data.local.dao.AlertRecordDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.HoldingSnapshotDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
@@ -33,6 +34,7 @@ class BackupRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val database: AppDatabase,
     private val holdingDao: HoldingDao,
+    private val holdingSnapshotDao: HoldingSnapshotDao,
     private val stockCacheDao: StockCacheDao,
     private val fundCacheDao: FundCacheDao,
     private val alertDao: AlertDao,
@@ -53,6 +55,7 @@ class BackupRepository @Inject constructor(
 
     suspend fun exportData(): BackupData = withContext(Dispatchers.IO) {
         val holdings = holdingDao.getAllHoldingsOnce()
+        val holdingSnapshots = holdingSnapshotDao.getAllOnce()
         val stockCache = stockCacheDao.getAllOnce()
         val fundCache = fundCacheDao.getAllOnce()
         val alerts = alertDao.getAllAlertsOnce()
@@ -81,6 +84,7 @@ class BackupRepository @Inject constructor(
             alertRecords = alertRecords,
             settings = settings,
             portfolioSnapshots = snapshots,
+            holdingSnapshots = holdingSnapshots,
             watchlistItems = watchlistItems,
             newsFlash = newsFlash,
             transactions = transactions,
@@ -135,6 +139,7 @@ class BackupRepository @Inject constructor(
 
     private suspend fun restoreReplace(backup: BackupData): RestoreResult {
         holdingDao.clearAllHoldings()
+        holdingSnapshotDao.clearAll()
         stockCacheDao.clearAll()
         fundCacheDao.clearAll()
         alertDao.clearAllAlerts()
@@ -151,9 +156,11 @@ class BackupRepository @Inject constructor(
         val watchlistItems = backup.watchlistItems.map { it.copy(id = 0) }
         val newsFlash = backup.newsFlash.map { it.copy(id = 0) }
         val snapshots = backup.portfolioSnapshots.map { it.copy(id = 0) }
+        val holdingSnapshots = backup.holdingSnapshots.map { it.copy(id = 0) }
         val transactions = restoredTransactions(backup.transactions, holdings)
 
         holdingDao.insertAllHoldings(holdings)
+        holdingSnapshotDao.insertAll(holdingSnapshots)
         stockCacheDao.insertAll(backup.stockCache)
         fundCacheDao.insertAll(backup.fundCache)
         alertDao.insertAllAlerts(alerts)
@@ -185,6 +192,14 @@ class BackupRepository @Inject constructor(
             .filter { holdingKey(it) !in existingHoldingKeys }
             .map { it.copy(id = 0) }
         holdingDao.insertAllHoldings(newHoldings)
+
+        val existingHoldingSnapshotKeys = holdingSnapshotDao.getAllOnce()
+            .map { "${it.code}:${it.marketType}:${it.date}" }
+            .toSet()
+        val newHoldingSnapshots = backup.holdingSnapshots
+            .filter { "${it.code}:${it.marketType}:${it.date}" !in existingHoldingSnapshotKeys }
+            .map { it.copy(id = 0) }
+        holdingSnapshotDao.insertAll(newHoldingSnapshots)
 
         stockCacheDao.insertAll(backup.stockCache)
         fundCacheDao.insertAll(backup.fundCache)

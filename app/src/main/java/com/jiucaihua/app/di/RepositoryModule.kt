@@ -4,6 +4,7 @@ import com.jiucaihua.app.data.repository.AlertRepositoryImpl
 import com.jiucaihua.app.data.repository.ExchangeRateRepositoryImpl
 import com.jiucaihua.app.data.repository.FundRepositoryImpl
 import com.jiucaihua.app.data.repository.HoldingRepositoryImpl
+import com.jiucaihua.app.data.repository.HoldingSnapshotRepositoryImpl
 import com.jiucaihua.app.data.repository.MarketCalendarRepositoryImpl
 import com.jiucaihua.app.data.repository.MarketRepositoryImpl
 import com.jiucaihua.app.data.repository.NewsRepositoryImpl
@@ -17,6 +18,7 @@ import com.jiucaihua.app.domain.repository.AlertRepository
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.HoldingRepository
+import com.jiucaihua.app.domain.repository.HoldingSnapshotRepository
 import com.jiucaihua.app.domain.repository.MarketCalendarRepository
 import com.jiucaihua.app.domain.repository.MarketRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
@@ -41,6 +43,12 @@ abstract class RepositoryModule {
     abstract fun bindHoldingRepository(
         impl: HoldingRepositoryImpl
     ): HoldingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHoldingSnapshotRepository(
+        impl: HoldingSnapshotRepositoryImpl,
+    ): HoldingSnapshotRepository
 
     @Binds
     @Singleton

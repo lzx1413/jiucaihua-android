@@ -4,6 +4,7 @@ import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.AlertRecordEntity
 import com.jiucaihua.app.data.local.entity.FundCacheEntity
 import com.jiucaihua.app.data.local.entity.HoldingEntity
+import com.jiucaihua.app.data.local.entity.HoldingSnapshotEntity
 import com.jiucaihua.app.data.local.entity.NewsFlashEntity
 import com.jiucaihua.app.data.local.entity.PortfolioSnapshotEntity
 import com.jiucaihua.app.data.local.entity.StockCacheEntity
@@ -22,12 +23,13 @@ data class BackupData(
     val alertRecords: List<AlertRecordEntity> = emptyList(),
     val settings: AppSettingsBackup,
     val portfolioSnapshots: List<PortfolioSnapshotEntity> = emptyList(),
+    val holdingSnapshots: List<HoldingSnapshotEntity> = emptyList(),
     val watchlistItems: List<WatchlistEntity> = emptyList(),
     val newsFlash: List<NewsFlashEntity> = emptyList(),
     val transactions: List<TransactionEntity> = emptyList(),
 ) {
     companion object {
-        const val BACKUP_VERSION = 7
+        const val BACKUP_VERSION = 8
     }
 }
 

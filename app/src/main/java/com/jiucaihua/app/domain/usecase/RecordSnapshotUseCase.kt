@@ -7,6 +7,7 @@ import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.TransactionQuery
 import com.jiucaihua.app.domain.repository.MarketCalendarRepository
 import com.jiucaihua.app.domain.repository.MarketRepository
+import com.jiucaihua.app.domain.repository.HoldingSnapshotRepository
 import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import java.text.SimpleDateFormat
 import java.time.ZoneId
@@ -18,6 +19,7 @@ import javax.inject.Named
 class RecordSnapshotUseCase @Inject constructor(
     private val getPortfolioUseCase: GetPortfolioUseCase,
     private val getTransactionSummaryUseCase: GetTransactionSummaryUseCase,
+    private val holdingSnapshotRepository: HoldingSnapshotRepository,
     private val snapshotRepository: PortfolioSnapshotRepository,
     private val marketRepository: MarketRepository,
     private val marketCalendarRepository: MarketCalendarRepository,
@@ -46,6 +48,8 @@ class RecordSnapshotUseCase @Inject constructor(
             TransactionQuery(to = timestamp, limit = Int.MAX_VALUE),
         )
         val netExternalCashFlow = transactionSummary.cashInCny - transactionSummary.cashOutCny
+
+        holdingSnapshotRepository.saveSnapshots(today, timestamp, summary.holdings)
 
         // Dedup: only keep the latest snapshot for the same day
         val existing = snapshotRepository.getLatest()

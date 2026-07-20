@@ -36,4 +36,7 @@ interface PortfolioSnapshotDao {
 
     @Query("DELETE FROM portfolio_snapshots WHERE timestamp < :beforeTimestamp")
     suspend fun deleteBefore(beforeTimestamp: Long): Int
+
+    @Query("DELETE FROM portfolio_snapshots WHERE date IN (:dates)")
+    suspend fun deleteByDates(dates: List<String>)
 }

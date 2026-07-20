@@ -12,11 +12,13 @@ class GetPortfolioPeriodReturnsUseCase @Inject constructor(
     suspend operator fun invoke(
         snapshots: List<PortfolioSnapshot>,
         currentAssetValue: Double,
+        todayEarnings: Double,
     ): List<PortfolioPeriodReturn?> {
         return PortfolioPeriodReturnCalculator.calculate(
             snapshots = snapshots,
             currentAssetValue = currentAssetValue,
             transactions = transactionRepository.getAllOnce(),
+            todayEarnings = todayEarnings,
         )
     }
 }

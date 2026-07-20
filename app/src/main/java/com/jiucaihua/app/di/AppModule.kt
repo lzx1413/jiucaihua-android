@@ -12,6 +12,7 @@ import com.jiucaihua.app.data.local.dao.AlertDao
 import com.jiucaihua.app.data.local.dao.AlertRecordDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.HoldingSnapshotDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
@@ -38,7 +39,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -213,9 +214,40 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `holding_snapshots` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `code` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `marketType` TEXT NOT NULL,
+                    `date` TEXT NOT NULL,
+                    `timestamp` INTEGER NOT NULL,
+                    `holdingShares` REAL NOT NULL,
+                    `currentPrice` REAL NOT NULL,
+                    `costPrice` REAL NOT NULL,
+                    `exchangeRate` REAL NOT NULL,
+                    `marketValueCny` REAL NOT NULL,
+                    `costCny` REAL NOT NULL,
+                    `dailyEarningsCny` REAL NOT NULL
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_holding_snapshots_code_marketType_date` ON `holding_snapshots` (`code`, `marketType`, `date`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_holding_snapshots_date` ON `holding_snapshots` (`date`)")
+        }
+    }
+
     @Provides
     fun provideHoldingDao(database: AppDatabase): HoldingDao {
         return database.holdingDao()
+    }
+
+    @Provides
+    fun provideHoldingSnapshotDao(database: AppDatabase): HoldingSnapshotDao {
+        return database.holdingSnapshotDao()
     }
 
     @Provides

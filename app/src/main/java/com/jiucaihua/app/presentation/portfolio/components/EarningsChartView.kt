@@ -30,13 +30,13 @@ import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.PortfolioReturnCalculator
-import com.jiucaihua.app.presentation.theme.RiseRed
-import com.jiucaihua.app.presentation.theme.FallGreen
 import java.text.SimpleDateFormat
 import kotlin.math.abs
 import kotlin.math.max
 
 private val BenchmarkColor = Color(0xFFFF9800)
+private val PositiveReturnColor = Color(0xFFEF5350)
+private val NegativeReturnColor = Color(0xFF26A69A)
 
 @Composable
 fun EarningsChartView(
@@ -50,8 +50,8 @@ fun EarningsChartView(
 
     val textMeasurer = rememberTextMeasurer()
     val lineColor = MaterialTheme.colorScheme.primary
-    val positiveColor = RiseRed
-    val negativeColor = FallGreen
+    val positiveColor = PositiveReturnColor
+    val negativeColor = NegativeReturnColor
     val gridColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
     val zeroLineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
     val fillColor = lineColor.copy(alpha = 0.15f)
@@ -207,9 +207,9 @@ fun EarningsChartView(
 
             // Calculate portfolio points
             val pointCount = snapshots.size
-            val portfolioPoints = snapshots.mapIndexed { index, snapshot ->
+            val portfolioPoints = snapshots.mapIndexed { index, _ ->
                 val x = leftPadding + drawableWidth * index.toFloat() / max(pointCount - 1, 1)
-                val yPercent = snapshot.totalEarningsPercent
+                val yPercent = earningsPercentValues[index]
                 val y = topPadding + drawableHeight * ((adjustedMax - yPercent) / adjustedRange).toFloat()
                 Offset(x, y)
             }
@@ -248,9 +248,9 @@ fun EarningsChartView(
 
             // Draw benchmark line (CSI 300)
             if (benchmarkPercentValues != null && hasBenchmark) {
-                val benchmarkPoints = snapshots.mapIndexed { index, snapshot ->
+                val benchmarkPoints = snapshots.mapIndexed { index, _ ->
                     val x = leftPadding + drawableWidth * index.toFloat() / max(pointCount - 1, 1)
-                    val yPercent = snapshot.benchmarkPercent
+                    val yPercent = benchmarkPercentValues[index]
                     val y = topPadding + drawableHeight * ((adjustedMax - yPercent) / adjustedRange).toFloat()
                     Offset(x, y)
                 }

@@ -8,6 +8,7 @@ import com.jiucaihua.app.data.local.dao.AlertDao
 import com.jiucaihua.app.data.local.dao.AlertRecordDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
+import com.jiucaihua.app.data.local.dao.HoldingSnapshotDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
@@ -18,6 +19,7 @@ import com.jiucaihua.app.data.local.entity.AlertEntity
 import com.jiucaihua.app.data.local.entity.AlertRecordEntity
 import com.jiucaihua.app.data.local.entity.FundCacheEntity
 import com.jiucaihua.app.data.local.entity.HoldingEntity
+import com.jiucaihua.app.data.local.entity.HoldingSnapshotEntity
 import com.jiucaihua.app.data.local.entity.NewsFlashEntity
 import com.jiucaihua.app.data.local.entity.PortfolioSnapshotEntity
 import com.jiucaihua.app.data.local.entity.StockCacheEntity
@@ -26,13 +28,14 @@ import com.jiucaihua.app.data.local.entity.TransactionLotMatchEntity
 import com.jiucaihua.app.data.local.entity.WatchlistEntity
 
 @Database(
-    entities = [HoldingEntity::class, StockCacheEntity::class, FundCacheEntity::class, AlertEntity::class, AlertRecordEntity::class, WatchlistEntity::class, NewsFlashEntity::class, PortfolioSnapshotEntity::class, TransactionEntity::class, TransactionLotMatchEntity::class],
-    version = 16,
+    entities = [HoldingEntity::class, HoldingSnapshotEntity::class, StockCacheEntity::class, FundCacheEntity::class, AlertEntity::class, AlertRecordEntity::class, WatchlistEntity::class, NewsFlashEntity::class, PortfolioSnapshotEntity::class, TransactionEntity::class, TransactionLotMatchEntity::class],
+    version = 17,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun holdingDao(): HoldingDao
+    abstract fun holdingSnapshotDao(): HoldingSnapshotDao
     abstract fun stockCacheDao(): StockCacheDao
     abstract fun fundCacheDao(): FundCacheDao
     abstract fun alertDao(): AlertDao
