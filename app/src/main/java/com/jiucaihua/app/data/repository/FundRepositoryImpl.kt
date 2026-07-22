@@ -35,10 +35,20 @@ class FundRepositoryImpl @Inject constructor(
         val usableRemoteQuotes = remoteQuotes.filter { it.hasUsableValue() }
         val remoteCodes = usableRemoteQuotes.mapTo(mutableSetOf()) { it.code }
         val cachedQuotes = getCachedFundQuotes(requestedCodes.filterNot { it in remoteCodes })
-        val quotes = usableRemoteQuotes + cachedQuotes.filter { it.hasUsableValue() }
+        val usableCachedQuotes = cachedQuotes.filter { it.hasUsableValue() }
+        val availableCodes = (remoteCodes + usableCachedQuotes.map { it.code }).toSet()
+        // QDII funds often have no intraday estimate. In that case, retrieve the
+        // latest confirmed NAV instead of treating the price as unavailable.
+        val confirmedNavQuotes = coroutineScope {
+            requestedCodes.filterNot { it in availableCodes }
+                .map { code -> async { fetchLatestConfirmedNav(code) } }
+                .awaitAll()
+                .filterNotNull()
+        }
+        val quotes = usableRemoteQuotes + usableCachedQuotes + confirmedNavQuotes
 
-        if (usableRemoteQuotes.isNotEmpty()) {
-            val cacheEntities = usableRemoteQuotes.map { it.toCacheEntity() }
+        if (quotes.isNotEmpty()) {
+            val cacheEntities = quotes.map { it.toCacheEntity() }
             fundCacheDao.insertAll(cacheEntities)
         }
 
@@ -88,6 +98,29 @@ class FundRepositoryImpl @Inject constructor(
             val response = fundApi.getFundEstimate(url)
             val dto = parseJsonpResponse(response) ?: return null
             dto.toDomain()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun fetchLatestConfirmedNav(code: String): FundQuote? {
+        return try {
+            // fundgz does not publish intraday estimates for many QDII funds.
+            // Its old F10DataApi fallback has also been retired, while the F10
+            // NAV page still renders the latest confirmed unit NAV server-side.
+            val response = fundApi.getFundEstimate("https://fundf10.eastmoney.com/jjjz_$code.html")
+            val latestNav = parseLatestConfirmedNavFromPage(response) ?: return null
+            latestNav.value.takeIf { it > 0 }?.let { nav ->
+                FundQuote(
+                    code = code,
+                    name = code,
+                    estimatedValue = nav,
+                    dailyChangePercent = 0.0,
+                    netAssetValue = nav,
+                    estimateTime = "",
+                    navDate = latestNav.date,
+                )
+            }
         } catch (_: Exception) {
             null
         }
@@ -157,4 +190,22 @@ class FundRepositoryImpl @Inject constructor(
     private fun FundQuote.hasUsableValue(): Boolean {
         return estimatedValue > 0 || netAssetValue > 0
     }
+
 }
+
+internal data class ConfirmedFundNav(
+    val date: String,
+    val value: Double,
+)
+
+internal fun parseLatestConfirmedNavFromPage(response: String): ConfirmedFundNav? {
+    val match = LATEST_NAV_PATTERN.find(response) ?: return null
+    val date = match.groupValues[1]
+    val value = match.groupValues[2].toDoubleOrNull() ?: return null
+    return ConfirmedFundNav(date = date, value = value)
+}
+
+private val LATEST_NAV_PATTERN = Regex(
+    """单位净值（(\d{2}-\d{2})）：\s*<b[^>]*>\s*([0-9.]+)""",
+    RegexOption.DOT_MATCHES_ALL,
+)

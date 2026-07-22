@@ -7,6 +7,7 @@ import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.SecuritySearchResult
 import com.jiucaihua.app.domain.model.WatchlistItem
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
+import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import com.jiucaihua.app.domain.repository.WatchlistRepository
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
@@ -22,6 +23,7 @@ import javax.inject.Inject
 
 data class WatchlistUiState(
     val items: List<WatchlistItem> = emptyList(),
+    val allItems: List<WatchlistItem> = emptyList(),
     val groups: List<String> = emptyList(),
     val selectedGroup: String? = null,
     val isLoading: Boolean = true,
@@ -37,6 +39,7 @@ data class WatchlistUiState(
 class WatchlistViewModel @Inject constructor(
     private val watchlistRepository: WatchlistRepository,
     private val stockRepository: StockRepository,
+    private val fundRepository: FundRepository,
     private val securitySearchRepository: SecuritySearchRepository,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
 ) : ViewModel() {
@@ -56,10 +59,13 @@ class WatchlistViewModel @Inject constructor(
     private fun observeWatchlist() {
         viewModelScope.launch {
             watchlistRepository.getAllWatchlist().collect { items ->
-                val filtered = if (_uiState.value.selectedGroup != null) {
-                    items.filter { it.group == _uiState.value.selectedGroup }
-                } else items
-                _uiState.update { it.copy(items = filtered, isLoading = false) }
+                _uiState.update { state ->
+                    state.copy(
+                        allItems = items,
+                        items = filterWatchlistItems(items, state.selectedGroup),
+                        isLoading = false,
+                    )
+                }
                 refreshQuotes()
             }
         }
@@ -99,32 +105,52 @@ class WatchlistViewModel @Inject constructor(
             if (currentItems.isEmpty()) return@launch
 
             try {
-                val updatedItems = currentItems.map { item ->
-                    val quote = fetchQuote(item.code, item.marketType)
-                    if (quote != null) {
-                        item.copy(
-                            currentPrice = quote.price,
-                            changePercent = quote.changePercent,
-                            changeAmount = quote.changeAmount,
-                        )
-                    } else item
+                val updatedItems = buildList {
+                    currentItems.forEach { item -> add(refreshItem(item)) }
                 }
-                _uiState.update { it.copy(items = updatedItems, error = null) }
+                val updatesById = updatedItems.associateBy { it.id }
+                _uiState.update { state ->
+                    val updatedAllItems = state.allItems.map { updatesById[it.id] ?: it }
+                    state.copy(
+                        allItems = updatedAllItems,
+                        items = filterWatchlistItems(updatedAllItems, state.selectedGroup),
+                        error = null,
+                    )
+                }
             } catch (_: Exception) {
                 // Keep existing data on refresh failure
             }
         }
     }
 
-    private suspend fun fetchQuote(code: String, marketType: MarketType) = try {
-        when (marketType) {
-            MarketType.A_STOCK, MarketType.FUND -> stockRepository.getAStockQuotes(listOf(code))
-            MarketType.HK_STOCK -> stockRepository.getHKStockQuotes(listOf(code))
-            MarketType.US_STOCK -> stockRepository.getUSStockQuotes(listOf(code))
-            MarketType.GOLD -> stockRepository.getGoldQuotes(listOf(code))
-        }.firstOrNull()
-    } catch (_: Exception) {
-        null
+    private suspend fun refreshItem(item: WatchlistItem): WatchlistItem {
+        return try {
+            when (item.marketType) {
+                MarketType.FUND -> {
+                    val quote = fundRepository.getFundQuotes(listOf(item.code)).firstOrNull() ?: return item
+                    val price = quote.estimatedValue.takeIf { it > 0 } ?: quote.netAssetValue
+                    if (price > 0) {
+                        item.copy(currentPrice = price, changePercent = quote.dailyChangePercent)
+                    } else item
+                }
+                else -> {
+                    val quote = when (item.marketType) {
+                        MarketType.A_STOCK -> stockRepository.getAStockQuotes(listOf(item.code))
+                        MarketType.HK_STOCK -> stockRepository.getHKStockQuotes(listOf(item.code))
+                        MarketType.US_STOCK -> stockRepository.getUSStockQuotes(listOf(item.code))
+                        MarketType.GOLD -> stockRepository.getGoldQuotes(listOf(item.code))
+                        MarketType.FUND -> emptyList()
+                    }.firstOrNull() ?: return item
+                    item.copy(
+                        currentPrice = quote.price,
+                        changePercent = quote.changePercent,
+                        changeAmount = quote.changeAmount,
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            item
+        }
     }
 
     fun showAddDialog() {
@@ -170,7 +196,13 @@ class WatchlistViewModel @Inject constructor(
     }
 
     fun setSelectedGroup(group: String?) {
-        _uiState.update { it.copy(selectedGroup = group) }
+        _uiState.update { state ->
+            state.copy(
+                selectedGroup = group,
+                items = filterWatchlistItems(state.allItems, group),
+            )
+        }
+        refreshQuotes()
     }
 
     fun updateGroup(item: WatchlistItem, group: String) {
@@ -199,6 +231,10 @@ class WatchlistViewModel @Inject constructor(
         private const val REFRESH_INTERVAL_MS = 10_000L
         private const val SESSION_CHECK_INTERVAL_MS = 60_000L
     }
+}
+
+internal fun filterWatchlistItems(items: List<WatchlistItem>, group: String?): List<WatchlistItem> {
+    return if (group == null) items else items.filter { it.group == group }
 }
 
 private fun <T> MutableStateFlow<T>.update(transform: (T) -> T) {

@@ -11,6 +11,7 @@ import com.jiucaihua.app.ai.model.AiProvider
 import com.jiucaihua.app.ai.model.metadata
 import com.jiucaihua.app.ai.provider.AiProviderService
 import com.jiucaihua.app.i18n.AppLocaleManager
+import com.jiucaihua.app.domain.usecase.ResetPortfolioReferenceDateUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,8 @@ data class SettingsUiState(
     val isLoadingModels: Boolean = false,
     val isTestingConnection: Boolean = false,
     val connectivityMessage: String? = null,
+    val isResettingReferenceDate: Boolean = false,
+    val referenceDateResetMessage: String? = null,
 )
 
 @HiltViewModel
@@ -39,6 +42,7 @@ class SettingsViewModel @Inject constructor(
     @param:Named("appPrefs") private val prefs: SharedPreferences,
     private val aiConfigStore: AiConfigStore,
     private val aiProviderService: AiProviderService,
+    private val resetPortfolioReferenceDateUseCase: ResetPortfolioReferenceDateUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(loadSettings())
@@ -95,6 +99,32 @@ class SettingsViewModel @Inject constructor(
     fun setAlertsEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_ALERTS_ENABLED, enabled).apply()
         _uiState.value = _uiState.value.copy(alertsEnabled = enabled)
+    }
+
+    fun resetPortfolioReferenceDate() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isResettingReferenceDate = true,
+                referenceDateResetMessage = null,
+            )
+            runCatching { resetPortfolioReferenceDateUseCase() }
+                .onSuccess { reset ->
+                    _uiState.value = _uiState.value.copy(
+                        isResettingReferenceDate = false,
+                        referenceDateResetMessage = context.getString(
+                            if (reset) R.string.reset_reference_date_success
+                            else R.string.reset_reference_date_empty_portfolio,
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isResettingReferenceDate = false,
+                        referenceDateResetMessage = error.message
+                            ?: context.getString(R.string.reset_reference_date_failed),
+                    )
+                }
+        }
     }
 
     fun setAiProvider(provider: AiProvider) {

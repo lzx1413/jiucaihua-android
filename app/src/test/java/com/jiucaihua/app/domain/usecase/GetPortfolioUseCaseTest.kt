@@ -8,8 +8,10 @@ import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.HoldingRepository
+import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -22,18 +24,25 @@ class GetPortfolioUseCaseTest {
 
     private lateinit var holdingRepository: HoldingRepository
     private lateinit var fundRepository: FundRepository
+    private lateinit var snapshotRepository: PortfolioSnapshotRepository
     private lateinit var useCase: GetPortfolioUseCase
 
     @Before
     fun setUp() {
         holdingRepository = mock()
         fundRepository = mock()
+        snapshotRepository = mock()
+        runBlocking {
+            whenever(snapshotRepository.getAllOnce()).thenReturn(emptyList())
+        }
         useCase = GetPortfolioUseCase(
             holdingRepository = holdingRepository,
             stockRepository = mock<StockRepository>(),
             fundRepository = fundRepository,
             exchangeRateRepository = mock<ExchangeRateRepository>(),
             goldYestCloseCache = mock<GoldYestCloseCache>(),
+            snapshotRepository = snapshotRepository,
+            getTransactionSummaryUseCase = mock<GetTransactionSummaryUseCase>(),
             prefs = mock<SharedPreferences>(),
         )
     }

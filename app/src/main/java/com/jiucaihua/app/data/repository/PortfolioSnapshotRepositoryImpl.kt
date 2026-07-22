@@ -44,6 +44,11 @@ class PortfolioSnapshotRepositoryImpl @Inject constructor(
         return dao.insert(snapshot.toEntity())
     }
 
+    override suspend fun clearAll() {
+        holdingSnapshotDao.clearAll()
+        dao.clearAll()
+    }
+
     override suspend fun deleteBefore(beforeTimestamp: Long) {
         dao.deleteBefore(beforeTimestamp)
     }

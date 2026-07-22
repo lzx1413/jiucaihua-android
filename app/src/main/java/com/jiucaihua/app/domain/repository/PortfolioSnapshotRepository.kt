@@ -15,5 +15,8 @@ interface PortfolioSnapshotRepository {
 
     suspend fun saveSnapshot(snapshot: PortfolioSnapshot): Long
 
+    /** Clears portfolio and holding snapshots while keeping transaction history intact. */
+    suspend fun clearAll()
+
     suspend fun deleteBefore(beforeTimestamp: Long)
 }

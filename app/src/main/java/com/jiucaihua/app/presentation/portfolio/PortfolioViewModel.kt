@@ -26,6 +26,7 @@ import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import com.jiucaihua.app.domain.usecase.GetPortfolioPeriodReturnsUseCase
 import com.jiucaihua.app.domain.usecase.GetPortfolioReturnHistoryUseCase
+import com.jiucaihua.app.domain.usecase.GetTransactionSummaryUseCase
 import com.jiucaihua.app.domain.usecase.AddTransactionUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import com.jiucaihua.app.domain.usecase.ManageHoldingUseCase
@@ -77,6 +78,7 @@ class PortfolioViewModel @Inject constructor(
     private val getPortfolioUseCase: GetPortfolioUseCase,
     private val getPortfolioPeriodReturnsUseCase: GetPortfolioPeriodReturnsUseCase,
     private val getPortfolioReturnHistoryUseCase: GetPortfolioReturnHistoryUseCase,
+    private val getTransactionSummaryUseCase: GetTransactionSummaryUseCase,
     private val recordSnapshotUseCase: RecordSnapshotUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
     private val newsRepository: NewsRepository,
@@ -92,8 +94,12 @@ class PortfolioViewModel @Inject constructor(
 
     private var newsJob: Job? = null
     private var searchJob: Job? = null
+    private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == KEY_REFERENCE_RESET_AT) refreshQuotes()
+    }
 
     init {
+        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         loadCachedData()
         observeHoldings()
         observeMarketNews()
@@ -357,7 +363,6 @@ class PortfolioViewModel @Inject constructor(
             val periodReturns = getPortfolioPeriodReturnsUseCase(
                 snapshots = state.snapshots,
                 currentAssetValue = currentAssetValue,
-                todayEarnings = state.summary.todayEarnings,
             )
             _uiState.update { it.copy(periodReturns = periodReturns) }
         }
@@ -369,7 +374,6 @@ class PortfolioViewModel @Inject constructor(
                 snapshots = _uiState.value.snapshots,
                 type = type,
                 selectedOption = selectedOption,
-                todayEarnings = _uiState.value.summary.todayEarnings,
             )
             _uiState.value = _uiState.value.copy(returnHistory = result)
         }
@@ -403,12 +407,13 @@ class PortfolioViewModel @Inject constructor(
      * The stored snapshot is an end-of-day value. During the trading day, replace
      * today's point with the value calculated from the current per-holding quotes.
      */
-    private fun List<PortfolioSnapshot>.withCurrentQuoteSnapshot(summary: PortfolioSummary): List<PortfolioSnapshot> {
+    private suspend fun List<PortfolioSnapshot>.withCurrentQuoteSnapshot(summary: PortfolioSummary): List<PortfolioSnapshot> {
         if (summary.holdings.isEmpty()) return this
 
         val now = System.currentTimeMillis()
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(now))
         val storedToday = firstOrNull { it.date == today }
+        val transactionSummary = getTransactionSummaryUseCase()
         val currentSnapshot = PortfolioSnapshot(
             id = storedToday?.id ?: 0,
             date = today,
@@ -422,13 +427,14 @@ class PortfolioViewModel @Inject constructor(
             lossCompensation = summary.lossCompensation,
             categoryValues = summary.categorySummaries.associate { it.marketType.name to it.totalMarketValue },
             benchmarkPercent = storedToday?.benchmarkPercent ?: 0.0,
-            netExternalCashFlow = storedToday?.netExternalCashFlow ?: 0.0,
+            netExternalCashFlow = transactionSummary.cashInCny - transactionSummary.cashOutCny,
         )
         return filterNot { it.date == today }.plus(currentSnapshot).sortedBy { it.timestamp }
     }
 
     override fun onCleared() {
         super.onCleared()
+        prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         refreshJob?.cancel()
         newsJob?.cancel()
         searchJob?.cancel()
@@ -439,5 +445,6 @@ class PortfolioViewModel @Inject constructor(
         private const val KEY_CASH = "cash"
         private const val KEY_LOSS_COMPENSATION = "loss_compensation"
         private const val KEY_REFRESH_INTERVAL = "refresh_interval_seconds"
+        private const val KEY_REFERENCE_RESET_AT = "portfolio_reference_reset_at"
     }
 }

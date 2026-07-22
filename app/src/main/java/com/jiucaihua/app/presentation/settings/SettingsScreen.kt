@@ -70,6 +70,7 @@ fun SettingsScreen(
 
     var showRestoreDialog by remember { mutableStateOf(false) }
     var selectedRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var showResetReferenceDateDialog by remember { mutableStateOf(false) }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -109,6 +110,25 @@ fun SettingsScreen(
         )
     }
 
+    if (showResetReferenceDateDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetReferenceDateDialog = false },
+            title = { Text(stringResource(R.string.reset_reference_date)) },
+            text = { Text(stringResource(R.string.reset_reference_date_hint)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.resetPortfolioReferenceDate()
+                    showResetReferenceDateDialog = false
+                }) { Text(stringResource(R.string.action_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetReferenceDateDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -138,6 +158,27 @@ fun SettingsScreen(
                 currentInterval = uiState.refreshIntervalSeconds,
                 onSelect = { viewModel.setRefreshInterval(it) },
             )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            SectionHeader(stringResource(R.string.settings_portfolio))
+            Button(
+                onClick = { showResetReferenceDateDialog = true },
+                enabled = !uiState.isResettingReferenceDate,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(stringResource(R.string.reset_reference_date))
+            }
+            uiState.referenceDateResetMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 

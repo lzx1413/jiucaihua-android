@@ -6,11 +6,13 @@ import com.jiucaihua.app.domain.model.CategorySummary
 import com.jiucaihua.app.domain.model.FundQuote
 import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketType
+import com.jiucaihua.app.domain.model.PortfolioCumulativeEarningsCalculator
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.StockQuote
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.HoldingRepository
+import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -28,6 +30,8 @@ class GetPortfolioUseCase @Inject constructor(
     private val fundRepository: FundRepository,
     private val exchangeRateRepository: ExchangeRateRepository,
     private val goldYestCloseCache: GoldYestCloseCache,
+    private val snapshotRepository: PortfolioSnapshotRepository,
+    private val getTransactionSummaryUseCase: GetTransactionSummaryUseCase,
     @Named("appPrefs") private val prefs: SharedPreferences,
 ) {
     fun observeHoldings(): Flow<List<Holding>> {
@@ -235,7 +239,7 @@ class GetPortfolioUseCase @Inject constructor(
         }
     }
 
-    private fun buildSummary(
+    private suspend fun buildSummary(
         holdings: List<Holding>,
         stockQuotes: Map<String, StockQuote>,
         fundQuotes: Map<String, FundQuote>,
@@ -251,8 +255,25 @@ class GetPortfolioUseCase @Inject constructor(
         val lossCompensation = prefs.getFloat(KEY_LOSS_COMPENSATION, 0f).toDouble()
         val totalInvestment = totalCost + cash
         val totalEarningsPercent = if (totalInvestment > 0) totalEarnings / totalInvestment * 100 else 0.0
-        val cumulativeEarnings = totalEarnings - lossCompensation
-        val cumulativeEarningsPercent = if (totalInvestment > 0) cumulativeEarnings / totalInvestment * 100 else 0.0
+        val currentWealth = totalMarketValue + cash
+        val referenceSnapshot = snapshotRepository.getAllOnce().minByOrNull { it.timestamp }
+        val cumulativeEarnings = if (referenceSnapshot != null) {
+            val transactionSummary = getTransactionSummaryUseCase()
+            PortfolioCumulativeEarningsCalculator.calculate(
+                currentWealth = currentWealth,
+                referenceSnapshot = referenceSnapshot,
+                currentNetExternalCashFlow = transactionSummary.cashInCny - transactionSummary.cashOutCny,
+                lossCompensation = lossCompensation,
+            )
+        } else {
+            // Before the first end-of-day snapshot, cost plus cash is the only
+            // available baseline for displaying a provisional cumulative return.
+            val earnings = currentWealth - totalInvestment - lossCompensation
+            com.jiucaihua.app.domain.model.PortfolioCumulativeEarnings(
+                earnings = earnings,
+                earningsPercent = if (totalInvestment > 0) earnings / totalInvestment * 100 else 0.0,
+            )
+        }
 
         val categorySummaries = buildCategorySummaries(holdings, stockQuotes, fundQuotes)
 
@@ -266,8 +287,8 @@ class GetPortfolioUseCase @Inject constructor(
             totalInvestment = totalInvestment,
             totalEarnings = totalEarnings,
             totalEarningsPercent = totalEarningsPercent,
-            cumulativeEarnings = cumulativeEarnings,
-            cumulativeEarningsPercent = cumulativeEarningsPercent,
+            cumulativeEarnings = cumulativeEarnings.earnings,
+            cumulativeEarningsPercent = cumulativeEarnings.earningsPercent,
             todayEarnings = todayEarnings,
             holdings = holdings,
             categorySummaries = categorySummaries,

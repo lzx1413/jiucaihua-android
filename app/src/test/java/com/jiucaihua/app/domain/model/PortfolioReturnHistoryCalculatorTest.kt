@@ -2,7 +2,6 @@ package com.jiucaihua.app.domain.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.LocalDate
 import java.time.ZonedDateTime
 
 class PortfolioReturnHistoryCalculatorTest {
@@ -40,7 +39,7 @@ class PortfolioReturnHistoryCalculatorTest {
     }
 
     @Test
-    fun `uses per holding today earnings in the daily history`() {
+    fun `uses wealth change in the daily history`() {
         val result = PortfolioReturnHistoryCalculator.calculate(
             snapshots = listOf(
                 snapshot("2026-01-02T16:10:00+08:00", 1000.0),
@@ -49,12 +48,10 @@ class PortfolioReturnHistoryCalculatorTest {
             transactions = emptyList(),
             type = ReturnHistoryType.DAILY,
             selectedOption = "2026-01",
-            todayEarnings = 20.0,
-            today = LocalDate.parse("2026-01-03"),
         )
 
-        assertEquals(20.0, result.single().earnings, 0.0001)
-        assertEquals(2.0, result.single().earningsPercent, 0.0001)
+        assertEquals(-20.0, result.single().earnings, 0.0001)
+        assertEquals(-2.0, result.single().earningsPercent, 0.0001)
     }
 
     private fun snapshot(time: String, assetValue: Double): PortfolioSnapshot = PortfolioSnapshot(

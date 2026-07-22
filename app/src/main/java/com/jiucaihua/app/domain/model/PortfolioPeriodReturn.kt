@@ -25,7 +25,6 @@ object PortfolioPeriodReturnCalculator {
         snapshots: List<PortfolioSnapshot>,
         currentAssetValue: Double,
         transactions: List<InvestmentTransaction>,
-        todayEarnings: Double? = null,
         now: ZonedDateTime = ZonedDateTime.now(shanghaiZone),
     ): List<PortfolioPeriodReturn?> {
         val sortedSnapshots = snapshots.sortedBy { it.timestamp }
@@ -45,11 +44,7 @@ object PortfolioPeriodReturnCalculator {
                     }
                 }
             }
-            val earnings = if (period == ReturnPeriod.DAY && todayEarnings != null) {
-                todayEarnings
-            } else {
-                currentAssetValue - baselineAssetValue - netExternalCashFlow
-            }
+            val earnings = currentAssetValue - baselineAssetValue - netExternalCashFlow
             PortfolioPeriodReturn(
                 period = period,
                 earnings = earnings,
@@ -105,8 +100,6 @@ object PortfolioReturnHistoryCalculator {
         transactions: List<InvestmentTransaction>,
         type: ReturnHistoryType,
         selectedOption: String? = null,
-        todayEarnings: Double? = null,
-        today: LocalDate = LocalDate.now(shanghaiZone),
     ): List<ReturnHistoryItem> {
         val sorted = snapshots.sortedBy { it.timestamp }
         return when (type) {
@@ -118,7 +111,6 @@ object PortfolioReturnHistoryCalculator {
                         transactions = transactions,
                         end = end,
                         startDate = dateOf(end),
-                        earningsOverride = todayEarnings?.takeIf { dateOf(end) == today },
                     )
                         ?.copy(label = dateOf(end).toString().substring(5)) }
             }
@@ -148,7 +140,6 @@ object PortfolioReturnHistoryCalculator {
         transactions: List<InvestmentTransaction>,
         end: PortfolioSnapshot,
         startDate: LocalDate,
-        earningsOverride: Double? = null,
     ): ReturnHistoryItem? {
         val startTimestamp = startDate.atStartOfDay(shanghaiZone).toInstant().toEpochMilli()
         val baseline = snapshots.lastOrNull { it.timestamp < startTimestamp } ?: return null
@@ -163,7 +154,7 @@ object PortfolioReturnHistoryCalculator {
             }
         }
         val endAsset = end.totalMarketValue + end.cash
-        val earnings = earningsOverride ?: (endAsset - baselineAsset - netCashFlow)
+        val earnings = endAsset - baselineAsset - netCashFlow
         return ReturnHistoryItem("", earnings, earnings / baselineAsset * 100.0)
     }
 
