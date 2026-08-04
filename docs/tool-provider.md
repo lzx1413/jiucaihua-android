@@ -1,6 +1,6 @@
 # CETP Tool Provider
 
-九财花实现了 [ClawSeed External Tool Protocol (CETP) v1](https://github.com/anthropics/claw-seed/blob/main/docs/zh/external-tool-protocol.md)，将应用内的投资数据工具通过 ContentProvider 暴露给兼容 CETP 的客户端（如 ClawSeed），使外部 AI Agent 可以只读方式查询持仓、行情、资讯等数据。
+九财花实现了 [ClawSeed External Tool Protocol (CETP) v1](https://github.com/lzx1413/clawseed/blob/main/docs/zh/external-tool-protocol.md)，将应用内的投资数据工具通过 ContentProvider 暴露给兼容 CETP 的客户端（如 ClawSeed）。其中 17 个查询与分析工具遵循 CETP v1 的只读核心；创建和删除价格预警属于有副作用的显式扩展。
 
 ## 架构
 
@@ -27,11 +27,14 @@ Use Cases → Repositories → API / Room
 
 所有工具名在 CETP 层自动添加 `jiucaihua__` 前缀，Consumer 侧看到的是 `jiucaihua__get_portfolio_analysis` 等名称。
 
+除 `jiucaihua__create_alert` 和 `jiucaihua__delete_alert` 外，其余工具均为只读查询或分析。
+
 | CETP 工具名 | 内部名 | 说明 | 参数 |
 |---|---|---|---|
 | `jiucaihua__get_portfolio_analysis` | `get_portfolio_analysis` | 投资组合全局快照 | 无 |
 | `jiucaihua__get_holding_analysis` | `get_holding_analysis` | 单标的持仓分析 | `code` (必须) |
 | `jiucaihua__get_kline_data` | `get_kline_data` | K线图表数据 | `code` (必须), `period`, `limit` |
+| `jiucaihua__get_indicator_snapshot` | `get_indicator_snapshot` | 技术指标快照 | `code` (必须), `cost_price`, `hold_days` |
 | `jiucaihua__get_market_news` | `get_market_news` | 市场资讯摘要 | `topic`, `query`, `limit` |
 | `jiucaihua__get_stock_news` | `get_stock_news` | 个股相关资讯 | `name` (必须), `limit` |
 | `jiucaihua__get_alerts` | `get_alerts` | 价格预警快照（含 id，可用于 delete_alert） | `code` |
@@ -42,10 +45,20 @@ Use Cases → Repositories → API / Room
 | `jiucaihua__get_fund_flow` | `get_fund_flow` | 沪深港通资金流向 | 无 |
 | `jiucaihua__search_securities` | `search_securities` | 按关键词搜索证券 | `keyword` (必须), `limit` |
 | `jiucaihua__get_market_status` | `get_market_status` | 市场交易状态与汇率 | 无 |
+| `jiucaihua__get_watchlist` | `get_watchlist` | 自选证券及最新行情 | 无 |
 | `jiucaihua__get_transactions` | `get_transactions` | 交易流水明细 | `code`, `market_type`, `type`, `from`, `to`, `limit`, `offset` |
 | `jiucaihua__get_transaction_summary` | `get_transaction_summary` | 交易聚合摘要，含 FIFO 已实现收益、分红、费用税费和现金流 | `code`, `market_type`, `from`, `to` |
 | `jiucaihua__get_holding_transaction_history` | `get_holding_transaction_history` | 单标的交易历史和收益拆解 | `code` (必须), `market_type`, `limit` |
 | `jiucaihua__get_portfolio_performance` | `get_portfolio_performance` | 组合真实收益概览，按总资产和现金流变化分析 | `from`, `to` |
+
+## CETP v1 与副作用扩展
+
+CETP v1 的标准互操作范围只允许读取数据，不允许写入、提交或删除。九财花当前对外工具中的
+`jiucaihua__create_alert` 和 `jiucaihua__delete_alert` 会改变价格预警配置，因此不属于
+只读 CETP v1 核心。Consumer 应将这两个工具视为有副作用操作，并在调用前应用自己的审批与
+安全策略。
+
+其余 17 个工具只读取或分析投资数据，不修改持仓、交易流水、自选列表或其他业务数据。
 
 ## 协议接口
 
@@ -80,6 +93,7 @@ content call --uri content://com.jiucaihua.app.clawseed.tools --method get_provi
 - Provider 声明自定义权限 `com.clawseed.permission.ACCESS_TOOLS`（protectionLevel=normal）
 - Consumer 需在 Manifest 中 `<uses-permission>` 申请该权限
 - 白名单机制确保只有显式声明的工具对外暴露，未来新增的内部工具不会自动泄露
+- `normal` 权限不构成强身份认证；Provider 白名单和 Consumer 侧审批仍然必要
 
 ## 关键文件
 

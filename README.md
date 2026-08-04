@@ -18,9 +18,18 @@ Jiucaihua is a personal investment management Android app that helps users track
 - **Market overview** - A-share, HK, and US market indices, K-line charts, and fund flow
 - **Gold holdings** - Monitor gold prices and manage gold positions
 - **AI assistant** - Intelligent investment Q&A assistant with multiple LLM providers and investment data tools
-- **CETP Tool Provider** - Expose read-only investment data to compatible clients through ContentProvider
+- **CETP Tool Provider** - Expose 17 read-only investment tools and 2 explicit alert-management extensions to compatible clients such as ClawSeed
 - **Dark mode** - Supports the system theme
 - **Data backup** - Local data backup and restore
+
+## ClawSeed Integration
+
+When Jiucaihua and [ClawSeed](https://github.com/lzx1413/clawseed) are installed on
+the same Android device, ClawSeed discovers Jiucaihua through CETP and registers
+its namespaced tools in the active agent session. A ClawSeed persona can combine
+portfolio, market, K-line, news, transaction, and performance data in one multi-tool
+conversation. See the [Tool Provider documentation](docs/tool-provider.md) for the
+complete tool list and side-effect boundary.
 
 ## Tech Stack
 

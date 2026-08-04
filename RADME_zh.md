@@ -18,9 +18,16 @@
 - **大盘概览** - A 股/港股/美股指数、K 线图、资金流向
 - **黄金持仓** - 黄金价格监控与持仓管理
 - **AI助手** - 智能投资问答助手（支持多种 LLM），可调用投资数据工具
-- **CETP Tool Provider** - 通过 ContentProvider 向兼容客户端暴露只读投资数据
+- **CETP Tool Provider** - 通过 ContentProvider 向 ClawSeed 等兼容客户端暴露 17 个只读投资工具和 2 个显式的预警管理扩展
 - **深色模式** - 支持跟随系统主题
 - **数据备份** - 本地数据备份与恢复
+
+## ClawSeed 联动
+
+九财花与 [ClawSeed](https://github.com/lzx1413/clawseed) 安装在同一台 Android 设备后，
+ClawSeed 会通过 CETP 发现九财花，并将带命名空间的工具注册到当前 Agent 会话。ClawSeed
+分身可以在一次多工具对话中组合使用持仓、行情、K 线、资讯、交易流水和收益分析数据。
+完整工具列表与副作用边界参见 [Tool Provider 文档](docs/tool-provider.md)。
 
 ## 技术栈
 
