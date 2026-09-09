@@ -1,6 +1,6 @@
 # CETP Tool Provider
 
-九财花实现了 [ClawSeed External Tool Protocol (CETP) v1](https://github.com/lzx1413/clawseed/blob/main/docs/zh/external-tool-protocol.md)，将应用内的投资数据工具通过 ContentProvider 暴露给兼容 CETP 的客户端（如 ClawSeed）。其中 17 个查询与分析工具遵循 CETP v1 的只读核心；创建和删除价格预警属于有副作用的显式扩展。
+九财花实现了 [ClawSeed External Tool Protocol (CETP) v1](https://github.com/lzx1413/clawseed/blob/main/docs/zh/external-tool-protocol.md)，将应用内的投资数据工具通过 ContentProvider 暴露给兼容 CETP 的客户端（如 ClawSeed）。查询与分析工具遵循 CETP v1 的只读核心；创建和删除价格预警属于有副作用的显式扩展。
 
 ## 架构
 
@@ -36,7 +36,10 @@ Use Cases → Repositories → API / Room
 | `jiucaihua__get_kline_data` | `get_kline_data` | K线图表数据 | `code` (必须), `period`, `limit` |
 | `jiucaihua__get_indicator_snapshot` | `get_indicator_snapshot` | 技术指标快照 | `code` (必须), `cost_price`, `hold_days` |
 | `jiucaihua__get_market_news` | `get_market_news` | 市场资讯摘要 | `topic`, `query`, `limit` |
-| `jiucaihua__get_stock_news` | `get_stock_news` | 个股相关资讯 | `name` (必须), `limit` |
+| `jiucaihua__get_stock_news` | `get_stock_news` | 个股相关资讯；`code` 存在时精确关联腾讯事件，`name` 保持旧搜索兼容 | `code` 或 `name` 至少一个，`kinds`, `limit` |
+| `jiucaihua__get_stock_context` | `get_stock_context` | 个股行情、技术摘要、事件和个股资金流的复合快照 | `code` (必须), `sections`, `event_limit` |
+| `jiucaihua__get_stock_events` | `get_stock_events` | 新闻、公告、定期报告和研报的统一事件列表 | `code` (必须), `kinds`, `limit` |
+| `jiucaihua__get_stock_fund_flow` | `get_stock_fund_flow` | 单只 A 股资金流，和沪深港通资金流分开 | `code` (必须), `period` |
 | `jiucaihua__get_alerts` | `get_alerts` | 价格预警快照（含 id，可用于 delete_alert） | `code` |
 | `jiucaihua__create_alert` | `create_alert` | 创建价格预警 | `code` (必须), `name` (必须), `alertType` (必须), `threshold` (必须) |
 | `jiucaihua__delete_alert` | `delete_alert` | 删除价格预警 | `id` (必须) |
@@ -118,3 +121,11 @@ content call --uri content://com.jiucaihua.app.clawseed.tools --method get_provi
 4. 如需对外暴露，在 `CetpToolProvider.EXTERNAL_TOOLS` 中添加内部工具名
 
 仅第 4 步决定了工具是否对外暴露，未加入白名单的工具仅应用内 AI 可用。
+
+## 证券事件工具契约
+
+`code` 仅接受九财花规范代码，例如 `sh600519`、`hk00700`、`usr_AAPL`。`kinds` 是 `NEWS`、`ANNOUNCEMENT`、`PERIODIC_REPORT`、`RESEARCH` 的数组，`limit` 范围为 1 至 50。
+
+每个事件固定包含 `externalId`、`kind`、`title`、`summary`、`publisher`、`publishedAt`、`symbols`、`url`、`provider` 和 `isStale`；研报专属字段放在 `attributes`。个股资金流的数值字段为 JSON number 或 `null`。
+
+Provider 会递归把 JSON 数组、对象和 `null` 转为 Kotlin `List`、`Map` 和 `null`，与 App 内工具入口一致。非法参数返回 `INVALID_ARGS`，不支持市场返回 `UNSUPPORTED_MARKET`，没有可用供应商时返回 `PROVIDER_UNAVAILABLE`；未知异常返回不含请求 URL 或响应内容的 `INTERNAL_ERROR`。部分 section 失败仍返回成功快照，并在 section 状态和顶层 `warnings` 中标记。

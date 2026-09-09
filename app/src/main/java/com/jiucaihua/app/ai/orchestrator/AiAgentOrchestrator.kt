@@ -53,7 +53,10 @@ class AiAgentOrchestrator @Inject constructor(
                 )
             }
 
-            val toolResult = toolRegistry.execute(toolCall.name, toolCall.arguments).content
+            val rawToolResult = toolRegistry.execute(toolCall.name, toolCall.arguments)
+            val toolResult = rawToolResult.content ?: rawToolResult.error?.let {
+                mapOf("errorCode" to it.code, "errorMessage" to it.message)
+            }
             iterations += AgentIteration(
                 assistantMessage = step.message,
                 toolCall = toolCall,

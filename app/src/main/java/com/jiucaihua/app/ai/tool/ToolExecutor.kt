@@ -16,5 +16,17 @@ interface ToolExecutor {
 }
 
 data class ToolResult(
-    val content: Any?,
+    val content: Any? = null,
+    val error: ToolError? = null,
 )
+
+data class ToolError(
+    val code: String,
+    val message: String,
+)
+
+class ToolExecutionException(val toolError: ToolError) : IllegalArgumentException(toolError.message)
+
+fun invalidArgs(message: String): Nothing = throw ToolExecutionException(ToolError("INVALID_ARGS", message))
+
+fun unsupportedMarket(message: String): Nothing = throw ToolExecutionException(ToolError("UNSUPPORTED_MARKET", message))

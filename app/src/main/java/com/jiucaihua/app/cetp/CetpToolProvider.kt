@@ -11,6 +11,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -67,7 +68,7 @@ class CetpToolProvider : ContentProvider() {
         val argsJson = extras.getString("args") ?: "{}"
         val args = try {
             val obj = JSONObject(argsJson)
-            obj.keys().asSequence().associateWith { obj.get(it) }
+            obj.keys().asSequence().associateWith { key -> normalizeJsonValue(obj.get(key)) }
         } catch (e: Exception) {
             return errorBundle("INVALID_ARGS", "Failed to parse args: ${e.message}")
         }
@@ -80,28 +81,27 @@ class CetpToolProvider : ContentProvider() {
             val result = runBlocking(Dispatchers.IO) {
                 registry.execute(localName, args)
             }
+            result.error?.let { return errorBundle(it.code, it.message) }
             val content = result.content
-            val json = if (content != null) {
-                when (content) {
-                    is Map<*, *> -> {
-                        val obj = JSONObject()
-                        for ((key, value) in content) {
-                            obj.put(key.toString(), value ?: JSONObject.NULL)
-                        }
-                        obj.toString(2)
-                    }
-                    else -> {
-                        val adapter = moshi.adapter<Any>(content::class.java)
-                        adapter.indent("  ").toJson(content) ?: "null"
-                    }
-                }
-            } else {
-                "null"
-            }
+            val json = content?.let {
+                moshi.adapter<Any>(it::class.java)
+                    .serializeNulls()
+                    .indent("  ")
+                    .toJson(it)
+            } ?: "null"
             successBundle(json)
+        } catch (error: CancellationException) {
+            throw error
         } catch (e: Exception) {
-            errorBundle("INTERNAL_ERROR", e.message ?: "Unknown error")
+            errorBundle("INTERNAL_ERROR", "Tool execution failed")
         }
+    }
+
+    private fun normalizeJsonValue(value: Any?): Any? = when (value) {
+        JSONObject.NULL -> null
+        is JSONObject -> value.keys().asSequence().associateWith { key -> normalizeJsonValue(value.get(key)) }
+        is JSONArray -> List(value.length()) { index -> normalizeJsonValue(value.get(index)) }
+        else -> value
     }
 
     private fun handleGetProviderInfo(): Bundle {
@@ -116,6 +116,8 @@ class CetpToolProvider : ContentProvider() {
                 put(JSONObject().put("name", "alerts").put("description", "价格预警"))
                 put(JSONObject().put("name", "search").put("description", "证券搜索"))
                 put(JSONObject().put("name", "watchlist").put("description", "自选证券列表"))
+                put(JSONObject().put("name", "security_events").put("description", "按证券代码关联的新闻、公告和研报"))
+                put(JSONObject().put("name", "security_insights").put("description", "个股资金流和聚合行情上下文"))
             })
         }
         return successBundle(data.toString())
@@ -176,6 +178,9 @@ class CetpToolProvider : ContentProvider() {
             "get_transaction_summary",
             "get_holding_transaction_history",
             "get_portfolio_performance",
+            "get_stock_context",
+            "get_stock_events",
+            "get_stock_fund_flow",
         )
     }
 }

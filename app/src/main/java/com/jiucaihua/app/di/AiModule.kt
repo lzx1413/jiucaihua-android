@@ -21,6 +21,9 @@ import com.jiucaihua.app.ai.tool.GetMarketStatusTool
 import com.jiucaihua.app.ai.tool.GetPortfolioAnalysisTool
 import com.jiucaihua.app.ai.tool.GetPortfolioPerformanceTool
 import com.jiucaihua.app.ai.tool.GetStockNewsTool
+import com.jiucaihua.app.ai.tool.GetStockContextTool
+import com.jiucaihua.app.ai.tool.GetStockEventsTool
+import com.jiucaihua.app.ai.tool.GetStockFundFlowTool
 import com.jiucaihua.app.ai.tool.GetTransactionSummaryTool
 import com.jiucaihua.app.ai.tool.GetTransactionsTool
 import com.jiucaihua.app.ai.tool.GetWatchlistTool
@@ -139,6 +142,24 @@ abstract class AiModule {
     @IntoSet
     abstract fun bindGetStockNewsTool(
         tool: GetStockNewsTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetStockContextTool(
+        tool: GetStockContextTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetStockEventsTool(
+        tool: GetStockEventsTool,
+    ): ToolExecutor
+
+    @Binds
+    @IntoSet
+    abstract fun bindGetStockFundFlowTool(
+        tool: GetStockFundFlowTool,
     ): ToolExecutor
 
     @Binds

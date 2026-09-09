@@ -11,9 +11,12 @@ import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.PriceAlert
 import com.jiucaihua.app.domain.model.StockArticle
+import com.jiucaihua.app.domain.model.SecurityEventKind
+import com.jiucaihua.app.domain.model.SecurityId
 import com.jiucaihua.app.domain.repository.AlertRepository
 import com.jiucaihua.app.domain.repository.HoldingRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
+import com.jiucaihua.app.domain.repository.SecurityEventRepository
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import java.text.SimpleDateFormat
@@ -151,13 +154,36 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
     private val getPortfolioUseCase: GetPortfolioUseCase,
     private val alertRepository: AlertRepository,
     private val newsRepository: NewsRepository,
+    private val securityEventRepository: SecurityEventRepository,
 ) {
     suspend operator fun invoke(code: String): HoldingAnalysisSnapshot? {
         val holding = holdingRepository.getHoldingByCode(code)
         val summary = getPortfolioUseCase.getPortfolioWithQuotes()
         val matchedHolding = summary.holdings.firstOrNull { it.code == code } ?: holding ?: return null
         val activeAlerts = alertRepository.getEnabledAlerts().filter { it.code == code }
-        val relatedNews = newsRepository.getStockNews(matchedHolding.name, limit = 5)
+        val relatedNews = SecurityId.parse(code)?.let { securityId ->
+            runCatching {
+                securityEventRepository.getEvents(
+                    securityId,
+                    setOf(
+                        SecurityEventKind.NEWS,
+                        SecurityEventKind.ANNOUNCEMENT,
+                        SecurityEventKind.PERIODIC_REPORT,
+                        SecurityEventKind.RESEARCH,
+                    ),
+                    limit = 5,
+                ).map { event ->
+                    StockArticle(
+                        title = event.title,
+                        summary = event.summary,
+                        content = event.summary,
+                        source = event.publisher.ifBlank { event.provider.name },
+                        time = event.publishedAt.toString(),
+                        sourceType = com.jiucaihua.app.domain.model.NewsSource.EASTMONEY,
+                    )
+                }
+            }.getOrDefault(emptyList())
+        } ?: newsRepository.getStockNews(matchedHolding.name, limit = 5)
         return matchedHolding.toAnalysisSnapshot(
             activeAlerts = activeAlerts,
             relatedNews = relatedNews,

@@ -17,6 +17,10 @@ class ToolRegistry @Inject constructor(
 
     suspend fun execute(name: String, arguments: Map<String, Any?>): ToolResult {
         val executor = executorsByName[name] ?: error("Tool not found: $name")
-        return executor.execute(arguments)
+        return try {
+            executor.execute(arguments)
+        } catch (error: ToolExecutionException) {
+            ToolResult(error = error.toolError)
+        }
     }
 }
