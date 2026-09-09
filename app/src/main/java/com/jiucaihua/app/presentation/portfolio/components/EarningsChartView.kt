@@ -30,11 +30,12 @@ import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.PortfolioReturnCalculator
+import com.jiucaihua.app.presentation.theme.AccentGold
 import java.text.SimpleDateFormat
 import kotlin.math.abs
 import kotlin.math.max
 
-private val BenchmarkColor = Color(0xFFFF9800)
+private val BenchmarkColor = AccentGold
 private val PositiveReturnColor = Color(0xFFEF5350)
 private val NegativeReturnColor = Color(0xFF26A69A)
 

@@ -1,6 +1,5 @@
 package com.jiucaihua.app.presentation.portfolio.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,8 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,91 +33,78 @@ fun HoldingListItem(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+            )
+            .padding(horizontal = 32.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        val hasQuote = holding.currentPrice > 0
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            val hasQuote = holding.currentPrice > 0
-
-            // Row 1: Name | Daily P&L Amount | Current Price | Cumulative P&L Amount
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = holding.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(2.5f),
+            Text(
+                text = holding.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(2.5f),
+            )
+            if (hasQuote) {
+                PnLWithArrow(
+                    text = formatSignedMoney(holding.dailyEarningsCNY),
+                    value = holding.dailyEarningsCNY,
+                    modifier = Modifier.weight(1.5f),
                 )
-                if (hasQuote) {
-                    PnLWithArrow(
-                        text = formatSignedMoney(holding.dailyEarningsCNY),
-                        value = holding.dailyEarningsCNY,
-                        modifier = Modifier.weight(1.5f),
-                    )
-                    Text(
-                        text = "%.2f".format(holding.currentPrice),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1.2f),
-                        textAlign = TextAlign.End,
-                    )
-                    PnLWithArrow(
-                        text = formatSignedMoney(holding.earningsCNY),
-                        value = holding.earningsCNY,
-                        modifier = Modifier.weight(1.5f),
-                    )
-                }
-            }
-
-            // Row 2: Holding Amount | Daily P&L % | Cost | Cumulative P&L %
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val holdingAmountValue = if (hasQuote) holding.marketValueCNY
-                    else holding.holdingAmount * holding.exchangeRate
                 Text(
-                    text = if (holdingAmountValue > 0) formatMoney(holdingAmountValue) else "--",
+                    text = "%.2f".format(holding.currentPrice),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(2.5f),
+                    modifier = Modifier.weight(1.2f),
+                    textAlign = TextAlign.End,
                 )
-                if (hasQuote) {
-                    PnLWithArrow(
-                        text = formatChangePercent(holding.changePercent),
-                        value = holding.changePercent,
-                        modifier = Modifier.weight(1.5f),
-                    )
-                    Text(
-                        text = if (holding.costPrice > 0) "%.2f".format(holding.costPrice) else "--",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1.2f),
-                        textAlign = TextAlign.End,
-                    )
-                    PnLWithArrow(
-                        text = formatChangePercent(holding.earningsPercent),
-                        value = holding.earningsPercent,
-                        modifier = Modifier.weight(1.5f),
-                    )
-                }
+                PnLWithArrow(
+                    text = formatSignedMoney(holding.earningsCNY),
+                    value = holding.earningsCNY,
+                    modifier = Modifier.weight(1.5f),
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val holdingAmountValue = if (hasQuote) holding.marketValueCNY
+                else holding.holdingAmount * holding.exchangeRate
+            Text(
+                text = if (holdingAmountValue > 0) formatMoney(holdingAmountValue) else "--",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(2.5f),
+            )
+            if (hasQuote) {
+                PnLWithArrow(
+                    text = formatChangePercent(holding.changePercent),
+                    value = holding.changePercent,
+                    modifier = Modifier.weight(1.5f),
+                )
+                Text(
+                    text = if (holding.costPrice > 0) "%.2f".format(holding.costPrice) else "--",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1.2f),
+                    textAlign = TextAlign.End,
+                )
+                PnLWithArrow(
+                    text = formatChangePercent(holding.earningsPercent),
+                    value = holding.earningsPercent,
+                    modifier = Modifier.weight(1.5f),
+                )
             }
         }
     }

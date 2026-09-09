@@ -88,6 +88,7 @@ import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.NewsSource
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.model.PortfolioPeriodReturn
+import com.jiucaihua.app.presentation.theme.AccentGold
 import com.jiucaihua.app.domain.model.ReturnPeriod
 import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.model.SortOrder
@@ -839,7 +840,7 @@ private fun EarningsChartSection(
                     Text(
                         text = stringResource(R.string.csi300_percent, String.format("%.2f%%", benchmarkPercent)),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFFF9800),
+                        color = AccentGold,
                     )
                 }
                 Spacer(Modifier.weight(1f))

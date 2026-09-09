@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -52,9 +53,7 @@ fun CategoryHoldingSection(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
     ) {
@@ -121,17 +120,59 @@ fun CategoryHoldingSection(
                 exit = shrinkVertically(),
             ) {
                 Column(modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
-                    categorySummary.holdings.forEach { holding ->
+                    HoldingColumnHeader()
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 32.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    )
+                    categorySummary.holdings.forEachIndexed { index, holding ->
                         HoldingListItem(
                             holding = holding,
                             onClick = { onHoldingClick(holding.code) },
                             onLongClick = { onHoldingLongClick(holding) },
                         )
+                        if (index != categorySummary.holdings.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 32.dp),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun HoldingColumnHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 48.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HoldingColumnLabel(R.string.holding_column_security, Modifier.weight(2.5f))
+        HoldingColumnLabel(R.string.holding_column_today, Modifier.weight(1.5f), TextAlign.End)
+        HoldingColumnLabel(R.string.holding_column_price, Modifier.weight(1.2f), TextAlign.End)
+        HoldingColumnLabel(R.string.holding_column_total, Modifier.weight(1.5f), TextAlign.End)
+    }
+}
+
+@Composable
+private fun HoldingColumnLabel(
+    labelRes: Int,
+    modifier: Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+) {
+    Text(
+        text = stringResource(labelRes),
+        modifier = modifier,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = textAlign,
+        maxLines = 1,
+    )
 }
 
 @Composable

@@ -128,9 +128,7 @@ fun PortfolioSummaryCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
     ) {
@@ -203,7 +201,7 @@ fun PortfolioSummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     val todayColor = when {
-                        summary.todayEarnings > 0 -> MaterialTheme.colorScheme.tertiary
+                        summary.todayEarnings > 0 -> RiseRed
                         summary.todayEarnings < 0 -> FallGreen
                         else -> MaterialTheme.colorScheme.onSurface
                     }
