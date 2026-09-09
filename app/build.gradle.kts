@@ -43,8 +43,8 @@ android {
         applicationId = "com.jiucaihua.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.3.0"
+        versionCode = 4
+        versionName = "1.3.1"
 
         buildConfigField("String", "GITHUB_URL", "\"https://github.com/lzx1413/jiucaihua-android\"")
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
