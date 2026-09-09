@@ -264,6 +264,12 @@
     <string name="settings_test_connection">Test connection</string>
     <string name="settings_enable_thinking">Enable deeper reasoning</string>
     <string name="settings_enable_thinking_subtitle">Allow the provider to use higher reasoning effort</string>
+    <string name="reset_reference_date">Recalculate from today</string>
+    <string name="reset_reference_date_hint">This clears performance trend and daily, monthly, and yearly return snapshots, then uses current total wealth as today\'s reference. Holdings and transactions are kept; loss compensation is reset.</string>
+    <string name="reset_reference_date_success">Performance recalculation starts from today</string>
+    <string name="reset_reference_date_empty_portfolio">No holdings available to set a reference date</string>
+    <string name="reset_reference_date_failed">Unable to set the reference date. Try again later.</string>
+    <string name="settings_portfolio">Performance settings</string>
     <string name="settings_backup">Data backup</string>
     <string name="settings_export_data">Export data</string>
     <string name="settings_import_data">Import data</string>
