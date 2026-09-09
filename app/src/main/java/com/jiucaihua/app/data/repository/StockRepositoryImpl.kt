@@ -1,6 +1,8 @@
 package com.jiucaihua.app.data.repository
 
 import com.jiucaihua.app.data.local.dao.StockCacheDao
+import com.jiucaihua.app.data.local.dao.KLineCacheDao
+import com.jiucaihua.app.data.local.entity.KLineCacheEntity
 import com.jiucaihua.app.data.local.entity.StockCacheEntity
 import com.jiucaihua.app.data.parser.StockDataParser
 import com.jiucaihua.app.data.remote.api.SinaGoldKLineApi
@@ -28,6 +30,7 @@ class StockRepositoryImpl @Inject constructor(
     private val tencentKLineApi: TencentKLineApi,
     private val sinaGoldKLineApi: SinaGoldKLineApi,
     private val stockCacheDao: StockCacheDao,
+    private val kLineCacheDao: KLineCacheDao,
 ) : StockRepository {
 
     override suspend fun getAStockQuotes(codes: List<String>): List<StockQuote> {
@@ -111,6 +114,21 @@ class StockRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
+        val provider = if (code.startsWith("hf_") || code.startsWith("gds_")) "SINA" else "TENCENT"
+        return try {
+            val network = getNetworkKLineData(code, period, limit)
+            if (network.points.isNotEmpty()) {
+                cacheKLineData(network, provider)
+                network
+            } else {
+                getCachedKLineData(code, period, limit, provider)
+            }
+        } catch (_: Exception) {
+            getCachedKLineData(code, period, limit, provider)
+        }
+    }
+
+    private suspend fun getNetworkKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
         if (code.startsWith("usr_")) {
             return getUSStockKLineData(code, period, limit)
         }
@@ -137,6 +155,34 @@ class StockRepositoryImpl @Inject constructor(
         val param = "$symbol,$periodType,$startDate,$endDate,$limit,qfq"
         val response = tencentKLineApi.getKLineData(param)
         return StockDataParser.parseTencentKLineResponse(code, symbol, period, response)
+    }
+
+    private suspend fun cacheKLineData(data: KLineData, provider: String) {
+        val fetchedAt = System.currentTimeMillis()
+        kLineCacheDao.upsertAll(data.points.map { point ->
+            KLineCacheEntity(
+                code = data.code,
+                period = data.period.name,
+                adjustment = KLINE_ADJUSTMENT,
+                provider = provider,
+                date = point.date,
+                open = point.open,
+                close = point.close,
+                high = point.high,
+                low = point.low,
+                volume = point.volume,
+                fetchedAt = fetchedAt,
+            )
+        })
+    }
+
+    private suspend fun getCachedKLineData(code: String, period: KLinePeriod, limit: Int, provider: String): KLineData {
+        val points = kLineCacheDao.getPoints(code, period.name, KLINE_ADJUSTMENT, provider)
+            .takeLast(limit)
+            .map { entity ->
+                KLinePoint(entity.date, entity.open, entity.close, entity.high, entity.low, entity.volume)
+            }
+        return KLineData(code, "", period, points)
     }
 
     private suspend fun getUSStockKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
@@ -547,5 +593,9 @@ class StockRepositoryImpl @Inject constructor(
             time = time,
             marketType = MarketType.valueOf(marketType),
         )
+    }
+
+    private companion object {
+        const val KLINE_ADJUSTMENT = "QFQ"
     }
 }

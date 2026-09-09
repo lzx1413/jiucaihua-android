@@ -155,6 +155,7 @@
 
     <string name="article_detail">资讯详情</string>
     <string name="no_article_content">暂无正文</string>
+    <string name="action_open_original">打开原文</string>
     <string name="portfolio_summary_total_assets">总资产</string>
     <string name="portfolio_summary_holding_earnings">持仓收益</string>
     <string name="benchmark_csi300">沪深300</string>
@@ -218,6 +219,17 @@
     <string name="no_nav_data">暂无净值数据</string>
     <string name="no_kline_data">暂无K线数据</string>
     <string name="stock_news_title">资讯</string>
+    <string name="stock_related_news">相关新闻</string>
+    <string name="stock_company_updates">公司动态</string>
+    <string name="detail_tab_news">资讯</string>
+    <string name="detail_tab_fund_flow">资金</string>
+    <string name="detail_tab_profile">资料</string>
+    <string name="no_stock_fund_flow">暂无资金流数据</string>
+    <string name="no_security_profile">暂无公司资料</string>
+    <string name="holding_column_security">标的</string>
+    <string name="holding_column_today">今日</string>
+    <string name="holding_column_price">现价</string>
+    <string name="holding_column_total">累计</string>
     <string name="gold_quote">黄金行情</string>
 
     <string name="market_overview">大盘概览</string>

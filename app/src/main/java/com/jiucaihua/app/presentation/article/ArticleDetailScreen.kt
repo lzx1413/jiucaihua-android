@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jiucaihua.app.R
@@ -31,7 +33,9 @@ fun ArticleDetailScreen(
     articleContent: String,
     articleSource: String,
     articleTime: String,
+    articleDetailUrl: String,
 ) {
+    val uriHandler = LocalUriHandler.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -47,6 +51,16 @@ fun ArticleDetailScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
                         )
+                    }
+                },
+                actions = {
+                    if (articleDetailUrl.isNotBlank()) {
+                        IconButton(onClick = { uriHandler.openUri(articleDetailUrl) }) {
+                            Icon(
+                                imageVector = Icons.Filled.OpenInNew,
+                                contentDescription = stringResource(R.string.action_open_original),
+                            )
+                        }
                     }
                 },
             )

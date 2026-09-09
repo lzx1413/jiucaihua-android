@@ -27,14 +27,16 @@ class SecuritySearchRepositoryImpl @Inject constructor(
         val root = JSONObject(response)
         if (root.optInt("code", -1) != 0) return emptyList()
 
-        val items = root.optJSONObject("data")?.optJSONArray("stock") ?: return emptyList()
+        val data = root.optJSONObject("data") ?: return emptyList()
+        val items = sequenceOf("stock", "fund", "relatedFund")
+            .mapNotNull { data.optJSONArray(it) }
+            .flatMap { array -> (0 until array.length()).asSequence().mapNotNull(array::optJSONArray) }
+            .toList()
         val seen = mutableSetOf<String>()
 
         return buildList {
-            for (index in 0 until items.length()) {
+            for (item in items) {
                 if (size >= limit) break
-
-                val item = items.optJSONArray(index) ?: continue
                 val sourceMarket = item.optString(0).trim().lowercase()
                 val rawCode = item.optString(1).trim()
                 val name = item.optString(2).trim()
@@ -64,6 +66,7 @@ class SecuritySearchRepositoryImpl @Inject constructor(
             "sh", "sz", "bj" -> rawCode.takeIf { it.all(Char::isDigit) }?.let { "$sourceMarket$it" }
             "hk" -> rawCode.takeIf { it.all(Char::isDigit) }?.padStart(5, '0')?.let { "hk$it" }
             "jj" -> rawCode.takeIf { it.all(Char::isDigit) }
+            "us" -> rawCode.takeIf { it.matches(Regex("[A-Za-z0-9.]+")) }?.let { "usr_${it.uppercase()}" }
             else -> null
         }
     }
@@ -73,6 +76,7 @@ class SecuritySearchRepositoryImpl @Inject constructor(
             "sh", "sz", "bj" -> MarketType.A_STOCK
             "hk" -> MarketType.HK_STOCK
             "jj" -> MarketType.FUND
+            "us" -> MarketType.US_STOCK
             else -> null
         }
     }

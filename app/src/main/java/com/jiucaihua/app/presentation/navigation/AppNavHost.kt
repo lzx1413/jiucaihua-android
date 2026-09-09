@@ -27,6 +27,7 @@ private fun NavController.navigateToArticle(article: NewsFlash) {
         set("articleContent", article.content)
         set("articleSource", article.source)
         set("articleTime", article.time)
+        set("articleDetailUrl", article.detailUrl)
     }
     navigate(Screen.ArticleDetail.route)
 }
@@ -129,6 +130,7 @@ fun AppNavHost(initialDestination: String? = null) {
                 articleContent = previousStateHandle?.get<String>("articleContent").orEmpty(),
                 articleSource = previousStateHandle?.get<String>("articleSource").orEmpty(),
                 articleTime = previousStateHandle?.get<String>("articleTime").orEmpty(),
+                articleDetailUrl = previousStateHandle?.get<String>("articleDetailUrl").orEmpty(),
             )
         }
 

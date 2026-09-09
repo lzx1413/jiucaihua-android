@@ -13,6 +13,10 @@ import com.jiucaihua.app.data.remote.api.SinaStockApi
 import com.jiucaihua.app.data.remote.api.TencentHKStockApi
 import com.jiucaihua.app.data.remote.api.TencentKLineApi
 import com.jiucaihua.app.data.remote.api.TencentSearchApi
+import com.jiucaihua.app.data.remote.api.TencentSecurityEventApi
+import com.jiucaihua.app.data.remote.api.TencentSecurityInsightApi
+import com.jiucaihua.app.data.remote.api.TencentFundFlowApi
+import com.jiucaihua.app.data.remote.datasource.SecurityCodeMapper
 import com.jiucaihua.app.data.remote.api.WallstreetCnApi
 import com.jiucaihua.app.data.remote.api.XuanGuBaoNewsApi
 import com.jiucaihua.app.data.remote.interceptor.GBKResponseInterceptor
@@ -146,6 +150,28 @@ object NetworkModule {
     fun provideTencentSearchApi(@Named("tencentSearch") retrofit: Retrofit): TencentSearchApi {
         return retrofit.create(TencentSearchApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideTencentSecurityEventApi(@Named("tencentSearch") retrofit: Retrofit): TencentSecurityEventApi {
+        return retrofit.create(TencentSecurityEventApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTencentSecurityInsightApi(@Named("tencentSearch") retrofit: Retrofit): TencentSecurityInsightApi {
+        return retrofit.create(TencentSecurityInsightApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTencentFundFlowApi(@Named("tencentSearch") retrofit: Retrofit): TencentFundFlowApi {
+        return retrofit.create(TencentFundFlowApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSecurityCodeMapper(): SecurityCodeMapper = SecurityCodeMapper()
 
     @Provides
     @Singleton

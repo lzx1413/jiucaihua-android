@@ -13,8 +13,10 @@ import com.jiucaihua.app.data.local.dao.AlertRecordDao
 import com.jiucaihua.app.data.local.dao.FundCacheDao
 import com.jiucaihua.app.data.local.dao.HoldingDao
 import com.jiucaihua.app.data.local.dao.HoldingSnapshotDao
+import com.jiucaihua.app.data.local.dao.KLineCacheDao
 import com.jiucaihua.app.data.local.dao.NewsFlashDao
 import com.jiucaihua.app.data.local.dao.PortfolioSnapshotDao
+import com.jiucaihua.app.data.local.dao.SecurityEventDao
 import com.jiucaihua.app.data.local.dao.StockCacheDao
 import com.jiucaihua.app.data.local.dao.TransactionDao
 import com.jiucaihua.app.data.local.dao.TransactionLotMatchDao
@@ -39,7 +41,7 @@ object AppModule {
             AppDatabase::class.java,
             "jiucaihua_database"
         )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -240,6 +242,33 @@ object AppModule {
         }
     }
 
+    private val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `security_event` (`provider` TEXT NOT NULL, `kind` TEXT NOT NULL, `externalId` TEXT NOT NULL, `title` TEXT NOT NULL, `summary` TEXT NOT NULL, `contentUrl` TEXT NOT NULL, `publisher` TEXT NOT NULL, `publishedAt` INTEGER NOT NULL, `importance` INTEGER, `titleMention` INTEGER, `bodyMention` INTEGER, `researchRating` TEXT, `reportType` TEXT, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`provider`, `kind`, `externalId`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_security_event_publishedAt` ON `security_event` (`publishedAt`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_security_event_contentUrl` ON `security_event` (`contentUrl`)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `security_event_symbol` (`provider` TEXT NOT NULL, `kind` TEXT NOT NULL, `externalId` TEXT NOT NULL, `symbol` TEXT NOT NULL, PRIMARY KEY(`provider`, `kind`, `externalId`, `symbol`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_security_event_symbol_symbol_provider_kind` ON `security_event_symbol` (`symbol`, `provider`, `kind`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_security_event_symbol_externalId` ON `security_event_symbol` (`externalId`)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `security_event_sync_state` (`provider` TEXT NOT NULL, `kind` TEXT NOT NULL, `symbol` TEXT NOT NULL, `lastSuccessfulSyncAt` INTEGER NOT NULL, `newestPublishedAt` INTEGER NOT NULL, `nextPage` INTEGER NOT NULL, PRIMARY KEY(`provider`, `kind`, `symbol`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `kline_cache` (`code` TEXT NOT NULL, `period` TEXT NOT NULL, `adjustment` TEXT NOT NULL, `provider` TEXT NOT NULL, `date` TEXT NOT NULL, `open` REAL NOT NULL, `close` REAL NOT NULL, `high` REAL NOT NULL, `low` REAL NOT NULL, `volume` REAL NOT NULL, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`code`, `period`, `adjustment`, `provider`, `date`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_kline_cache_code_period_adjustment_provider_date` ON `kline_cache` (`code`, `period`, `adjustment`, `provider`, `date`)")
+        }
+    }
+
+    private val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `security_event_read` (`provider` TEXT NOT NULL, `kind` TEXT NOT NULL, `externalId` TEXT NOT NULL, `readAt` INTEGER NOT NULL, PRIMARY KEY(`provider`, `kind`, `externalId`))")
+        }
+    }
+
+    private val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `security_event_delivery` (`provider` TEXT NOT NULL, `kind` TEXT NOT NULL, `externalId` TEXT NOT NULL, `symbol` TEXT NOT NULL, `deliveredAt` INTEGER NOT NULL, PRIMARY KEY(`provider`, `kind`, `externalId`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_security_event_delivery_symbol_deliveredAt` ON `security_event_delivery` (`symbol`, `deliveredAt`)")
+        }
+    }
+
     @Provides
     fun provideHoldingDao(database: AppDatabase): HoldingDao {
         return database.holdingDao()
@@ -293,6 +322,16 @@ object AppModule {
     @Provides
     fun provideTransactionLotMatchDao(database: AppDatabase): TransactionLotMatchDao {
         return database.transactionLotMatchDao()
+    }
+
+    @Provides
+    fun provideSecurityEventDao(database: AppDatabase): SecurityEventDao {
+        return database.securityEventDao()
+    }
+
+    @Provides
+    fun provideKLineCacheDao(database: AppDatabase): KLineCacheDao {
+        return database.kLineCacheDao()
     }
 
     @Provides

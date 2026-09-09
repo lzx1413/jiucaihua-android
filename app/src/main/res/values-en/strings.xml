@@ -148,6 +148,7 @@
     <string name="ai_send_failed">Send failed</string>
     <string name="article_detail">News detail</string>
     <string name="no_article_content">No content</string>
+    <string name="action_open_original">Open original</string>
     <string name="portfolio_summary_total_assets">Total assets</string>
     <string name="portfolio_summary_holding_earnings">Holding P/L</string>
     <string name="benchmark_csi300">CSI 300</string>
@@ -204,6 +205,17 @@
     <string name="no_nav_data">No NAV data</string>
     <string name="no_kline_data">No K-line data</string>
     <string name="stock_news_title">News</string>
+    <string name="stock_related_news">Related news</string>
+    <string name="stock_company_updates">Company updates</string>
+    <string name="detail_tab_news">News</string>
+    <string name="detail_tab_fund_flow">Flow</string>
+    <string name="detail_tab_profile">Profile</string>
+    <string name="no_stock_fund_flow">No fund flow data</string>
+    <string name="no_security_profile">No company profile</string>
+    <string name="holding_column_security">Security</string>
+    <string name="holding_column_today">Today</string>
+    <string name="holding_column_price">Price</string>
+    <string name="holding_column_total">Total</string>
     <string name="gold_quote">Gold quote</string>
     <string name="market_overview">Market overview</string>
     <string name="fund_flow">Fund flow</string>

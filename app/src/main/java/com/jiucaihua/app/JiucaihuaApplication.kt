@@ -16,6 +16,7 @@ import com.jiucaihua.app.i18n.AppLocaleManager
 import com.jiucaihua.app.worker.AlertCheckWorker
 import com.jiucaihua.app.worker.NewsSyncWorker
 import com.jiucaihua.app.worker.QuoteRefreshWorker
+import com.jiucaihua.app.worker.SecurityEventSyncWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -41,6 +42,7 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
         scheduleQuoteRefresh()
         scheduleAlertCheck()
         scheduleNewsSync()
+        scheduleSecurityEventSync()
     }
 
     private fun createNotificationChannels() {
@@ -108,6 +110,17 @@ class JiucaihuaApplication : Application(), Configuration.Provider {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             NewsSyncWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
+    }
+
+    private fun scheduleSecurityEventSync() {
+        val request = PeriodicWorkRequestBuilder<SecurityEventSyncWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            SecurityEventSyncWorker.WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request,
         )

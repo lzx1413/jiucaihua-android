@@ -25,13 +25,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,6 +49,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.NewsFlash
+import com.jiucaihua.app.domain.model.NewsSource
+import com.jiucaihua.app.domain.model.SecurityEvent
 import com.jiucaihua.app.domain.model.StockQuote
 import com.jiucaihua.app.domain.model.TransactionHistoryItem
 import com.jiucaihua.app.domain.model.TransactionType
@@ -57,6 +62,9 @@ import com.jiucaihua.app.presentation.detail.components.KLineChartView
 import com.jiucaihua.app.presentation.detail.components.PeriodSelector
 import com.jiucaihua.app.presentation.detail.components.QuoteHeader
 import com.jiucaihua.app.presentation.detail.components.StockNewsSection
+import com.jiucaihua.app.presentation.detail.components.SecurityEventsSection
+import com.jiucaihua.app.presentation.detail.components.StockFundFlowCard
+import com.jiucaihua.app.presentation.detail.components.SecurityRelationsSection
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
 import java.text.SimpleDateFormat
@@ -73,6 +81,7 @@ fun DetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isFund = uiState.marketType == MarketType.FUND
     var showMA by rememberSaveable { mutableStateOf(true) }
+    var selectedContentTab by rememberSaveable { mutableIntStateOf(0) }
 
     LifecycleResumeEffect(Unit) {
         viewModel.startAutoRefresh()
@@ -207,12 +216,21 @@ fun DetailScreen(
                             )
                         }
 
-                        if (uiState.newsLoaded) {
+                        if (isFund) {
                             StockNewsSection(
+                                title = stringResource(R.string.stock_related_news),
                                 articles = uiState.newsArticles,
                                 isLoading = uiState.isNewsLoading,
                                 error = uiState.newsError,
                                 onArticleClick = onArticleClick,
+                            )
+                        } else {
+                            DetailContentTabs(
+                                selectedTab = selectedContentTab,
+                                onTabSelected = { selectedContentTab = it },
+                                uiState = uiState,
+                                onArticleClick = onArticleClick,
+                                onEventClick = viewModel::markSecurityEventRead,
                             )
                         }
                     }
@@ -220,6 +238,95 @@ fun DetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun DetailContentTabs(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    uiState: DetailUiState,
+    onArticleClick: (NewsFlash) -> Unit,
+    onEventClick: (SecurityEvent) -> Unit,
+) {
+    val tabs = listOf(
+        stringResource(R.string.detail_tab_news),
+        stringResource(R.string.detail_tab_fund_flow),
+        stringResource(R.string.detail_tab_profile),
+    )
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { onTabSelected(index) },
+                    text = { Text(title) },
+                )
+            }
+        }
+        when (selectedTab) {
+            0 -> {
+                if (uiState.newsLoaded) {
+                    StockNewsSection(
+                        title = stringResource(R.string.stock_related_news),
+                        articles = uiState.newsArticles,
+                        isLoading = uiState.isNewsLoading,
+                        error = uiState.newsError,
+                        onArticleClick = onArticleClick,
+                    )
+                }
+                if (uiState.securityEventsLoaded || uiState.isSecurityEventsLoading) {
+                    SecurityEventsSection(
+                        title = stringResource(R.string.stock_company_updates),
+                        events = uiState.securityEvents,
+                        isLoading = uiState.isSecurityEventsLoading,
+                        error = uiState.securityEventsError,
+                        onEventClick = { event ->
+                            onEventClick(event)
+                            onArticleClick(event.toArticle())
+                        },
+                    )
+                }
+            }
+            1 -> uiState.stockFundFlow?.let { StockFundFlowCard(it) }
+                ?: DetailEmptySection(stringResource(R.string.no_stock_fund_flow))
+            2 -> uiState.securityRelations?.let { SecurityRelationsSection(it) }
+                ?: DetailEmptySection(stringResource(R.string.no_security_profile))
+        }
+    }
+}
+
+@Composable
+private fun DetailEmptySection(message: String) {
+    Text(
+        text = message,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+private fun SecurityEvent.toArticle(): NewsFlash {
+    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    val metadata = buildList {
+        add("来源：${publisher.ifBlank { "腾讯自选股" }}")
+        if (publishedAt > 0) add("发布时间：${formatter.format(Date(publishedAt))}")
+        researchRating?.let { add("研究评级：$it") }
+        reportType?.let { add("报告类型：$it") }
+    }
+    return NewsFlash(
+        id = "$provider:$kind:$externalId".hashCode().toLong(),
+        title = title,
+        summary = summary,
+        content = (metadata + summary.ifBlank { "腾讯自选股暂未提供正文。" }).joinToString("\n\n"),
+        impact = "",
+        source = publisher.ifBlank { "腾讯自选股" },
+        time = if (publishedAt > 0) formatter.format(Date(publishedAt)) else "",
+        sourceType = NewsSource.JIUYAN,
+        epochMillis = publishedAt,
+        detailUrl = contentUrl,
+    )
 }
 
 @Composable

@@ -12,6 +12,7 @@
 | 东方财富 | K 线数据 | UTF-8 | JSON |
 | 中国银行 | 港股汇率 | UTF-8 | HTML |
 | 节假日 API | 交易日判断 | UTF-8 | JSON |
+| 腾讯自选股（匿名） | 个股事件、个股资金流、K 线、搜索 | UTF-8 | JSON |
 
 ---
 
@@ -81,6 +82,24 @@ class GBKResponseInterceptor : Interceptor {
 
 - Retrofit 接口：`data/remote/api/SinaStockApi.kt`
 - 解析逻辑：`data/repository/StockRepositoryImpl.kt`
+
+### 腾讯自选股匿名个股数据
+
+腾讯自选股只作为匿名、只读市场数据源使用：不登录腾讯账号，不读取腾讯自选列表，不使用 Cookie、设备指纹或交易能力。接口没有公开 SLA，因此实现保留缓存和局部失败状态。
+
+| 能力 | 地址 | 规范参数 | 返回用途 |
+|---|---|---|---|
+| 个股新闻/公告 | `https://proxy.finance.qq.com/ifzqgtimg/appstock/news/info/search` | `symbol=sh600519`, `type=2` 新闻 / `type=0` 公告 | 精确事件关联 |
+| 定期报告 | `https://proxy.finance.qq.com/ifzqgtimg/appstock/news/noticeList/search` | `symbol`, `noticeType=0103` | 财报事件 |
+| 机构研报 | `https://proxy.finance.qq.com/ifzqgtimg/appstock/app/investRate/getReport` | `symbol` | 研报与评级 |
+| 个股资金流 | `https://proxy.finance.qq.com/cgi/cgi-bin/fundflow/hsfundtab` | `code=sh600519` | 主力/散户和分钟趋势 |
+| 前复权 K 线 | `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get` | `param={symbol},day,...,qfq` | 日/周/月 K 线 |
+
+应用内部统一使用 `SecurityId`，不得向调用方暴露腾讯内部格式：A 股为 `sh600519`/`sz000001`/`bj430047`，港股为补零后的 `hk00700`，美股为 `usr_AAPL`，基金为六位代码。`SecurityCodeMapper` 按端点转换，不支持的市场返回 `UNSUPPORTED_MARKET`。
+
+个股事件保存在独立的 `security_event` 与 `security_event_symbol` 多对多表，外部 ID 使用字符串；不复用 24 小时清理的 `news_flash`。K 线缓存键包含代码、周期、复权方式与供应商，网络失败时才读取缓存。资金流源时间缺失时会标记 `SOURCE_TIME_UNKNOWN`。
+
+相关实现：`data/remote/datasource/TencentRemoteDataSource.kt`、`data/repository/SecurityEventRepositoryImpl.kt`、`worker/SecurityEventSyncWorker.kt`。
 - 拦截器：`data/remote/interceptor/SinaRefererInterceptor.kt`
 
 ---

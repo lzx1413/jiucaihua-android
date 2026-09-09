@@ -13,12 +13,19 @@ import com.jiucaihua.app.domain.model.KLinePeriod
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.NewsFlash
 import com.jiucaihua.app.domain.model.StockQuote
+import com.jiucaihua.app.domain.model.SecurityEvent
+import com.jiucaihua.app.domain.model.SecurityEventKind
+import com.jiucaihua.app.domain.model.SecurityId
+import com.jiucaihua.app.domain.model.StockFundFlowSnapshot
+import com.jiucaihua.app.domain.model.SecurityRelationsSnapshot
 import com.jiucaihua.app.domain.model.TransactionHistoryItem
 import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.FundRepository
 import com.jiucaihua.app.domain.repository.HoldingRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.repository.StockRepository
+import com.jiucaihua.app.domain.repository.SecurityEventRepository
+import com.jiucaihua.app.domain.repository.SecurityInsightRepository
 import com.jiucaihua.app.domain.usecase.GetHoldingTransactionHistoryUseCase
 import com.jiucaihua.app.domain.usecase.GetKLineDataUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
@@ -51,6 +58,12 @@ data class DetailUiState(
     val newsError: String? = null,
     val newsLoaded: Boolean = false,
     val transactionHistory: List<TransactionHistoryItem> = emptyList(),
+    val securityEvents: List<SecurityEvent> = emptyList(),
+    val isSecurityEventsLoading: Boolean = false,
+    val securityEventsError: String? = null,
+    val securityEventsLoaded: Boolean = false,
+    val stockFundFlow: StockFundFlowSnapshot? = null,
+    val securityRelations: SecurityRelationsSnapshot? = null,
 )
 
 @HiltViewModel
@@ -62,6 +75,8 @@ class DetailViewModel @Inject constructor(
     private val holdingRepository: HoldingRepository,
     private val exchangeRateRepository: ExchangeRateRepository,
     private val newsRepository: NewsRepository,
+    private val securityEventRepository: SecurityEventRepository,
+    private val securityInsightRepository: SecurityInsightRepository,
     private val getHoldingTransactionHistoryUseCase: GetHoldingTransactionHistoryUseCase,
     private val getKLineDataUseCase: GetKLineDataUseCase,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
@@ -91,6 +106,8 @@ class DetailViewModel @Inject constructor(
                 loadQuote()
                 loadKLine(_uiState.value.selectedPeriod)
                 loadNews()
+                loadSecurityEvents()
+                loadSecurityRelations()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = context.getString(R.string.data_load_failed, e.message),
@@ -268,6 +285,68 @@ class DetailViewModel @Inject constructor(
                     newsLoaded = true,
                 )
             }
+        }
+    }
+
+    private fun loadSecurityEvents() {
+        val securityId = SecurityId.parse(code) ?: return
+        if (_uiState.value.marketType == MarketType.FUND || _uiState.value.marketType == MarketType.GOLD) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSecurityEventsLoading = true, securityEventsError = null)
+            try {
+                val events = securityEventRepository.getEvents(
+                    code = securityId,
+                    kinds = setOf(
+                        SecurityEventKind.NEWS,
+                        SecurityEventKind.ANNOUNCEMENT,
+                        SecurityEventKind.PERIODIC_REPORT,
+                        SecurityEventKind.RESEARCH,
+                    ),
+                    limit = 30,
+                )
+                val fundFlow = runCatching { securityEventRepository.getStockFundFlow(securityId) }.getOrNull()
+                _uiState.value = _uiState.value.copy(
+                    securityEvents = events,
+                    stockFundFlow = fundFlow,
+                    isSecurityEventsLoading = false,
+                    securityEventsLoaded = true,
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isSecurityEventsLoading = false,
+                    securityEventsLoaded = true,
+                    securityEventsError = "个股资讯暂时不可用",
+                )
+            }
+        }
+    }
+
+    private fun loadSecurityRelations() {
+        val securityId = SecurityId.parse(code) ?: return
+        if (_uiState.value.marketType == MarketType.FUND || _uiState.value.marketType == MarketType.GOLD) return
+        viewModelScope.launch {
+            try {
+                val relations = securityInsightRepository.getRelations(securityId)
+                _uiState.value = _uiState.value.copy(securityRelations = relations)
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // A failed profile section must not affect quote or event loading.
+            }
+        }
+    }
+
+    fun markSecurityEventRead(event: SecurityEvent) {
+        if (event.isRead) return
+        viewModelScope.launch {
+            securityEventRepository.markEventRead(event)
+            _uiState.value = _uiState.value.copy(
+                securityEvents = _uiState.value.securityEvents.map {
+                    if (it.provider == event.provider && it.kind == event.kind && it.externalId == event.externalId) it.copy(isRead = true) else it
+                },
+            )
         }
     }
 

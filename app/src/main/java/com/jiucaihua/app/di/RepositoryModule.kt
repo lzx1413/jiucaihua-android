@@ -10,6 +10,8 @@ import com.jiucaihua.app.data.repository.MarketRepositoryImpl
 import com.jiucaihua.app.data.repository.NewsRepositoryImpl
 import com.jiucaihua.app.data.repository.PortfolioSnapshotRepositoryImpl
 import com.jiucaihua.app.data.repository.SecuritySearchRepositoryImpl
+import com.jiucaihua.app.data.repository.SecurityEventRepositoryImpl
+import com.jiucaihua.app.data.repository.SecurityInsightRepositoryImpl
 import com.jiucaihua.app.data.repository.StockRepositoryImpl
 import com.jiucaihua.app.data.repository.TransactionRepositoryImpl
 import com.jiucaihua.app.data.repository.TransactionLotMatchRepositoryImpl
@@ -24,6 +26,8 @@ import com.jiucaihua.app.domain.repository.MarketRepository
 import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
+import com.jiucaihua.app.domain.repository.SecurityEventRepository
+import com.jiucaihua.app.domain.repository.SecurityInsightRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import com.jiucaihua.app.domain.repository.TransactionRepository
 import com.jiucaihua.app.domain.repository.TransactionLotMatchRepository
@@ -91,6 +95,18 @@ abstract class RepositoryModule {
     abstract fun bindSecuritySearchRepository(
         impl: SecuritySearchRepositoryImpl
     ): SecuritySearchRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSecurityEventRepository(
+        impl: SecurityEventRepositoryImpl,
+    ): SecurityEventRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSecurityInsightRepository(
+        impl: SecurityInsightRepositoryImpl,
+    ): SecurityInsightRepository
 
     @Binds
     @Singleton
