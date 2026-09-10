@@ -16,7 +16,7 @@ class GetPortfolioPeriodReturnsUseCase @Inject constructor(
         return PortfolioPeriodReturnCalculator.calculate(
             snapshots = snapshots,
             currentAssetValue = currentAssetValue,
-            transactions = transactionRepository.getAllOnce(),
+            transactions = transactionRepository.getExternalCashFlows(),
         )
     }
 }

@@ -6,6 +6,8 @@ import com.jiucaihua.app.data.local.entity.PortfolioSnapshotEntity
 import com.jiucaihua.app.data.local.entity.HoldingSnapshotEntity
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
 import com.jiucaihua.app.domain.repository.PortfolioSnapshotRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -24,11 +26,16 @@ class PortfolioSnapshotRepositoryImpl @Inject constructor(
     override fun observeAll(): Flow<List<PortfolioSnapshot>> {
         return combine(dao.getAll(), holdingSnapshotDao.getAll()) { portfolioSnapshots, holdingSnapshots ->
             mergeHoldingSnapshots(portfolioSnapshots, holdingSnapshots)
-        }
+        }.flowOn(Dispatchers.Default)
     }
 
     override suspend fun getRange(from: Long, to: Long): List<PortfolioSnapshot> {
         return mergeHoldingSnapshots(dao.getRange(from, to), holdingSnapshotDao.getAllOnce())
+    }
+
+    override suspend fun getEarliest(): PortfolioSnapshot? {
+        val snapshot = dao.getEarliest() ?: return null
+        return mergeHoldingSnapshots(listOf(snapshot), holdingSnapshotDao.getByDate(snapshot.date)).firstOrNull()
     }
 
     override suspend fun getLatest(): PortfolioSnapshot? {

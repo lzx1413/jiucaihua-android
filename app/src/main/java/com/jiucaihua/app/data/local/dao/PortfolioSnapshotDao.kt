@@ -19,6 +19,9 @@ interface PortfolioSnapshotDao {
     @Query("SELECT * FROM portfolio_snapshots WHERE timestamp >= :from AND timestamp <= :to ORDER BY timestamp ASC")
     suspend fun getRange(from: Long, to: Long): List<PortfolioSnapshotEntity>
 
+    @Query("SELECT * FROM portfolio_snapshots ORDER BY timestamp ASC LIMIT 1")
+    suspend fun getEarliest(): PortfolioSnapshotEntity?
+
     @Query("SELECT * FROM portfolio_snapshots ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLatest(): PortfolioSnapshotEntity?
 

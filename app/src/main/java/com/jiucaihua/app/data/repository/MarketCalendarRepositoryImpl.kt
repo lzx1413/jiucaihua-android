@@ -11,6 +11,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 class MarketCalendarRepositoryImpl @Inject constructor(
@@ -48,6 +49,8 @@ class MarketCalendarRepositoryImpl @Inject constructor(
             cachedHolidayDate = today
             cachedIsHoliday = holiday
             holiday
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             // API failure: fall back to weekend check
             val dow = today.dayOfWeek

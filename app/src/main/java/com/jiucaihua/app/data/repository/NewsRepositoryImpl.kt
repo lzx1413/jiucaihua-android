@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -568,7 +569,7 @@ class NewsRepositoryImpl @Inject constructor(
             val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
             entities.filter { it.epochMillis >= cutoff }
                 .map { it.toDomain() }
-        }
+        }.flowOn(Dispatchers.Default)
     }
 
     override fun observeNewsBySource(source: NewsSource): Flow<List<NewsFlash>> {
@@ -576,13 +577,13 @@ class NewsRepositoryImpl @Inject constructor(
             val cutoff = System.currentTimeMillis() - TWENTY_FOUR_HOURS
             entities.filter { it.epochMillis >= cutoff }
                 .map { it.toDomain() }
-        }
+        }.flowOn(Dispatchers.Default)
     }
 
     override fun observeBookmarkedNews(): Flow<List<NewsFlash>> {
         return newsFlashDao.getBookmarked().map { entities ->
             entities.map { it.toDomain() }
-        }
+        }.flowOn(Dispatchers.Default)
     }
 
     override suspend fun toggleBookmark(newsId: Long, sourceType: NewsSource, isBookmarked: Boolean) {

@@ -11,6 +11,8 @@ interface PortfolioSnapshotRepository {
 
     suspend fun getLatest(): PortfolioSnapshot?
 
+    suspend fun getEarliest(): PortfolioSnapshot?
+
     suspend fun getAllOnce(): List<PortfolioSnapshot>
 
     suspend fun saveSnapshot(snapshot: PortfolioSnapshot): Long

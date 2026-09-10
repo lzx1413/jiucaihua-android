@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -31,6 +32,8 @@ class ExchangeRateRepositoryImpl @Inject constructor(
             } else {
                 cached ?: DEFAULT_HKD_RATE
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             cached ?: DEFAULT_HKD_RATE
         }
@@ -91,6 +94,8 @@ class ExchangeRateRepositoryImpl @Inject constructor(
             } else {
                 cached ?: DEFAULT_USD_RATE
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             cached ?: DEFAULT_USD_RATE
         }

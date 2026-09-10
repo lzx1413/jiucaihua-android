@@ -9,11 +9,14 @@ import com.jiucaihua.app.domain.model.KLineData
 import com.jiucaihua.app.domain.model.KLinePeriod
 import com.jiucaihua.app.domain.model.KLinePoint
 import com.jiucaihua.app.domain.repository.FundRepository
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import org.json.JSONObject
 import java.util.regex.Pattern
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,6 +25,7 @@ class FundRepositoryImpl @Inject constructor(
     private val fundApi: FundApi,
     private val fundCacheDao: FundCacheDao,
 ) : FundRepository {
+    private val quoteRequests = Semaphore(4)
 
     override suspend fun getFundQuotes(codes: List<String>): List<FundQuote> {
         if (codes.isEmpty()) return emptyList()
@@ -29,7 +33,7 @@ class FundRepositoryImpl @Inject constructor(
         val requestedCodes = codes.distinct()
         val remoteQuotes = coroutineScope {
             requestedCodes.map { code ->
-                async { fetchSingleFund(code) }
+                async { quoteRequests.withPermit { fetchSingleFund(code) } }
             }.awaitAll().filterNotNull()
         }
         val usableRemoteQuotes = remoteQuotes.filter { it.hasUsableValue() }
@@ -41,7 +45,7 @@ class FundRepositoryImpl @Inject constructor(
         // latest confirmed NAV instead of treating the price as unavailable.
         val confirmedNavQuotes = coroutineScope {
             requestedCodes.filterNot { it in availableCodes }
-                .map { code -> async { fetchLatestConfirmedNav(code) } }
+                .map { code -> async { quoteRequests.withPermit { fetchLatestConfirmedNav(code) } } }
                 .awaitAll()
                 .filterNotNull()
         }
@@ -98,6 +102,8 @@ class FundRepositoryImpl @Inject constructor(
             val response = fundApi.getFundEstimate(url)
             val dto = parseJsonpResponse(response) ?: return null
             dto.toDomain()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             null
         }
@@ -121,6 +127,8 @@ class FundRepositoryImpl @Inject constructor(
                     navDate = latestNav.date,
                 )
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             null
         }

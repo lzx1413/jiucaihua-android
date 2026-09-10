@@ -1,53 +1,43 @@
 package com.jiucaihua.app.presentation.portfolio.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jiucaihua.app.R
 import com.jiucaihua.app.domain.model.CategorySummary
-import com.jiucaihua.app.domain.model.Holding
 import com.jiucaihua.app.presentation.i18n.localizedLabel
 import com.jiucaihua.app.presentation.theme.FallGreen
 import com.jiucaihua.app.presentation.theme.RiseRed
 import java.util.Locale
 
 @Composable
-fun CategoryHoldingSection(
+fun CategoryHoldingHeader(
     categorySummary: CategorySummary,
-    onHoldingClick: (String) -> Unit,
-    onHoldingLongClick: (Holding) -> Unit,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier,
-    initiallyExpanded: Boolean = true,
 ) {
-    var isExpanded by remember { mutableStateOf(initiallyExpanded) }
+    val arrowRotation by animateFloatAsState(if (isExpanded) 180f else 0f, label = "categoryArrow")
 
     Card(
         modifier = modifier
@@ -61,12 +51,12 @@ fun CategoryHoldingSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isExpanded = !isExpanded }
+                    .clickable(onClick = onToggle)
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.weight(1.2f), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = categorySummary.marketType.localizedLabel(),
                         style = MaterialTheme.typography.titleMedium,
@@ -80,30 +70,32 @@ fun CategoryHoldingSection(
                 }
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.weight(3f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     StatColumn(
                         label = stringResource(R.string.market_value),
                         value = formatMoney(categorySummary.totalMarketValue),
                         color = MaterialTheme.colorScheme.onSurface,
-                        width = 90.dp,
+                        modifier = Modifier.weight(1f),
                     )
                     StatColumn(
                         label = stringResource(R.string.earnings),
                         value = formatSignedMoney(categorySummary.totalEarnings),
                         subValue = formatPercent(categorySummary.totalEarningsPercent),
                         color = getValueColor(categorySummary.totalEarnings),
-                        width = 100.dp,
+                        modifier = Modifier.weight(1f),
                     )
                     StatColumn(
                         label = stringResource(R.string.today),
                         value = formatSignedMoney(categorySummary.todayEarnings),
                         color = getValueColor(categorySummary.todayEarnings),
-                        width = 80.dp,
+                        modifier = Modifier.weight(1f),
                     )
                     Icon(
-                        imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        imageVector = Icons.Default.ExpandMore,
+                        modifier = Modifier.rotate(arrowRotation),
                         contentDescription = if (isExpanded) {
                             stringResource(R.string.action_collapse)
                         } else {
@@ -113,43 +105,16 @@ fun CategoryHoldingSection(
                     )
                 }
             }
-
-            AnimatedVisibility(
-                visible = isExpanded,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                Column(modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
-                    HoldingColumnHeader()
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    )
-                    categorySummary.holdings.forEachIndexed { index, holding ->
-                        HoldingListItem(
-                            holding = holding,
-                            onClick = { onHoldingClick(holding.code) },
-                            onLongClick = { onHoldingLongClick(holding) },
-                        )
-                        if (index != categorySummary.holdings.lastIndex) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 32.dp),
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun HoldingColumnHeader() {
+fun HoldingColumnHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 48.dp, vertical = 6.dp),
+            .padding(horizontal = 64.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HoldingColumnLabel(R.string.holding_column_security, Modifier.weight(2.5f))
@@ -181,11 +146,11 @@ private fun StatColumn(
     value: String,
     subValue: String? = null,
     color: androidx.compose.ui.graphics.Color,
-    width: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         horizontalAlignment = Alignment.End,
-        modifier = Modifier.width(width),
+        modifier = modifier,
     ) {
         Text(
             text = label,

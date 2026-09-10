@@ -33,11 +33,17 @@ import com.jiucaihua.app.domain.usecase.ManageHoldingUseCase
 import com.jiucaihua.app.domain.usecase.RecordSnapshotUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.jiucaihua.app.presentation.common.RefreshRunner
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -85,39 +91,48 @@ class PortfolioViewModel @Inject constructor(
     private val snapshotRepository: PortfolioSnapshotRepository,
     private val addTransactionUseCase: AddTransactionUseCase,
     @param:Named("appPrefs") private val prefs: SharedPreferences,
+    @param:Named("computationDispatcher") private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PortfolioUiState())
     val uiState: StateFlow<PortfolioUiState> = _uiState.asStateFlow()
 
     private var refreshJob: Job? = null
+    private var holdingsVisible = false
+    private var newsVisible = false
+    private var newsLoaded = false
+    private var quoteRevision = 0
+    private val quoteRefresh = RefreshRunner(viewModelScope) { refreshPortfolio() }
+    private var analyticsJob: Job? = null
+    private var historyJob: Job? = null
+    private var bookmarkedNewsJob: Job? = null
+    private var newsRefreshJob: Job? = null
+    private var storedSnapshots: List<PortfolioSnapshot> = emptyList()
 
     private var newsJob: Job? = null
     private var searchJob: Job? = null
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == KEY_REFERENCE_RESET_AT) refreshQuotes()
+        if (key == KEY_REFERENCE_RESET_AT) invalidateQuotes()
     }
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         loadCachedData()
         observeHoldings()
-        observeMarketNews()
-        observeBookmarkedNews()
         observeSnapshots()
-        refreshNews()
-        startAutoRefresh()
     }
 
     private fun loadCachedData() {
         viewModelScope.launch {
             try {
-                val summary = getPortfolioUseCase.getPortfolioFromCache()
-                _uiState.value = _uiState.value.copy(
-                    summary = applySorting(summary, _uiState.value.sortOrder),
-                    isLoading = false,
-                )
-                refreshPeriodReturns()
+                val summary = withContext(computationDispatcher) { getPortfolioUseCase.getPortfolioFromCache() }
+                // A slow cache fallback must not overwrite quotes that have already arrived.
+                if (_uiState.value.isLoading) {
+                    _uiState.update { it.copy(summary = applySorting(summary, it.sortOrder), isLoading = false) }
+                    refreshAnalytics()
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
@@ -126,8 +141,10 @@ class PortfolioViewModel @Inject constructor(
 
     private fun observeHoldings() {
         viewModelScope.launch {
-            getPortfolioUseCase.observeHoldings().collect {
-                refreshQuotes()
+            var observed = false
+            getPortfolioUseCase.observeHoldings().distinctUntilChanged().collect {
+                if (observed) invalidateQuotes() else refreshQuotes()
+                observed = true
             }
         }
     }
@@ -154,16 +171,15 @@ class PortfolioViewModel @Inject constructor(
     private fun observeSnapshots() {
         viewModelScope.launch {
             snapshotRepository.observeAll().collect { snapshotList ->
-                _uiState.value = _uiState.value.copy(
-                    snapshots = snapshotList.withCurrentQuoteSnapshot(_uiState.value.summary),
-                )
-                refreshPeriodReturns()
+                storedSnapshots = snapshotList
+                refreshAnalytics()
             }
         }
     }
 
     private fun observeBookmarkedNews() {
-        viewModelScope.launch {
+        bookmarkedNewsJob?.cancel()
+        bookmarkedNewsJob = viewModelScope.launch {
             newsRepository.observeBookmarkedNews().collect { bookmarkedList ->
                 _uiState.value = _uiState.value.copy(bookmarkedNews = bookmarkedList)
             }
@@ -198,17 +214,24 @@ class PortfolioViewModel @Inject constructor(
     }
 
     fun closeReturnHistory() {
+        historyJob?.cancel()
         _uiState.value = _uiState.value.copy(returnHistory = null)
     }
 
     fun refreshNews() {
-        viewModelScope.launch {
+        if (!newsVisible || newsRefreshJob?.isActive == true) return
+        newsRefreshJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isNewsRefreshing = true)
             val topic = _uiState.value.selectedNewsSource?.let { source ->
                 NewsTopic.entries.find { source in it.sources }
             }
             try {
                 newsRepository.refreshNews(topic)
+                newsLoaded = true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _uiState.update { it.copy(newsError = error.message) }
             } finally {
                 _uiState.value = _uiState.value.copy(isNewsRefreshing = false)
             }
@@ -217,15 +240,51 @@ class PortfolioViewModel @Inject constructor(
 
     fun setSelectedNewsSource(source: NewsSource?) {
         _uiState.value = _uiState.value.copy(selectedNewsSource = source)
-        observeMarketNews()
+        if (newsVisible) observeMarketNews()
+    }
+
+    fun setNewsVisible(visible: Boolean) {
+        if (newsVisible == visible) return
+        newsVisible = visible
+        if (visible) {
+            observeMarketNews()
+            observeBookmarkedNews()
+            if (!newsLoaded) refreshNews()
+        } else {
+            newsJob?.cancel()
+            bookmarkedNewsJob?.cancel()
+            newsRefreshJob?.cancel()
+            searchJob?.cancel()
+            _uiState.update { it.copy(isNewsSearching = false, isNewsRefreshing = false) }
+        }
+    }
+
+    fun setHoldingsVisible(visible: Boolean) {
+        if (holdingsVisible == visible) return
+        holdingsVisible = visible
+        if (visible) {
+            refreshAnalytics()
+            startAutoRefresh()
+        } else {
+            refreshJob?.cancel()
+            quoteRevision++
+            quoteRefresh.cancel()
+            analyticsJob?.cancel()
+            historyJob?.cancel()
+            _uiState.update { it.copy(isRefreshing = false) }
+        }
     }
 
     private fun startAutoRefresh() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
+            // Refresh once on entry even after market close, then wait between completed rounds.
+            quoteRefresh.request().join()
             while (isActive) {
                 val sessions = try {
                     isMarketOpenUseCase.getMarketSessions()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (_: Exception) {
                     emptyMap()
                 }
@@ -233,8 +292,8 @@ class PortfolioViewModel @Inject constructor(
 
                 val anyTrading = sessions.values.any { it == MarketSession.TRADING }
                 if (anyTrading) {
-                    refreshQuotes()
-                    delay(prefs.getInt(KEY_REFRESH_INTERVAL, 10) * 1000L)
+                    delay(prefs.getInt(KEY_REFRESH_INTERVAL, 10).coerceAtLeast(1) * 1000L)
+                    quoteRefresh.request().join()
                 } else {
                     delay(SESSION_CHECK_INTERVAL_MS)
                 }
@@ -243,30 +302,40 @@ class PortfolioViewModel @Inject constructor(
     }
 
     fun refreshQuotes() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true)
-            try {
-                val summary = getPortfolioUseCase.getPortfolioWithQuotes()
-                _uiState.value = _uiState.value.copy(
-                    summary = applySorting(summary, _uiState.value.sortOrder),
-                    snapshots = _uiState.value.snapshots.withCurrentQuoteSnapshot(summary),
-                    isLoading = false,
-                    isRefreshing = false,
-                    error = null,
-                )
-                // This only writes after the scheduled market-close time. It lets a foreground
-                // refresh fill the daily closing snapshot if WorkManager has been deferred.
-                runCatching { recordSnapshotUseCase.recordSnapshot() }
-                refreshPeriodReturns()
-                _uiState.value.returnHistory?.let { history ->
-                    loadReturnHistory(history.type, history.selectedOption)
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isRefreshing = false,
-                    error = context.getString(R.string.quote_load_failed, e.message),
-                )
+        if (holdingsVisible) quoteRefresh.request()
+    }
+
+    private fun invalidateQuotes() {
+        quoteRevision++
+        if (holdingsVisible) quoteRefresh.request(invalidateRunning = true)
+    }
+
+    private suspend fun refreshPortfolio() {
+        val revision = quoteRevision
+        _uiState.update { it.copy(isRefreshing = true) }
+        try {
+            val summary = withContext(computationDispatcher) { getPortfolioUseCase.getPortfolioWithQuotes() }
+            if (revision != quoteRevision) return
+            _uiState.update {
+                it.copy(summary = applySorting(summary, it.sortOrder), isLoading = false, error = null)
             }
+            refreshAnalytics()
+            // Reuse these quotes when recording a closing snapshot; never fetch the same portfolio twice.
+            try {
+                withContext(computationDispatcher) { recordSnapshotUseCase.recordSnapshot(summary) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // The next foreground/background round can retry the closing snapshot.
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            if (revision == quoteRevision) {
+                _uiState.update { it.copy(isLoading = false, error = context.getString(R.string.quote_load_failed, error.message)) }
+            }
+        } finally {
+            if (revision == quoteRevision) _uiState.update { it.copy(isRefreshing = false) }
         }
     }
 
@@ -308,6 +377,8 @@ class PortfolioViewModel @Inject constructor(
                     searchedNews = results,
                     isNewsSearching = false,
                 )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isNewsSearching = false)
             }
@@ -344,7 +415,9 @@ class PortfolioViewModel @Inject constructor(
                         updatedAt = now,
                     ),
                 )
-                refreshQuotes()
+                invalidateQuotes()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -353,29 +426,47 @@ class PortfolioViewModel @Inject constructor(
 
     fun setLossCompensation(value: Double) {
         prefs.edit().putFloat(KEY_LOSS_COMPENSATION, value.toFloat()).apply()
-        refreshQuotes()
+        invalidateQuotes()
     }
 
-    private fun refreshPeriodReturns() {
-        viewModelScope.launch {
-            val state = _uiState.value
-            val currentAssetValue = state.summary.totalMarketValue + state.summary.cash
-            val periodReturns = getPortfolioPeriodReturnsUseCase(
-                snapshots = state.snapshots,
-                currentAssetValue = currentAssetValue,
-            )
-            _uiState.update { it.copy(periodReturns = periodReturns) }
+    private fun refreshAnalytics() {
+        analyticsJob?.cancel()
+        if (!holdingsVisible) return
+        analyticsJob = viewModelScope.launch {
+            val summary = _uiState.value.summary
+            val stored = storedSnapshots
+            try {
+                val (snapshots, periodReturns) = withContext(computationDispatcher) {
+                    val snapshots = stored.withCurrentQuoteSnapshot(summary)
+                    snapshots to getPortfolioPeriodReturnsUseCase(
+                        snapshots = snapshots,
+                        currentAssetValue = summary.totalMarketValue + summary.cash,
+                    )
+                }
+                _uiState.update { it.copy(snapshots = snapshots, periodReturns = periodReturns) }
+                _uiState.value.returnHistory?.let { loadReturnHistory(it.type, it.selectedOption) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Keep the last complete analytics result if local data is temporarily unavailable.
+            }
         }
     }
 
     private fun loadReturnHistory(type: ReturnHistoryType, selectedOption: String? = null) {
-        viewModelScope.launch {
-            val result = getPortfolioReturnHistoryUseCase(
-                snapshots = _uiState.value.snapshots,
-                type = type,
-                selectedOption = selectedOption,
-            )
-            _uiState.value = _uiState.value.copy(returnHistory = result)
+        historyJob?.cancel()
+        historyJob = viewModelScope.launch {
+            val snapshots = _uiState.value.snapshots
+            try {
+                val result = withContext(computationDispatcher) {
+                    getPortfolioReturnHistoryUseCase(snapshots, type, selectedOption)
+                }
+                _uiState.update { it.copy(returnHistory = result) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _uiState.update { it.copy(error = error.message) }
+            }
         }
     }
 
@@ -413,7 +504,7 @@ class PortfolioViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(now))
         val storedToday = firstOrNull { it.date == today }
-        val transactionSummary = getTransactionSummaryUseCase()
+        val netExternalCashFlow = getTransactionSummaryUseCase.getNetExternalCashFlow()
         val currentSnapshot = PortfolioSnapshot(
             id = storedToday?.id ?: 0,
             date = today,
@@ -427,7 +518,7 @@ class PortfolioViewModel @Inject constructor(
             lossCompensation = summary.lossCompensation,
             categoryValues = summary.categorySummaries.associate { it.marketType.name to it.totalMarketValue },
             benchmarkPercent = storedToday?.benchmarkPercent ?: 0.0,
-            netExternalCashFlow = transactionSummary.cashInCny - transactionSummary.cashOutCny,
+            netExternalCashFlow = netExternalCashFlow,
         )
         return filterNot { it.date == today }.plus(currentSnapshot).sortedBy { it.timestamp }
     }

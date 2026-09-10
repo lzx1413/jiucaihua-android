@@ -23,6 +23,9 @@ class TransactionRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getExternalCashFlows(): List<InvestmentTransaction> =
+        transactionDao.getExternalCashFlows().map { it.toDomain() }
+
     override suspend fun getAllOnce(): List<InvestmentTransaction> {
         return transactionDao.getAllOnce().map { it.toDomain() }
     }
@@ -47,6 +50,9 @@ class TransactionRepositoryImpl @Inject constructor(
             offset = offset,
         ).map { it.toDomain() }
     }
+
+    override suspend fun getNetExternalCashFlow(to: Long?, limit: Int): Double =
+        transactionDao.getNetExternalCashFlow(to, limit.coerceAtLeast(1))
 
     override suspend fun count(query: TransactionQuery): Int {
         return transactionDao.count(

@@ -12,6 +12,13 @@ import com.jiucaihua.app.domain.repository.StockRepository
 import com.jiucaihua.app.domain.repository.WatchlistRepository
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.jiucaihua.app.presentation.common.RefreshRunner
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 data class WatchlistUiState(
     val items: List<WatchlistItem> = emptyList(),
@@ -42,6 +50,7 @@ class WatchlistViewModel @Inject constructor(
     private val fundRepository: FundRepository,
     private val securitySearchRepository: SecuritySearchRepository,
     private val isMarketOpenUseCase: IsMarketOpenUseCase,
+    @param:Named("computationDispatcher") private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WatchlistUiState())
@@ -49,11 +58,12 @@ class WatchlistViewModel @Inject constructor(
 
     private var searchJob: Job? = null
     private var refreshJob: Job? = null
+    private var visible = false
+    private val quoteRefresh = RefreshRunner(viewModelScope) { refreshVisibleQuotes() }
 
     init {
         observeWatchlist()
         observeGroups()
-        startAutoRefresh()
     }
 
     private fun observeWatchlist() {
@@ -66,7 +76,7 @@ class WatchlistViewModel @Inject constructor(
                         isLoading = false,
                     )
                 }
-                refreshQuotes()
+                if (visible) quoteRefresh.request(invalidateRunning = true)
             }
         }
     }
@@ -79,19 +89,33 @@ class WatchlistViewModel @Inject constructor(
         }
     }
 
+    fun setVisible(isVisible: Boolean) {
+        if (visible == isVisible) return
+        visible = isVisible
+        if (visible) {
+            startAutoRefresh()
+        } else {
+            refreshJob?.cancel()
+            quoteRefresh.cancel()
+        }
+    }
+
     private fun startAutoRefresh() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
+            quoteRefresh.request().join()
             while (isActive) {
                 val sessions = try {
                     isMarketOpenUseCase.getMarketSessions()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (_: Exception) {
                     emptyMap()
                 }
                 val anyTrading = sessions.values.any { it == MarketSession.TRADING }
                 if (anyTrading) {
-                    refreshQuotes()
                     delay(REFRESH_INTERVAL_MS)
+                    quoteRefresh.request().join()
                 } else {
                     delay(SESSION_CHECK_INTERVAL_MS)
                 }
@@ -100,56 +124,57 @@ class WatchlistViewModel @Inject constructor(
     }
 
     fun refreshQuotes() {
-        viewModelScope.launch {
-            val currentItems = _uiState.value.items
-            if (currentItems.isEmpty()) return@launch
-
-            try {
-                val updatedItems = buildList {
-                    currentItems.forEach { item -> add(refreshItem(item)) }
-                }
-                val updatesById = updatedItems.associateBy { it.id }
-                _uiState.update { state ->
-                    val updatedAllItems = state.allItems.map { updatesById[it.id] ?: it }
-                    state.copy(
-                        allItems = updatedAllItems,
-                        items = filterWatchlistItems(updatedAllItems, state.selectedGroup),
-                        error = null,
-                    )
-                }
-            } catch (_: Exception) {
-                // Keep existing data on refresh failure
-            }
-        }
+        if (visible) quoteRefresh.request()
     }
 
-    private suspend fun refreshItem(item: WatchlistItem): WatchlistItem {
-        return try {
-            when (item.marketType) {
-                MarketType.FUND -> {
-                    val quote = fundRepository.getFundQuotes(listOf(item.code)).firstOrNull() ?: return item
-                    val price = quote.estimatedValue.takeIf { it > 0 } ?: quote.netAssetValue
-                    if (price > 0) {
-                        item.copy(currentPrice = price, changePercent = quote.dailyChangePercent)
-                    } else item
+    private suspend fun refreshVisibleQuotes() {
+        val currentItems = _uiState.value.items
+        if (currentItems.isEmpty()) return
+        val updatedItems = withContext(computationDispatcher) {
+            currentItems.groupBy { it.marketType }.map { (market, items) ->
+                async {
+                    try {
+                        val codes = items.map { it.code }.distinct()
+                        if (market == MarketType.FUND) {
+                            val quotes = fundRepository.getFundQuotes(codes).associateBy { it.code }
+                            items.map { item ->
+                                val quote = quotes[item.code] ?: return@map item
+                                val price = quote.estimatedValue.takeIf { it > 0 } ?: quote.netAssetValue
+                                if (price > 0) {
+                                    item.copy(currentPrice = price, changePercent = quote.dailyChangePercent)
+                                } else item
+                            }
+                        } else {
+                            val quotes = when (market) {
+                                MarketType.A_STOCK -> stockRepository.getAStockQuotes(codes)
+                                MarketType.HK_STOCK -> stockRepository.getHKStockQuotes(codes)
+                                MarketType.US_STOCK -> stockRepository.getUSStockQuotes(codes)
+                                MarketType.GOLD -> stockRepository.getGoldQuotes(codes)
+                                MarketType.FUND -> emptyList()
+                            }.associateBy { it.code }
+                            items.map { item ->
+                                quotes[item.code]?.let { quote ->
+                                    item.copy(currentPrice = quote.price, changePercent = quote.changePercent, changeAmount = quote.changeAmount)
+                                } ?: item
+                            }
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        items
+                    }
                 }
-                else -> {
-                    val quote = when (item.marketType) {
-                        MarketType.A_STOCK -> stockRepository.getAStockQuotes(listOf(item.code))
-                        MarketType.HK_STOCK -> stockRepository.getHKStockQuotes(listOf(item.code))
-                        MarketType.US_STOCK -> stockRepository.getUSStockQuotes(listOf(item.code))
-                        MarketType.GOLD -> stockRepository.getGoldQuotes(listOf(item.code))
-                        MarketType.FUND -> emptyList()
-                    }.firstOrNull() ?: return item
-                    item.copy(
-                        currentPrice = quote.price,
-                        changePercent = quote.changePercent,
-                        changeAmount = quote.changeAmount,
-                    )
-                }
+            }.awaitAll().flatten()
+        }
+        val updates = updatedItems.associateBy { it.id }
+        _uiState.update { state ->
+            // Group edits/removals made while fetching must survive the quote response.
+            val allItems = state.allItems.map { item ->
+                updates[item.id]?.let { quote ->
+                    item.copy(currentPrice = quote.currentPrice, changePercent = quote.changePercent, changeAmount = quote.changeAmount)
+                } ?: item
             }
-        } catch (_: Exception) {
-            item
+            state.copy(allItems = allItems, items = filterWatchlistItems(allItems, state.selectedGroup), error = null)
         }
     }
 
@@ -180,6 +205,8 @@ class WatchlistViewModel @Inject constructor(
         try {
             val results = securitySearchRepository.search(query)
             _uiState.update { it.copy(searchResults = results, isSearching = false) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
         }
@@ -202,7 +229,7 @@ class WatchlistViewModel @Inject constructor(
                 items = filterWatchlistItems(state.allItems, group),
             )
         }
-        refreshQuotes()
+        if (visible) quoteRefresh.request(invalidateRunning = true)
     }
 
     fun updateGroup(item: WatchlistItem, group: String) {

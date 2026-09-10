@@ -4,7 +4,7 @@ import android.content.SharedPreferences
 import com.jiucaihua.app.domain.model.ChartRange
 import com.jiucaihua.app.domain.model.DailySnapshotSchedule
 import com.jiucaihua.app.domain.model.PortfolioSnapshot
-import com.jiucaihua.app.domain.model.TransactionQuery
+import com.jiucaihua.app.domain.model.PortfolioSummary
 import com.jiucaihua.app.domain.repository.MarketCalendarRepository
 import com.jiucaihua.app.domain.repository.MarketRepository
 import com.jiucaihua.app.domain.repository.HoldingSnapshotRepository
@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -30,12 +31,12 @@ class RecordSnapshotUseCase @Inject constructor(
      * Stores one end-of-day portfolio value after A-share and Hong Kong markets close.
      * Intraday refreshes deliberately do not update the return-series baseline.
      */
-    suspend fun recordSnapshot(): Long? {
+    suspend fun recordSnapshot(currentSummary: PortfolioSummary? = null): Long? {
         val now = ZonedDateTime.now(SHANGHAI_ZONE)
         val sessions = marketCalendarRepository.getMarketSessions()
         if (!DailySnapshotSchedule.shouldRecord(now, sessions)) return null
 
-        val summary = getPortfolioUseCase.getPortfolioWithQuotes()
+        val summary = currentSummary ?: getPortfolioUseCase.getPortfolioWithQuotes()
         if (summary.holdings.isEmpty()) return null
 
         val timestamp = now.toInstant().toEpochMilli()
@@ -44,10 +45,7 @@ class RecordSnapshotUseCase @Inject constructor(
 
         // Compute benchmark percent (CSI 300 cumulative return from base)
         val benchmarkPercent = computeBenchmarkPercent()
-        val transactionSummary = getTransactionSummaryUseCase(
-            TransactionQuery(to = timestamp, limit = Int.MAX_VALUE),
-        )
-        val netExternalCashFlow = transactionSummary.cashInCny - transactionSummary.cashOutCny
+        val netExternalCashFlow = getTransactionSummaryUseCase.getNetExternalCashFlow(to = timestamp)
 
         holdingSnapshotRepository.saveSnapshots(today, timestamp, summary.holdings)
 
@@ -112,6 +110,8 @@ class RecordSnapshotUseCase @Inject constructor(
             }
 
             return (currentPrice - basePrice.toDouble()) / basePrice.toDouble() * 100
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             return 0.0
         }

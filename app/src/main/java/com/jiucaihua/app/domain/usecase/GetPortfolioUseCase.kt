@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -55,10 +56,10 @@ class GetPortfolioUseCase @Inject constructor(
             val fundDeferred = async { fetchFundQuotes(fundCodes) }
             val goldDeferred = async { fetchGoldQuotes(goldCodes) }
             val hkdRateDeferred = async {
-                if (hkStockCodes.isNotEmpty()) try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { DEFAULT_HKD_RATE } else 1.0
+                if (hkStockCodes.isNotEmpty()) try { exchangeRateRepository.getHkdToCnyRate() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { DEFAULT_HKD_RATE } else 1.0
             }
             val usdRateDeferred = async {
-                if (usStockCodes.isNotEmpty()) try { exchangeRateRepository.getUsdToCnyRate() } catch (_: Exception) { DEFAULT_USD_RATE } else 1.0
+                if (usStockCodes.isNotEmpty()) try { exchangeRateRepository.getUsdToCnyRate() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { DEFAULT_USD_RATE } else 1.0
             }
             SeptResult(aDeferred.await(), hkDeferred.await(), usDeferred.await(), fundDeferred.await(), goldDeferred.await(), hkdRateDeferred.await(), usdRateDeferred.await())
         }
@@ -134,11 +135,11 @@ class GetPortfolioUseCase @Inject constructor(
         val fundQuoteMap = fundRepository.getCachedFundQuotes(fundCodes).associateBy { it.code }
 
         val hkdRate = if (hkStockCodes.isNotEmpty()) {
-            try { exchangeRateRepository.getHkdToCnyRate() } catch (_: Exception) { DEFAULT_HKD_RATE }
+            try { exchangeRateRepository.getHkdToCnyRate() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { DEFAULT_HKD_RATE }
         } else 1.0
 
         val usdRate = if (usStockCodes.isNotEmpty()) {
-            try { exchangeRateRepository.getUsdToCnyRate() } catch (_: Exception) { DEFAULT_USD_RATE }
+            try { exchangeRateRepository.getUsdToCnyRate() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { DEFAULT_USD_RATE }
         } else 1.0
 
         val updatedHoldings = holdings.map { holding ->
@@ -195,6 +196,8 @@ class GetPortfolioUseCase @Inject constructor(
         if (codes.isEmpty()) return emptyList()
         return try {
             stockRepository.getAStockQuotes(codes)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             stockRepository.getCachedQuotes(codes)
         }
@@ -204,6 +207,8 @@ class GetPortfolioUseCase @Inject constructor(
         if (codes.isEmpty()) return emptyList()
         return try {
             stockRepository.getHKStockQuotes(codes)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             stockRepository.getCachedQuotes(codes)
         }
@@ -216,6 +221,8 @@ class GetPortfolioUseCase @Inject constructor(
             val remoteCodes = remoteQuotes.mapTo(mutableSetOf()) { it.code }
             val cachedQuotes = fundRepository.getCachedFundQuotes(codes.filterNot { it in remoteCodes })
             remoteQuotes + cachedQuotes.filter { it.effectiveValue() != null }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             fundRepository.getCachedFundQuotes(codes)
         }
@@ -225,6 +232,8 @@ class GetPortfolioUseCase @Inject constructor(
         if (codes.isEmpty()) return emptyList()
         return try {
             stockRepository.getGoldQuotes(codes)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             stockRepository.getCachedQuotes(codes)
         }
@@ -234,6 +243,8 @@ class GetPortfolioUseCase @Inject constructor(
         if (codes.isEmpty()) return emptyList()
         return try {
             stockRepository.getUSStockQuotes(codes)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             stockRepository.getCachedQuotes(codes)
         }
@@ -256,13 +267,13 @@ class GetPortfolioUseCase @Inject constructor(
         val totalInvestment = totalCost + cash
         val totalEarningsPercent = if (totalInvestment > 0) totalEarnings / totalInvestment * 100 else 0.0
         val currentWealth = totalMarketValue + cash
-        val referenceSnapshot = snapshotRepository.getAllOnce().minByOrNull { it.timestamp }
+        val referenceSnapshot = snapshotRepository.getEarliest()
         val cumulativeEarnings = if (referenceSnapshot != null) {
-            val transactionSummary = getTransactionSummaryUseCase()
+            val netExternalCashFlow = getTransactionSummaryUseCase.getNetExternalCashFlow()
             PortfolioCumulativeEarningsCalculator.calculate(
                 currentWealth = currentWealth,
                 referenceSnapshot = referenceSnapshot,
-                currentNetExternalCashFlow = transactionSummary.cashInCny - transactionSummary.cashOutCny,
+                currentNetExternalCashFlow = netExternalCashFlow,
                 lossCompensation = lossCompensation,
             )
         } else {

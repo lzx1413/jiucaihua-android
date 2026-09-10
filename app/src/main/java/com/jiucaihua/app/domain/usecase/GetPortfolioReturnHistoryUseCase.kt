@@ -26,7 +26,7 @@ class GetPortfolioReturnHistoryUseCase @Inject constructor(
             selectedOption = selected,
             items = PortfolioReturnHistoryCalculator.calculate(
                 snapshots = snapshots,
-                transactions = transactionRepository.getAllOnce(),
+                transactions = transactionRepository.getExternalCashFlows(),
                 type = type,
                 selectedOption = selected,
             ),

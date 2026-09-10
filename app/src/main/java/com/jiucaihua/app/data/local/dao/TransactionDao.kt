@@ -18,6 +18,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY tradeDate ASC, id ASC")
     suspend fun getAllOnce(): List<TransactionEntity>
 
+    @Query("SELECT * FROM transactions WHERE type IN ('CASH_IN', 'CASH_OUT') ORDER BY tradeDate ASC, id ASC")
+    suspend fun getExternalCashFlows(): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE code = :code AND marketType = :marketType ORDER BY tradeDate ASC, id ASC")
     suspend fun getBySecurity(code: String, marketType: String): List<TransactionEntity>
 
@@ -60,6 +63,20 @@ interface TransactionDao {
         from: Long?,
         to: Long?,
     ): Int
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(CASE WHEN type = 'CASH_IN' THEN amount * exchangeRate ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN type = 'CASH_OUT' THEN amount * exchangeRate ELSE 0 END), 0)
+        FROM (
+            SELECT type, amount, exchangeRate FROM transactions
+            WHERE (:to IS NULL OR tradeDate <= :to)
+            ORDER BY tradeDate DESC, id DESC
+            LIMIT :limit
+        )
+        """
+    )
+    suspend fun getNetExternalCashFlow(to: Long?, limit: Int): Double
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: TransactionEntity): Long

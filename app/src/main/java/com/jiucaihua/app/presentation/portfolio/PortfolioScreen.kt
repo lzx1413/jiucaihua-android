@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -78,6 +80,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import com.jiucaihua.app.R
@@ -101,7 +104,8 @@ import com.jiucaihua.app.presentation.common.components.EmptyState
 import com.jiucaihua.app.presentation.common.components.LoadingIndicator
 import com.jiucaihua.app.presentation.common.components.MarketStatusBadge
 import com.jiucaihua.app.presentation.i18n.localizedLabel
-import com.jiucaihua.app.presentation.portfolio.components.CategoryHoldingSection
+import com.jiucaihua.app.presentation.portfolio.components.CategoryHoldingHeader
+import com.jiucaihua.app.presentation.portfolio.components.HoldingColumnHeader
 import com.jiucaihua.app.presentation.portfolio.components.EarningsChartView
 import com.jiucaihua.app.presentation.portfolio.components.HoldingListItem
 import com.jiucaihua.app.presentation.portfolio.components.PortfolioSummaryCard
@@ -139,6 +143,18 @@ fun PortfolioScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var selectedTabIndex by rememberSaveable { mutableStateOf(HoldingsTabIndex) }
+    val holdingsListState = rememberLazyListState()
+    var collapsedCategories by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    LifecycleResumeEffect(selectedTabIndex) {
+        viewModel.setHoldingsVisible(selectedTabIndex == HoldingsTabIndex)
+        viewModel.setNewsVisible(selectedTabIndex == NewsTabIndex)
+        watchlistViewModel.setVisible(selectedTabIndex == WatchlistTabIndex)
+        onPauseOrDispose {
+            viewModel.setHoldingsVisible(false)
+            viewModel.setNewsVisible(false)
+            watchlistViewModel.setVisible(false)
+        }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val tabItems = listOf(
         stringResource(R.string.tab_holdings) to Icons.Outlined.AccountBalanceWallet,
@@ -280,6 +296,13 @@ fun PortfolioScreen(
             when (selectedTabIndex) {
                 HoldingsTabIndex -> HoldingsTabContent(
                     uiState = uiState,
+                    listState = holdingsListState,
+                    collapsedCategories = collapsedCategories,
+                    onCategoryToggle = { category ->
+                        collapsedCategories = if (category in collapsedCategories) {
+                            collapsedCategories - category
+                        } else collapsedCategories + category
+                    },
                     onSortChanged = viewModel::setSortOrder,
                     onHoldingClick = onHoldingClick,
                     onHoldingLongClick = { holdingToDelete = it },
@@ -424,6 +447,9 @@ fun PortfolioScreen(
 @Composable
 private fun HoldingsTabContent(
     uiState: PortfolioUiState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    collapsedCategories: List<String>,
+    onCategoryToggle: (String) -> Unit,
     onSortChanged: (SortOrder) -> Unit,
     onHoldingClick: (String) -> Unit,
     onHoldingLongClick: (Holding) -> Unit,
@@ -452,6 +478,9 @@ private fun HoldingsTabContent(
 
         else -> {
             HoldingsList(
+                listState = listState,
+                collapsedCategories = collapsedCategories,
+                onCategoryToggle = onCategoryToggle,
                 summary = uiState.summary,
                 periodReturns = uiState.periodReturns,
                 sortOrder = uiState.sortOrder,
@@ -470,7 +499,10 @@ private fun HoldingsTabContent(
 }
 
 @Composable
-private fun HoldingsList(
+internal fun HoldingsList(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    collapsedCategories: List<String>,
+    onCategoryToggle: (String) -> Unit,
     summary: PortfolioSummary,
     periodReturns: List<PortfolioPeriodReturn?>,
     sortOrder: SortOrder,
@@ -484,8 +516,8 @@ private fun HoldingsList(
     onChartRangeChanged: (ChartRange) -> Unit,
     onPeriodReturnClick: (ReturnPeriod) -> Unit,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        item(key = "summary", contentType = "summary") {
             PortfolioSummaryCard(
                 summary = summary,
                 onSetCash = onSetCash,
@@ -493,7 +525,7 @@ private fun HoldingsList(
             )
         }
         if (snapshots.isNotEmpty()) {
-            item {
+            item(key = "earnings", contentType = "earnings") {
                 EarningsChartSection(
                     snapshots = snapshots,
                     periodReturns = periodReturns,
@@ -503,21 +535,46 @@ private fun HoldingsList(
                 )
             }
         }
-        item {
+        item(key = "sort", contentType = "sort") {
             SortSelector(
                 currentSort = sortOrder,
                 onSortChanged = onSortChanged,
             )
         }
-        items(
-            items = summary.categorySummaries,
-            key = { it.marketType.name }
-        ) { categorySummary ->
-            CategoryHoldingSection(
-                categorySummary = categorySummary,
-                onHoldingClick = onHoldingClick,
-                onHoldingLongClick = onHoldingLongClick,
-            )
+        summary.categorySummaries.forEach { category ->
+            val categoryKey = category.marketType.name
+            val expanded = categoryKey !in collapsedCategories
+            item(key = "category_$categoryKey", contentType = "category") {
+                CategoryHoldingHeader(
+                    categorySummary = category,
+                    isExpanded = expanded,
+                    onToggle = { onCategoryToggle(categoryKey) },
+                )
+            }
+            if (expanded) {
+                item(key = "columns_$categoryKey", contentType = "columns") {
+                    HoldingColumnHeader()
+                }
+                itemsIndexed(
+                    items = category.holdings,
+                    key = { _, holding -> "holding_${holding.id}" },
+                    contentType = { _, _ -> "holding" },
+                ) { index, holding ->
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        HoldingListItem(
+                            holding = holding,
+                            onClick = { onHoldingClick(holding.code) },
+                            onLongClick = { onHoldingLongClick(holding) },
+                        )
+                        if (index != category.holdings.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 32.dp),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

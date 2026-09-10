@@ -10,6 +10,9 @@ import javax.inject.Inject
 class GetTransactionSummaryUseCase @Inject constructor(
     private val transactionRepository: TransactionRepository,
 ) {
+    suspend fun getNetExternalCashFlow(to: Long? = null): Double =
+        transactionRepository.getNetExternalCashFlow(to, MAX_ANALYSIS_ROWS)
+
     suspend operator fun invoke(query: TransactionQuery = TransactionQuery(limit = Int.MAX_VALUE)): TransactionSummary {
         val transactions = transactionRepository.query(query.copy(limit = MAX_ANALYSIS_ROWS, offset = 0))
             .sortedWith(compareBy<InvestmentTransaction> { it.tradeDate }.thenBy { it.id })
