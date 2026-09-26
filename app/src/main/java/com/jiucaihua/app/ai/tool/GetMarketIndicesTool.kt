@@ -24,6 +24,9 @@ class GetMarketIndicesTool @Inject constructor(
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
         val market = (arguments["market"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+        if (market != null && market.uppercase() !in setOf("A_STOCK", "HK_STOCK", "US_STOCK", "GOLD")) {
+            invalidArgs("market must be A_STOCK, HK_STOCK, US_STOCK, or GOLD")
+        }
         return ToolResult(buildMarketIndicesSnapshotUseCase(market))
     }
 }

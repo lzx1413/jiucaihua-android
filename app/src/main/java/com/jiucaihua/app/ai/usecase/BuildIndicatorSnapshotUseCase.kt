@@ -22,10 +22,11 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
         holdDays: Int?,
     ): IndicatorSnapshot {
         val marketType = MarketType.fromCode(code)
+        val requestedPoints = maxOf(DATA_POINTS, holdDays ?: 0)
         val data = if (marketType == MarketType.FUND) {
-            fundRepository.getFundNavHistory(code, DATA_POINTS)
+            fundRepository.getFundNavHistory(code, requestedPoints)
         } else {
-            getKLineDataUseCase(code, com.jiucaihua.app.domain.model.KLinePeriod.DAILY, DATA_POINTS)
+            getKLineDataUseCase(code, com.jiucaihua.app.domain.model.KLinePeriod.DAILY, requestedPoints)
         }
         return buildSnapshot(data, marketType, costPrice, holdDays)
     }
@@ -38,7 +39,7 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
     ): IndicatorSnapshot {
         val points = data.points
         if (points.isEmpty()) {
-            return IndicatorSnapshot(code = data.code, name = data.name, price = 0.0, date = "")
+            return IndicatorSnapshot(code = data.code, name = data.name, price = null, date = null, status = "unavailable", currency = if (marketType == MarketType.GOLD) "provider_native" else toolCurrency(data.code))
         }
 
         val last = points.last()
@@ -109,7 +110,7 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
             distToPnl30 = 30.0 - currentPnlPct
             distToPnl50 = 50.0 - currentPnlPct
 
-            if (holdDays != null && holdDays > 0) {
+            if (holdDays != null && holdDays > 0 && points.size >= holdDays) {
                 val startIndex = maxOf(0, points.size - holdDays)
                 val holdHighs = points.subList(startIndex, points.size).map { it.high }
                 val holdPeriodHigh = holdHighs.maxOrNull() ?: price
@@ -126,6 +127,9 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
             name = data.name,
             price = price,
             date = last.date,
+            currency = if (marketType == MarketType.GOLD) "provider_native" else toolCurrency(data.code),
+            source = if (data.isCached) "CACHE" else "NETWORK",
+            holdingWindowComplete = holdDays?.let { points.size >= it },
             ma5 = lastMa5,
             ma20 = lastMa20,
             ma60 = lastMa60,
@@ -176,7 +180,7 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
 
         // 检查近5日内是否有交叉
         val startIdx = dif.size - recentN
-        for (i in startIdx until dif.size) {
+        for (i in dif.lastIndex downTo startIdx) {
             val dPrev = dif[i - 1] ?: continue
             val ePrev = dea[i - 1] ?: continue
             val dCurr = dif[i] ?: continue
@@ -194,7 +198,7 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
 
     private suspend fun getHs300VsMa20(): String {
         val cached = hs300Cache
-        if (cached != null) return cached.vsMa20
+        if (cached != null && System.currentTimeMillis() - cached.createdAt < 60_000) return cached.vsMa20
 
         return try {
             val data = getKLineDataUseCase("sh000300", com.jiucaihua.app.domain.model.KLinePeriod.DAILY, 25)
@@ -209,6 +213,8 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
             val result = lastMa20?.let { if (lastClose > it) "above" else "below" } ?: "unknown"
             hs300Cache = Hs300Cache(result)
             result
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             val result = "unknown"
             hs300Cache = Hs300Cache(result)
@@ -216,10 +222,10 @@ class BuildIndicatorSnapshotUseCase @Inject constructor(
         }
     }
 
-    private data class Hs300Cache(val vsMa20: String)
+    private data class Hs300Cache(val vsMa20: String, val createdAt: Long = System.currentTimeMillis())
 
     companion object {
-        // MA60需60个前置点 + 5个用于slope计算
-        private const val DATA_POINTS = 65
+        // Include enough history for MA120 and recent trend checks.
+        private const val DATA_POINTS = 125
     }
 }

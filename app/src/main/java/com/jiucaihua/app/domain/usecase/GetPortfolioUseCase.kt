@@ -304,6 +304,20 @@ class GetPortfolioUseCase @Inject constructor(
             holdings = holdings,
             categorySummaries = categorySummaries,
             lastUpdateTime = timeFormat.format(Date()),
+            quoteObservations = holdings.associate { holding ->
+                val stock = stockQuotes[holding.code]
+                val fund = fundQuotes[holding.code]
+                val observation = if (holding.marketType == MarketType.FUND) {
+                    com.jiucaihua.app.domain.model.QuoteObservation(
+                        (if (fund != null && fund.estimatedValue > 0) fund.estimateTime else fund?.navDate)?.takeIf { it.isNotBlank() },
+                        fund?.isCached ?: false,
+                        fund?.effectiveValue() != null,
+                    )
+                } else {
+                    com.jiucaihua.app.domain.model.QuoteObservation(stock?.time?.takeIf { it.isNotBlank() }, stock?.isCached ?: false, stock != null && stock.price > 0)
+                }
+                holding.code to observation
+            },
         )
     }
 

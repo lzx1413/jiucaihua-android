@@ -8,9 +8,14 @@ data class KLineToolSnapshot(
     val period: KLinePeriod,
     val pointsCount: Int,
     val latestPoint: KLinePointSnapshot?,
-    val highestHigh: Double,
-    val lowestLow: Double,
+    val highestHigh: Double?,
+    val lowestLow: Double?,
     val points: List<KLinePointSnapshot>,
+    val currency: String,
+    val source: String,
+    val asOf: String?,
+    val requestedLimit: Int,
+    val volumeUnit: String = "provider_native",
 )
 
 data class KLinePointSnapshot(
@@ -41,6 +46,8 @@ data class MarketNewsDigest(
     val generatedAt: String,
     val total: Int,
     val items: List<NewsSnapshot>,
+    val limit: Int,
+    val possiblyTruncated: Boolean,
 )
 
 data class AlertsToolSnapshot(

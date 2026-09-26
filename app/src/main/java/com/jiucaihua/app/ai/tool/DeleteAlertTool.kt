@@ -15,6 +15,7 @@ class DeleteAlertTool @Inject constructor(
                 "id" to mapOf(
                     "type" to "integer",
                     "description" to "预警 ID",
+                    "minimum" to 1, "maximum" to 9007199254740991L,
                 ),
             ),
             "required" to listOf("id"),
@@ -24,11 +25,11 @@ class DeleteAlertTool @Inject constructor(
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
         val id = when (val v = arguments["id"]) {
             is Number -> v.toLong()
-            else -> return ToolResult(mapOf("success" to false, "error" to "缺少参数 id"))
+            else -> invalidArgs("id is required")
         }
 
         val alert = alertRepository.getAlertById(id)
-            ?: return ToolResult(mapOf("success" to false, "error" to "预警不存在: id=$id"))
+            ?: throw ToolExecutionException(ToolError("NOT_FOUND", "Alert not found: id=$id"))
 
         val hintMsg = if (alert.actionHint != null) "，操作提示：${alert.actionHint}" else ""
         alertRepository.deleteAlert(id)

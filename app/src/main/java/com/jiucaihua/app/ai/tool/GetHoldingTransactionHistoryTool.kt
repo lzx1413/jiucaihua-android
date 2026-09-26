@@ -15,18 +15,20 @@ class GetHoldingTransactionHistoryTool @Inject constructor(
             "properties" to mapOf(
                 "code" to mapOf("type" to "string", "description" to "证券代码，例如 sh600519、hk00700、110011"),
                 "market_type" to mapOf("type" to "string", "description" to "可选，A_STOCK/HK_STOCK/US_STOCK/FUND/GOLD"),
-                "limit" to mapOf("type" to "number", "description" to "返回交易条数，默认 100，最大 200"),
+                "offset" to mapOf("type" to "integer", "minimum" to 0, "maximum" to Int.MAX_VALUE, "description" to "分页偏移，默认0；汇总不受分页影响"),
+                "limit" to mapOf("type" to "integer", "minimum" to 1, "maximum" to 200, "description" to "返回交易条数，默认 100，最大 200"),
             ),
             "required" to listOf("code"),
         ),
     )
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
-        val code = arguments["code"] as? String ?: error("Missing required argument: code")
+        val code = (arguments["code"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: invalidArgs("code is required")
         val marketType = (arguments["market_type"] as? String)?.trim()?.takeIf { it.isNotEmpty() }?.let {
-            MarketType.valueOf(it)
+            runCatching { MarketType.valueOf(it.uppercase()) }.getOrElse { invalidArgs("market_type is invalid") }
         }
-        val limit = (arguments["limit"] as? Number)?.toInt() ?: 100
-        return ToolResult(buildHoldingTransactionHistorySnapshotUseCase(code.trim(), marketType, limit))
+        val limit = (arguments["limit"] as? Number)?.toInt()?.coerceIn(1, 200) ?: 100
+        return ToolResult(buildHoldingTransactionHistorySnapshotUseCase(code, marketType, limit, (arguments["offset"] as? Number)?.toInt() ?: 0))
     }
 }

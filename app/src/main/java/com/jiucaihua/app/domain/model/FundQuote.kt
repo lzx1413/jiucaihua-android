@@ -8,4 +8,5 @@ data class FundQuote(
     val netAssetValue: Double,
     val estimateTime: String,
     val navDate: String,
+    val isCached: Boolean = false,
 )

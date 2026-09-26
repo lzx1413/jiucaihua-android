@@ -14,4 +14,5 @@ data class StockQuote(
     val changeAmount: Double,
     val time: String,
     val marketType: MarketType,
+    val isCached: Boolean = false,
 )

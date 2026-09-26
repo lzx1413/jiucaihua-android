@@ -5,6 +5,7 @@ data class KLineData(
     val name: String,
     val period: KLinePeriod,
     val points: List<KLinePoint>,
+    val isCached: Boolean = false,
 )
 
 enum class KLinePeriod(val label: String, val klt: Int) {

@@ -21,9 +21,8 @@ import com.jiucaihua.app.domain.util.TechnicalIndicators
 import com.jiucaihua.app.domain.usecase.GetKLineDataUseCase
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import kotlinx.coroutines.flow.first
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 
 class BuildKLineToolSnapshotUseCase @Inject constructor(
@@ -34,19 +33,22 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
         code: String,
         period: KLinePeriod,
         limit: Int,
+        includeLatest: Boolean = false,
+        includeIndicators: Boolean = true,
     ): KLineToolSnapshot {
+        val historyLimit = if (includeIndicators) limit + 119 else limit
         val data = if (MarketType.fromCode(code) == MarketType.FUND) {
-            fundRepository.getFundNavHistory(code, limit)
+            fundRepository.getFundNavHistory(code, historyLimit)
         } else {
-            getKLineDataUseCase(code, period, limit)
+            getKLineDataUseCase(code, period, historyLimit)
         }
-        return data.toSnapshot()
+        return data.toSnapshot(limit, includeLatest, includeIndicators)
     }
 
-    private fun KLineData.toSnapshot(): KLineToolSnapshot {
-        val latestPoint = points.lastOrNull()
-        val highs = points.map { it.high }
-        val lows = points.map { it.low }
+    private fun KLineData.toSnapshot(limit: Int, includeLatest: Boolean, includeIndicators: Boolean): KLineToolSnapshot {
+        val returnedPoints = points.takeLast(limit)
+        val highs = returnedPoints.map { it.high }
+        val lows = returnedPoints.map { it.low }
         val ma5 = TechnicalIndicators.calculateMA(points, 5)
         val ma20 = TechnicalIndicators.calculateMA(points, 20)
         val ma60 = TechnicalIndicators.calculateMA(points, 60)
@@ -55,38 +57,42 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
         val (dif, dea, macd) = TechnicalIndicators.calculateMACD(points)
         val rsiMap = TechnicalIndicators.calculateRSI(points)
         val (bollUpper, bollMiddle, bollLower) = TechnicalIndicators.calculateBOLL(points)
+        val snapshots = (maxOf(0, points.size - limit) until points.size).map { i ->
+            if (!includeIndicators) return@map points[i].toSnapshot()
+            points[i].toSnapshot(
+                ma5 = ma5[i],
+                ma20 = ma20[i],
+                ma60 = ma60[i],
+                ma120 = ma120[i],
+                volumeRatio = volumeRatio[i],
+                dif = dif[i],
+                dea = dea[i],
+                macd = macd[i],
+                rsi6 = rsiMap[6]?.get(i),
+                rsi12 = rsiMap[12]?.get(i),
+                rsi24 = rsiMap[24]?.get(i),
+                bollUpper = bollUpper[i],
+                bollMiddle = bollMiddle[i],
+                bollLower = bollLower[i],
+            )
+        }
         return KLineToolSnapshot(
             code = code,
             name = name,
             period = period,
-            pointsCount = points.size,
-            latestPoint = latestPoint?.toSnapshot(0),
-            highestHigh = highs.maxOrNull() ?: 0.0,
-            lowestLow = lows.minOrNull() ?: 0.0,
-            points = points.indices.map { i ->
-                points[i].toSnapshot(
-                    index = i,
-                    ma5 = ma5[i],
-                    ma20 = ma20[i],
-                    ma60 = ma60[i],
-                    ma120 = ma120[i],
-                    volumeRatio = volumeRatio[i],
-                    dif = dif[i],
-                    dea = dea[i],
-                    macd = macd[i],
-                    rsi6 = rsiMap[6]?.get(i),
-                    rsi12 = rsiMap[12]?.get(i),
-                    rsi24 = rsiMap[24]?.get(i),
-                    bollUpper = bollUpper[i],
-                    bollMiddle = bollMiddle[i],
-                    bollLower = bollLower[i],
-                )
-            },
+            pointsCount = snapshots.size,
+            currency = if (MarketType.fromCode(code) == MarketType.GOLD) "provider_native" else toolCurrency(code),
+            source = if (isCached) "CACHE" else "NETWORK",
+            asOf = returnedPoints.lastOrNull()?.date,
+            requestedLimit = limit,
+            latestPoint = snapshots.lastOrNull().takeIf { includeLatest },
+            highestHigh = highs.maxOrNull()?.roundedForTool(),
+            lowestLow = lows.minOrNull()?.roundedForTool(),
+            points = snapshots,
         )
     }
 
     private fun com.jiucaihua.app.domain.model.KLinePoint.toSnapshot(
-        index: Int = 0,
         ma5: Double? = null,
         ma20: Double? = null,
         ma60: Double? = null,
@@ -104,28 +110,32 @@ class BuildKLineToolSnapshotUseCase @Inject constructor(
     ): KLinePointSnapshot {
         return KLinePointSnapshot(
             date = date,
-            open = open,
-            close = close,
-            high = high,
-            low = low,
-            volume = volume,
-            changePercent = changePercent,
-            ma5 = ma5,
-            ma20 = ma20,
-            ma60 = ma60,
-            ma120 = ma120,
-            volumeRatio = volumeRatio,
-            dif = dif,
-            dea = dea,
-            macd = macd,
-            rsi6 = rsi6,
-            rsi12 = rsi12,
-            rsi24 = rsi24,
-            bollUpper = bollUpper,
-            bollMiddle = bollMiddle,
-            bollLower = bollLower,
+            open = open.roundedForTool(),
+            close = close.roundedForTool(),
+            high = high.roundedForTool(),
+            low = low.roundedForTool(),
+            volume = volume.roundedForTool(),
+            changePercent = changePercent.roundedForTool(),
+            ma5 = ma5?.roundedForTool(),
+            ma20 = ma20?.roundedForTool(),
+            ma60 = ma60?.roundedForTool(),
+            ma120 = ma120?.roundedForTool(),
+            volumeRatio = volumeRatio?.roundedForTool(),
+            dif = dif?.roundedForTool(),
+            dea = dea?.roundedForTool(),
+            macd = macd?.roundedForTool(),
+            rsi6 = rsi6?.roundedForTool(),
+            rsi12 = rsi12?.roundedForTool(),
+            rsi24 = rsi24?.roundedForTool(),
+            bollUpper = bollUpper?.roundedForTool(),
+            bollMiddle = bollMiddle?.roundedForTool(),
+            bollLower = bollLower?.roundedForTool(),
         )
     }
+
+    // Round only the exported snapshot, after indicators use full-precision data.
+    private fun Double.roundedForTool(): Double =
+        BigDecimal.valueOf(this).setScale(3, RoundingMode.HALF_UP).toDouble()
 }
 
 class BuildMarketNewsDigestUseCase @Inject constructor(
@@ -144,13 +154,15 @@ class BuildMarketNewsDigestUseCase @Inject constructor(
                 title = it.title,
                 summary = it.summary,
                 source = it.source,
-                time = it.time,
+                time = it.epochMillis.takeIf { millis -> millis > 0 }?.let { millis -> java.time.Instant.ofEpochMilli(millis).toString() },
                 sourceType = it.sourceType.displayName,
             )
         }
         return MarketNewsDigest(
-            generatedAt = timestampFormatter.format(Date()),
+            generatedAt = java.time.Instant.now().toString(),
             total = items.size,
+            limit = limit,
+            possiblyTruncated = items.size >= limit,
             items = items,
         )
     }
@@ -203,9 +215,9 @@ class BuildWhatIfAnalysisSnapshotUseCase @Inject constructor(
 
         val summary = getPortfolioUseCase.getPortfolioWithQuotes()
         val holding = summary.holdings.firstOrNull { it.code == code }
-            ?: error("Holding not found: $code")
+            ?: throw com.jiucaihua.app.ai.tool.ToolExecutionException(com.jiucaihua.app.ai.tool.ToolError("NOT_FOUND", "Holding not found: $code"))
         val currentPrice = holding.currentPrice
-        require(currentPrice > 0) { "Current price unavailable for $code" }
+        if (currentPrice <= 0) throw com.jiucaihua.app.ai.tool.ToolExecutionException(com.jiucaihua.app.ai.tool.ToolError("PROVIDER_UNAVAILABLE", "Current price unavailable for $code"))
 
         val finalTargetPrice = targetPrice ?: currentPrice * (1 + (changePercent ?: 0.0) / 100)
         require(finalTargetPrice > 0) { "Target price must be positive" }
@@ -246,5 +258,3 @@ class BuildWhatIfAnalysisSnapshotUseCase @Inject constructor(
         }
     }
 }
-
-private val timestampFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())

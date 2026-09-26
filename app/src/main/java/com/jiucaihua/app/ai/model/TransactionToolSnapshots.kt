@@ -24,6 +24,7 @@ data class TransactionsToolSnapshot(
     val total: Int,
     val limit: Int,
     val offset: Int,
+    val hasMore: Boolean,
     val transactions: List<TransactionToolItem>,
 )
 
@@ -53,6 +54,10 @@ data class HoldingTransactionHistorySnapshot(
     val realizedPnlCny: Double,
     val unrealizedPnlCny: Double,
     val totalPnlCny: Double,
+    val totalTransactions: Int,
+    val limit: Int,
+    val offset: Int,
+    val hasMore: Boolean,
     val transactions: List<TransactionToolItem>,
 )
 
@@ -73,6 +78,7 @@ data class PortfolioPerformanceToolSnapshot(
     val taxes: Double,
     val cash: Double,
     val holdingsMarketValue: Double,
+    val currency: String = "CNY",
 )
 
 fun TransactionSummary.toToolSnapshot(): TransactionSummaryToolSnapshot {

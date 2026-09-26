@@ -4,8 +4,12 @@ data class IndicatorSnapshot(
     // 基本信息
     val code: String,
     val name: String,
-    val price: Double,
-    val date: String,
+    val price: Double?,
+    val date: String?,
+    val status: String = "ok",
+    val currency: String? = null,
+    val source: String? = null,
+    val holdingWindowComplete: Boolean? = null,
 
     // 均线判定
     val ma5: Double? = null,

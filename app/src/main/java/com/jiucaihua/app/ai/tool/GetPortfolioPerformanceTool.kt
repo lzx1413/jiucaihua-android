@@ -12,8 +12,8 @@ class GetPortfolioPerformanceTool @Inject constructor(
         inputSchema = mapOf(
             "type" to "object",
             "properties" to mapOf(
-                "from" to mapOf("type" to "number", "description" to "可选，开始时间戳毫秒"),
-                "to" to mapOf("type" to "number", "description" to "可选，结束时间戳毫秒"),
+                "from" to mapOf("type" to "integer", "minimum" to 0, "maximum" to 253402300799999L, "description" to "可选，开始时间戳毫秒"),
+                "to" to mapOf("type" to "integer", "minimum" to 0, "maximum" to 253402300799999L, "description" to "可选，结束时间戳毫秒"),
             ),
             "required" to emptyList<String>(),
         ),

@@ -15,8 +15,8 @@ class GetTransactionSummaryTool @Inject constructor(
             "properties" to mapOf(
                 "code" to mapOf("type" to "string", "description" to "可选，证券代码"),
                 "market_type" to mapOf("type" to "string", "description" to "可选，A_STOCK/HK_STOCK/US_STOCK/FUND/GOLD"),
-                "from" to mapOf("type" to "number", "description" to "可选，开始时间戳毫秒"),
-                "to" to mapOf("type" to "number", "description" to "可选，结束时间戳毫秒"),
+                "from" to mapOf("type" to "integer", "minimum" to 0, "maximum" to 253402300799999L, "description" to "可选，开始时间戳毫秒"),
+                "to" to mapOf("type" to "integer", "minimum" to 0, "maximum" to 253402300799999L, "description" to "可选，结束时间戳毫秒"),
             ),
             "required" to emptyList<String>(),
         ),

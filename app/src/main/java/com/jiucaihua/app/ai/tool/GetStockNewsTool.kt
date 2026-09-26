@@ -12,9 +12,11 @@ data class StockNewsSnapshot(
     val title: String,
     val summary: String,
     val source: String,
-    val time: String,
+    val time: String?,
     val sourceType: String,
     val url: String = "",
+    val kind: String? = null,
+    val isStale: Boolean? = null,
 )
 
 data class StockNewsToolSnapshot(
@@ -22,7 +24,8 @@ data class StockNewsToolSnapshot(
     val count: Int,
     val articles: List<StockNewsSnapshot>,
     val code: String? = null,
-    val events: List<SecurityEventToolSnapshot> = emptyList(),
+    val limit: Int,
+    val possiblyTruncated: Boolean,
 )
 
 class GetStockNewsTool @Inject constructor(
@@ -49,11 +52,12 @@ class GetStockNewsTool @Inject constructor(
                 ),
                 "kinds" to mapOf(
                     "type" to "array",
-                    "items" to mapOf("type" to "string", "enum" to SecurityEventKind.entries.map { it.name }),
+                    "items" to mapOf("type" to "string", "enum" to GetStockEventsTool.SUPPORTED_KINDS.map { it.name }),
                 ),
                 "limit" to mapOf(
                     "type" to "integer",
                     "description" to "返回资讯条数，默认10",
+                    "minimum" to 1, "maximum" to 50,
                 ),
             ),
             "required" to emptyList<String>(),
@@ -62,7 +66,9 @@ class GetStockNewsTool @Inject constructor(
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
         val name = arguments["name"] as? String
-        val code = (arguments["code"] as? String)?.let(SecurityId::parse)
+        val code = (arguments["code"] as? String)?.let {
+            SecurityId.parse(it) ?: invalidArgs("code must be a supported normalized security code")
+        }
         if (name.isNullOrBlank() && code == null) invalidArgs("one of name or code is required")
         val limit = (arguments["limit"] as? Number)?.toInt()?.coerceIn(1, 50) ?: 10
         if (code != null) {
@@ -77,10 +83,11 @@ class GetStockNewsTool @Inject constructor(
                     keyword = name?.trim().orEmpty(),
                     code = code.value,
                     count = events.size,
+                    limit = limit,
+                    possiblyTruncated = events.size >= limit,
                     articles = events.map { event ->
-                        StockNewsSnapshot(event.title, event.summary, event.publisher, event.publishedAt.toString(), event.provider.name, event.contentUrl)
+                        StockNewsSnapshot(event.title, event.summary, event.publisher, event.publishedAt.takeIf { it > 0 }?.let { java.time.Instant.ofEpochMilli(it).toString() }, event.provider.name, event.contentUrl, event.kind.name, event.isStale)
                     },
-                    events = events.map { it.toToolSnapshot() },
                 )
             )
         }
@@ -88,6 +95,8 @@ class GetStockNewsTool @Inject constructor(
         return ToolResult(StockNewsToolSnapshot(
             keyword = name.trim(),
             count = articles.size,
+            limit = limit,
+            possiblyTruncated = articles.size >= limit,
             articles = articles.map { it.toSnapshot() },
         ))
     }
@@ -96,7 +105,7 @@ class GetStockNewsTool @Inject constructor(
         title = title,
         summary = summary,
         source = source,
-        time = time,
+        time = epochMillis.takeIf { it > 0 }?.let { java.time.Instant.ofEpochMilli(it).toString() },
         sourceType = sourceType.displayName,
         url = detailUrl,
     )

@@ -11,28 +11,26 @@ import com.jiucaihua.app.domain.repository.ExchangeRateRepository
 import com.jiucaihua.app.domain.repository.MarketCalendarRepository
 import com.jiucaihua.app.domain.repository.MarketRepository
 import com.jiucaihua.app.domain.repository.SecuritySearchRepository
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 class BuildMarketIndicesSnapshotUseCase @Inject constructor(
     private val marketRepository: MarketRepository,
 ) {
     suspend operator fun invoke(market: String?): MarketIndicesSnapshot {
-        val allGroups = listOf(
-            MarketIndexGroup("A_STOCK", "A股", marketRepository.getAStockIndices()),
-            MarketIndexGroup("HK_STOCK", "港股", marketRepository.getHKStockIndices()),
-            MarketIndexGroup("US_STOCK", "美股", marketRepository.getUSStockIndices()),
-            MarketIndexGroup("GOLD", "黄金", marketRepository.getGoldIndices()),
-        )
-        val groups = if (market != null) {
-            allGroups.filter { it.market.equals(market, ignoreCase = true) }
-        } else {
-            allGroups
+        val groups = when (market?.uppercase()) {
+            "A_STOCK" -> listOf(MarketIndexGroup("A_STOCK", "A股", marketRepository.getAStockIndices().map { it.toToolItem() }))
+            "HK_STOCK" -> listOf(MarketIndexGroup("HK_STOCK", "港股", marketRepository.getHKStockIndices().map { it.toToolItem() }))
+            "US_STOCK" -> listOf(MarketIndexGroup("US_STOCK", "美股", marketRepository.getUSStockIndices().map { it.toToolItem() }))
+            "GOLD" -> listOf(MarketIndexGroup("GOLD", "黄金", marketRepository.getGoldIndices().map { it.toToolItem() }))
+            else -> listOf(
+                MarketIndexGroup("A_STOCK", "A股", marketRepository.getAStockIndices().map { it.toToolItem() }),
+                MarketIndexGroup("HK_STOCK", "港股", marketRepository.getHKStockIndices().map { it.toToolItem() }),
+                MarketIndexGroup("US_STOCK", "美股", marketRepository.getUSStockIndices().map { it.toToolItem() }),
+                MarketIndexGroup("GOLD", "黄金", marketRepository.getGoldIndices().map { it.toToolItem() }),
+            )
         }
         return MarketIndicesSnapshot(
-            generatedAt = timestampFormatter.format(Date()),
+            generatedAt = java.time.Instant.now().toString(),
             groups = groups,
         )
     }
@@ -44,8 +42,8 @@ class BuildFundFlowSnapshotUseCase @Inject constructor(
     suspend operator fun invoke(): FundFlowSnapshot {
         val data = marketRepository.getFundFlowData()
         return FundFlowSnapshot(
-            generatedAt = timestampFormatter.format(Date()),
-            updateTime = data.updateTime,
+            generatedAt = java.time.Instant.now().toString(),
+            updateTime = data.updateTime.takeIf { it.isNotBlank() },
             northFlow = data.northFlow,
             southFlow = data.southFlow,
         )
@@ -58,9 +56,11 @@ class BuildSearchResultsSnapshotUseCase @Inject constructor(
     suspend operator fun invoke(keyword: String, limit: Int = 20): SearchResultsSnapshot {
         val results = searchRepository.search(keyword, limit)
         return SearchResultsSnapshot(
-            generatedAt = timestampFormatter.format(Date()),
+            generatedAt = java.time.Instant.now().toString(),
             keyword = keyword,
             total = results.size,
+            limit = limit,
+            possiblyTruncated = results.size >= limit,
             results = results.map {
                 SearchResultEntry(
                     code = it.code,
@@ -82,7 +82,7 @@ class BuildMarketStatusSnapshotUseCase @Inject constructor(
         val isHoliday = marketCalendarRepository.isTodayHoliday()
         val rate = exchangeRateRepository.getHkdToCnyRate()
         return MarketStatusSnapshot(
-            generatedAt = timestampFormatter.format(Date()),
+            generatedAt = java.time.Instant.now().toString(),
             isTodayHoliday = isHoliday,
             sessions = sessions.mapKeys { it.key.name }.mapValues { it.value.label },
             hkdToCnyRate = rate,
@@ -90,4 +90,16 @@ class BuildMarketStatusSnapshotUseCase @Inject constructor(
     }
 }
 
-private val timestampFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+
+
+private fun com.jiucaihua.app.domain.model.MarketIndex.toToolItem() = com.jiucaihua.app.ai.model.MarketIndexToolItem(
+    code = code,
+    name = name,
+    price = price.takeIf { it > 0 && it.isFinite() },
+    changePercent = changePercent.takeIf { price > 0 && it.isFinite() },
+    changeAmount = changeAmount.takeIf { price > 0 && it.isFinite() },
+    sourceTime = time.takeIf { it.isNotBlank() },
+    priceUnit = if (marketType == MarketType.GOLD) "provider_native" else "index_points",
+    currency = if (marketType == MarketType.GOLD) toolCurrency(code) else null,
+    status = if (price > 0 && price.isFinite()) "ok" else "unavailable",
+)

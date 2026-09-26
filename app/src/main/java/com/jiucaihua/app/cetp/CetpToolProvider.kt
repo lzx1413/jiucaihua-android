@@ -6,8 +6,6 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
 import com.jiucaihua.app.ai.tool.ToolRegistry
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +15,7 @@ import org.json.JSONObject
 
 class CetpToolProvider : ContentProvider() {
 
-    private val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+    private val resultSerializer = CetpToolResultSerializer()
 
     @Volatile
     private var toolRegistry: ToolRegistry? = null
@@ -82,14 +80,7 @@ class CetpToolProvider : ContentProvider() {
                 registry.execute(localName, args)
             }
             result.error?.let { return errorBundle(it.code, it.message) }
-            val content = result.content
-            val json = content?.let {
-                moshi.adapter<Any>(it::class.java)
-                    .serializeNulls()
-                    .indent("  ")
-                    .toJson(it)
-            } ?: "null"
-            successBundle(json)
+            successBundle(resultSerializer.toJson(result.content))
         } catch (error: CancellationException) {
             throw error
         } catch (e: Exception) {

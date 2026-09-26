@@ -24,22 +24,25 @@ class GetStockEventsTool @Inject constructor(
         } catch (error: UnsupportedSecurityMarketException) {
             unsupportedMarket(error.message ?: "unsupported market")
         }
-        return ToolResult(StockEventsToolSnapshot(code.value, events.map { it.toToolSnapshot() }))
+        return ToolResult(StockEventsToolSnapshot(code.value, events.map { it.toToolSnapshot() }, limit = limit, possiblyTruncated = events.size >= limit))
     }
 
     companion object {
+        val SUPPORTED_KINDS = setOf(SecurityEventKind.NEWS, SecurityEventKind.ANNOUNCEMENT, SecurityEventKind.PERIODIC_REPORT, SecurityEventKind.RESEARCH)
         val schema = mapOf(
             "type" to "object",
             "properties" to mapOf(
                 "code" to mapOf("type" to "string", "description" to "九财花规范代码，例如 sh600519、hk00700"),
-                "kinds" to mapOf("type" to "array", "items" to mapOf("type" to "string", "enum" to SecurityEventKind.entries.map { it.name })),
+                "kinds" to mapOf("type" to "array", "items" to mapOf("type" to "string", "enum" to SUPPORTED_KINDS.map { it.name })),
                 "limit" to mapOf("type" to "integer", "minimum" to 1, "maximum" to 50),
             ),
             "required" to listOf("code"),
         )
 
-        fun parseSecurityId(value: Any?): SecurityId = (value as? String)?.let(SecurityId::parse)
-            ?: invalidArgs("code must be a supported normalized security code")
+        fun parseSecurityId(value: Any?): SecurityId = (value as? String)?.let {
+            runCatching { SecurityId.parse(it) }
+                .getOrElse { invalidArgs("code must be a supported normalized security code") }
+        } ?: invalidArgs("code must be a supported normalized security code")
 
         fun parseKinds(value: Any?): Set<SecurityEventKind> {
             if (value == null) return setOf(SecurityEventKind.NEWS, SecurityEventKind.ANNOUNCEMENT, SecurityEventKind.PERIODIC_REPORT, SecurityEventKind.RESEARCH)
@@ -48,7 +51,7 @@ class GetStockEventsTool @Inject constructor(
             return values.map { raw ->
                 (raw as? String)?.trim()?.uppercase()?.let { runCatching { SecurityEventKind.valueOf(it) }.getOrNull() }
                     ?: invalidArgs("kinds contains an unsupported value")
-            }.toSet()
+            }.toSet().also { if (!SUPPORTED_KINDS.containsAll(it)) invalidArgs("kinds contains an unsupported value") }
         }
     }
 }

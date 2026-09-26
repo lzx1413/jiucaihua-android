@@ -19,10 +19,12 @@ class GetIndicatorSnapshotTool @Inject constructor(
                 ),
                 "cost_price" to mapOf(
                     "type" to "number",
+                    "exclusiveMinimum" to 0,
                     "description" to "持仓成本价（可选）。提供后将计算浮盈、峰值浮盈等持仓相关指标",
                 ),
                 "hold_days" to mapOf(
                     "type" to "integer",
+                    "minimum" to 1, "maximum" to 500,
                     "description" to "持仓交易日数（可选）。提供后将参与中轨道晋升和脱离规则判定",
                 ),
             ),
@@ -31,7 +33,7 @@ class GetIndicatorSnapshotTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
-        val code = arguments["code"] as? String ?: error("Missing required argument: code")
+        val code = normalizedQuoteCode(arguments["code"])
         val costPrice = (arguments["cost_price"] as? Number)?.toDouble()
         val holdDays = (arguments["hold_days"] as? Number)?.toInt()
         return ToolResult(buildIndicatorSnapshotUseCase(code.trim(), costPrice, holdDays))

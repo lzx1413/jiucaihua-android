@@ -24,7 +24,9 @@ class GetMarketNewsTool @Inject constructor(
                 ),
                 "limit" to mapOf(
                     "type" to "integer",
-                    "description" to "返回的资讯条数，默认 10",
+                    "minimum" to 1,
+                    "maximum" to 50,
+                    "description" to "返回的资讯条数，默认 10，最大 50",
                 ),
             ),
             "required" to emptyList<String>(),
@@ -32,11 +34,12 @@ class GetMarketNewsTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
-        val limit = (arguments["limit"] as? Number)?.toInt() ?: 10
+        val limit = (arguments["limit"] as? Number)?.toInt()?.coerceIn(1, 50) ?: 10
         val topicName = arguments["topic"] as? String
         val topic = topicName?.let { name ->
             NewsTopic.entries.find { it.name == name }
         }
+        if (topicName != null && topic == null) invalidArgs("topic is not supported")
         val query = arguments["query"] as? String
         return ToolResult(buildMarketNewsDigestUseCase(limit, topic, query))
     }

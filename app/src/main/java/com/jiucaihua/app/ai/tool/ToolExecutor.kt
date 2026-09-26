@@ -30,3 +30,10 @@ class ToolExecutionException(val toolError: ToolError) : IllegalArgumentExceptio
 fun invalidArgs(message: String): Nothing = throw ToolExecutionException(ToolError("INVALID_ARGS", message))
 
 fun unsupportedMarket(message: String): Nothing = throw ToolExecutionException(ToolError("UNSUPPORTED_MARKET", message))
+
+internal fun normalizedQuoteCode(value: Any?): String {
+    val raw = (value as? String)?.trim() ?: invalidArgs("code is required")
+    return com.jiucaihua.app.domain.model.SecurityId.parse(raw)?.value
+        ?: raw.takeIf { it in com.jiucaihua.app.domain.model.MarketIndexCodes.GOLD_INDICES || it in com.jiucaihua.app.domain.model.MarketIndexCodes.HK_STOCK_INDICES }
+        ?: invalidArgs("code must be normalized, e.g. sh600519, hk00700, usr_AAPL, or 110011")
+}

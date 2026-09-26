@@ -18,7 +18,8 @@ class SearchSecuritiesTool @Inject constructor(
                 ),
                 "limit" to mapOf(
                     "type" to "integer",
-                    "description" to "返回的最大结果数，默认 20",
+                    "description" to "返回的最大结果数，默认 20，最大50",
+                    "minimum" to 1, "maximum" to 50,
                 ),
             ),
             "required" to listOf("keyword"),
@@ -26,8 +27,9 @@ class SearchSecuritiesTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
-        val keyword = arguments["keyword"] as? String ?: error("Missing required argument: keyword")
-        val limit = (arguments["limit"] as? Number)?.toInt() ?: 20
+        val keyword = (arguments["keyword"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: invalidArgs("keyword is required")
+        val limit = (arguments["limit"] as? Number)?.toInt()?.coerceIn(1, 50) ?: 20
         return ToolResult(buildSearchResultsSnapshotUseCase(keyword.trim(), limit))
     }
 }

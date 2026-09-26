@@ -22,7 +22,9 @@ class GetHoldingAnalysisTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
-        val code = arguments["code"] as? String ?: error("Missing required argument: code")
-        return ToolResult(buildHoldingAnalysisSnapshotUseCase(code.trim()))
+        val code = (arguments["code"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: invalidArgs("code is required")
+        return buildHoldingAnalysisSnapshotUseCase(code)?.let(::ToolResult)
+            ?: ToolResult(error = ToolError("NOT_FOUND", "Holding not found: $code"))
     }
 }

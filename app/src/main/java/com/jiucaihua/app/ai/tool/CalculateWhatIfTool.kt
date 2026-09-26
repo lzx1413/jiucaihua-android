@@ -18,10 +18,12 @@ class CalculateWhatIfTool @Inject constructor(
                 ),
                 "targetPrice" to mapOf(
                     "type" to "number",
+                    "exclusiveMinimum" to 0,
                     "description" to "目标价格，与 changePercent 二选一。",
                 ),
                 "changePercent" to mapOf(
                     "type" to "number",
+                    "exclusiveMinimum" to -100,
                     "description" to "假设涨跌幅百分比，与 targetPrice 二选一。",
                 ),
             ),
@@ -30,9 +32,13 @@ class CalculateWhatIfTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
-        val code = arguments["code"] as? String ?: error("Missing required argument: code")
+        val code = (arguments["code"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: invalidArgs("code is required")
         val targetPrice = (arguments["targetPrice"] as? Number)?.toDouble()
         val changePercent = (arguments["changePercent"] as? Number)?.toDouble()
+        if ((targetPrice != null) == (changePercent != null)) {
+            invalidArgs("provide exactly one of targetPrice or changePercent")
+        }
         return ToolResult(buildWhatIfAnalysisSnapshotUseCase(code.trim(), targetPrice, changePercent))
     }
 }

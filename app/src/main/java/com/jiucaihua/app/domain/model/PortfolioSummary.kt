@@ -15,4 +15,8 @@ data class PortfolioSummary(
     val holdings: List<Holding> = emptyList(),
     val categorySummaries: List<CategorySummary> = emptyList(),
     val lastUpdateTime: String = "--",
+    val quoteObservations: Map<String, QuoteObservation> = emptyMap(),
 )
+
+/** Source time is the provider's display value, never the summary generation time. */
+data class QuoteObservation(val sourceTime: String?, val isCached: Boolean, val available: Boolean)

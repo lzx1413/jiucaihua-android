@@ -19,9 +19,6 @@ import com.jiucaihua.app.domain.repository.NewsRepository
 import com.jiucaihua.app.domain.repository.SecurityEventRepository
 import com.jiucaihua.app.domain.usecase.GetPortfolioUseCase
 import com.jiucaihua.app.domain.usecase.IsMarketOpenUseCase
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
@@ -37,13 +34,11 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
             holding.toAnalysisSnapshot(
                 activeAlerts = alerts.filter { it.code == holding.code },
                 relatedNews = emptyList(),
-                quoteDisplayTime = summary.lastUpdateTime,
-                quoteUpdatedAt = null,
-                source = DataSource.LIVE,
+                freshness = summary.quoteObservations[holding.code].toFreshness(),
             )
         }
         return PortfolioAnalysisSnapshot(
-            generatedAt = timestampFormatter.format(Date()),
+            generatedAt = java.time.Instant.now().toString(),
             totalInvestmentCny = summary.totalInvestment,
             cashCny = summary.cash,
             cashPercent = if (summary.totalInvestment > 0) summary.cash / summary.totalInvestment * 100 else 0.0,
@@ -60,9 +55,10 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
             alertsSummary = alerts.toSummary(),
             dataFreshness = DataFreshness(
                 quoteUpdatedAt = null,
-                quoteDisplayTime = summary.lastUpdateTime,
-                isQuoteStale = summary.lastUpdateTime == "--",
-                source = DataSource.LIVE,
+                quoteDisplayTime = null,
+                isQuoteStale = null,
+                source = holdings.map { it.dataFreshness.source }.distinct().singleOrNull()
+                    ?: if (holdings.isEmpty()) DataSource.UNKNOWN else DataSource.MIXED,
             ),
         )
     }
@@ -70,9 +66,7 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
     private fun Holding.toAnalysisSnapshot(
         activeAlerts: List<PriceAlert>,
         relatedNews: List<StockArticle>,
-        quoteDisplayTime: String,
-        quoteUpdatedAt: Long?,
-        source: DataSource,
+        freshness: DataFreshness,
     ): HoldingAnalysisSnapshot {
         return HoldingAnalysisSnapshot(
             code = code,
@@ -88,15 +82,10 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
             marketValueCny = marketValueCNY,
             unrealizedPnlCny = earningsCNY,
             unrealizedPnlPercent = earningsPercent,
-            latestQuoteTime = quoteDisplayTime,
+            latestQuoteTime = freshness.quoteDisplayTime,
             activeAlerts = activeAlerts.map { it.toSnapshot() },
             relatedNews = relatedNews.map { it.toSnapshot() },
-            dataFreshness = DataFreshness(
-                quoteUpdatedAt = quoteUpdatedAt,
-                quoteDisplayTime = quoteDisplayTime,
-                isQuoteStale = quoteDisplayTime == "--",
-                source = source,
-            ),
+            dataFreshness = freshness,
         )
     }
 
@@ -144,9 +133,6 @@ class BuildPortfolioAnalysisSnapshotUseCase @Inject constructor(
         )
     }
 
-    companion object {
-        private val timestampFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    }
 }
 
 class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
@@ -162,7 +148,7 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
         val matchedHolding = summary.holdings.firstOrNull { it.code == code } ?: holding ?: return null
         val activeAlerts = alertRepository.getEnabledAlerts().filter { it.code == code }
         val relatedNews = SecurityId.parse(code)?.let { securityId ->
-            runCatching {
+            try {
                 securityEventRepository.getEvents(
                     securityId,
                     setOf(
@@ -173,32 +159,33 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
                     ),
                     limit = 5,
                 ).map { event ->
-                    StockArticle(
+                    NewsSnapshot(
                         title = event.title,
                         summary = event.summary,
-                        content = event.summary,
                         source = event.publisher.ifBlank { event.provider.name },
-                        time = event.publishedAt.toString(),
-                        sourceType = com.jiucaihua.app.domain.model.NewsSource.EASTMONEY,
+                        time = event.publishedAt.takeIf { it > 0 }?.let { java.time.Instant.ofEpochMilli(it).toString() },
+                        sourceType = event.provider.name,
                     )
                 }
-            }.getOrDefault(emptyList())
-        } ?: newsRepository.getStockNews(matchedHolding.name, limit = 5)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } ?: newsRepository.getStockNews(matchedHolding.name, limit = 5).map {
+            NewsSnapshot(it.title, it.summary, it.source, it.time, it.sourceType.displayName)
+        }
         return matchedHolding.toAnalysisSnapshot(
             activeAlerts = activeAlerts,
             relatedNews = relatedNews,
-            quoteDisplayTime = summary.lastUpdateTime,
-            quoteUpdatedAt = null,
-            source = DataSource.LIVE,
+            freshness = summary.quoteObservations[code].toFreshness(),
         )
     }
 
     private fun Holding.toAnalysisSnapshot(
         activeAlerts: List<PriceAlert>,
-        relatedNews: List<StockArticle>,
-        quoteDisplayTime: String,
-        quoteUpdatedAt: Long?,
-        source: DataSource,
+        relatedNews: List<NewsSnapshot>,
+        freshness: DataFreshness,
     ): HoldingAnalysisSnapshot {
         return HoldingAnalysisSnapshot(
             code = code,
@@ -214,7 +201,7 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
             marketValueCny = marketValueCNY,
             unrealizedPnlCny = earningsCNY,
             unrealizedPnlPercent = earningsPercent,
-            latestQuoteTime = quoteDisplayTime,
+            latestQuoteTime = freshness.quoteDisplayTime,
             activeAlerts = activeAlerts.map {
                 AlertSnapshot(
                     id = it.id,
@@ -227,21 +214,21 @@ class BuildHoldingAnalysisSnapshotUseCase @Inject constructor(
                     lastTriggeredAt = it.lastTriggeredAt,
                 )
             },
-            relatedNews = relatedNews.map {
-                NewsSnapshot(
-                    title = it.title,
-                    summary = it.summary,
-                    source = it.source,
-                    time = it.time,
-                    sourceType = it.sourceType.displayName,
-                )
-            },
-            dataFreshness = DataFreshness(
-                quoteUpdatedAt = quoteUpdatedAt,
-                quoteDisplayTime = quoteDisplayTime,
-                isQuoteStale = quoteDisplayTime == "--",
-                source = source,
-            ),
+            relatedNews = relatedNews,
+            dataFreshness = freshness,
         )
     }
 }
+
+private fun com.jiucaihua.app.domain.model.QuoteObservation?.toFreshness() = DataFreshness(
+    quoteUpdatedAt = null,
+    quoteDisplayTime = this?.sourceTime,
+    // Source strings may omit a date or timezone. Do not invent an age.
+    isQuoteStale = null,
+    source = when {
+        this == null -> DataSource.UNKNOWN
+        !available -> DataSource.UNAVAILABLE
+        isCached -> DataSource.CACHE
+        else -> DataSource.NETWORK
+    },
+)

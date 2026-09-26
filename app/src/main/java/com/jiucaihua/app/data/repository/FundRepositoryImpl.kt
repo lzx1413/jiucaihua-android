@@ -192,6 +192,7 @@ class FundRepositoryImpl @Inject constructor(
             netAssetValue = netAssetValue,
             estimateTime = estimateTime,
             navDate = navDate,
+            isCached = true,
         )
     }
 

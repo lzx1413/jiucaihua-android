@@ -13,7 +13,10 @@ data class WatchlistItemSnapshot(
     val code: String,
     val name: String,
     val marketType: String,
-    val currentPrice: Double,
-    val changePercent: Double,
-    val changeAmount: Double,
+    val currentPrice: Double? = null,
+    val changePercent: Double? = null,
+    val changeAmount: Double? = null,
+    val quoteStatus: String = "ok",
+    val sourceTime: String? = null,
+    val currency: String? = null,
 )

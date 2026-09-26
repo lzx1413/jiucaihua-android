@@ -9,7 +9,7 @@ data class SecurityEventToolSnapshot(
     val title: String,
     val summary: String,
     val publisher: String,
-    val publishedAt: Long,
+    val publishedAt: Long?,
     val symbols: List<String>,
     val url: String,
     val provider: String,
@@ -21,10 +21,13 @@ data class StockEventsToolSnapshot(
     val code: String,
     val items: List<SecurityEventToolSnapshot>,
     val warnings: List<String> = emptyList(),
+    val limit: Int,
+    val possiblyTruncated: Boolean,
 )
 
 data class StockFundFlowToolSnapshot(
     val code: String,
+    val period: String,
     val currency: String,
     val unit: String,
     val sourceUpdatedAt: Long?,
@@ -36,8 +39,8 @@ data class StockFundFlowToolSnapshot(
     val smallNet: Double?,
     val mainNetPercent: Double?,
     val retailNetPercent: Double?,
-    val intradayPoints: List<Map<String, Any?>>,
-    val fiveDaySummary: List<Map<String, Any?>>,
+    val intradayPoints: List<Map<String, Any?>>? = null,
+    val fiveDaySummary: List<Map<String, Any?>>? = null,
     val provider: String,
     val isStale: Boolean,
     val warnings: List<String>,
@@ -49,7 +52,7 @@ fun SecurityEvent.toToolSnapshot() = SecurityEventToolSnapshot(
     title = title,
     summary = summary,
     publisher = publisher,
-    publishedAt = publishedAt,
+    publishedAt = publishedAt.takeIf { it > 0 },
     symbols = symbols.map { it.value },
     url = contentUrl,
     provider = provider.name,
@@ -57,8 +60,9 @@ fun SecurityEvent.toToolSnapshot() = SecurityEventToolSnapshot(
     attributes = mapOf("researchRating" to researchRating, "reportType" to reportType),
 )
 
-fun StockFundFlowSnapshot.toToolSnapshot() = StockFundFlowToolSnapshot(
+fun StockFundFlowSnapshot.toToolSnapshot(period: String = "summary") = StockFundFlowToolSnapshot(
     code = code.value,
+    period = period,
     currency = currency,
     unit = unit,
     sourceUpdatedAt = sourceUpdatedAt,
@@ -70,8 +74,8 @@ fun StockFundFlowSnapshot.toToolSnapshot() = StockFundFlowToolSnapshot(
     smallNet = smallNet,
     mainNetPercent = mainNetPercent,
     retailNetPercent = retailNetPercent,
-    intradayPoints = intradayPoints.map { mapOf("time" to it.time, "mainNet" to it.mainNet, "retailNet" to it.retailNet) },
-    fiveDaySummary = fiveDaySummary.map { mapOf("time" to it.time, "mainNet" to it.mainNet, "retailNet" to it.retailNet) },
+    intradayPoints = if (period == "5d" || period == "summary") null else intradayPoints.map { mapOf("time" to it.time, "mainNet" to it.mainNet, "retailNet" to it.retailNet) },
+    fiveDaySummary = if (period == "intraday" || period == "summary") null else fiveDaySummary.map { mapOf("time" to it.time, "mainNet" to it.mainNet, "retailNet" to it.retailNet) },
     provider = provider.name,
     isStale = isStale,
     warnings = warnings,

@@ -9,7 +9,7 @@ class GetKLineDataTool @Inject constructor(
 ) : ToolExecutor {
     override val definition: ToolDefinition = ToolDefinition(
         name = "get_kline_data",
-        description = "获取指定标的的 K 线快照，包含周期、最新点位、最高最低价和完整点位序列。每个点位包含OHLCV、均线(MA5/MA20/MA60/MA120)、量比、MACD(DIF/DEA/柱)、RSI(6/12/24)和布林带(上/中/下轨)。",
+        description = "获取K线序列及OHLCV、均线、量比、MACD、RSI、布林带。数值最多3位小数；CETP省略缺失指标。只需技术摘要时优先用get_indicator_snapshot。",
         inputSchema = mapOf(
             "type" to "object",
             "properties" to mapOf(
@@ -24,7 +24,14 @@ class GetKLineDataTool @Inject constructor(
                 ),
                 "limit" to mapOf(
                     "type" to "integer",
-                    "description" to "返回的点位数量，默认 120",
+                    "minimum" to 1,
+                    "maximum" to 120,
+                    "description" to "返回的点位数量，默认 60，最大 120",
+                ),
+                "include_indicators" to mapOf("type" to "boolean", "description" to "默认true；false仅返回OHLCV及涨跌幅"),
+                "include_latest" to mapOf(
+                    "type" to "boolean",
+                    "description" to "是否额外返回 latestPoint；默认 false，因为它与points最后一项重复",
                 ),
             ),
             "required" to listOf("code"),
@@ -32,13 +39,19 @@ class GetKLineDataTool @Inject constructor(
     )
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
-        val code = arguments["code"] as? String ?: error("Missing required argument: code")
+        val code = normalizedQuoteCode(arguments["code"])
         val period = parsePeriod(arguments["period"] as? String)
-        val limit = (arguments["limit"] as? Number)?.toInt() ?: 120
-        return ToolResult(buildKLineToolSnapshotUseCase(code.trim(), period, limit))
+        val limit = (arguments["limit"] as? Number)?.toInt()?.coerceIn(1, 120) ?: 60
+        if (com.jiucaihua.app.domain.model.MarketType.fromCode(code) == com.jiucaihua.app.domain.model.MarketType.FUND && period != KLinePeriod.DAILY) unsupportedMarket("fund NAV history supports DAILY only")
+        val includeIndicators = arguments["include_indicators"] as? Boolean ?: true
+        val includeLatest = arguments["include_latest"] as? Boolean ?: false
+        return ToolResult(buildKLineToolSnapshotUseCase(code, period, limit, includeLatest, includeIndicators))
     }
 
     private fun parsePeriod(value: String?): KLinePeriod {
-        return value?.trim()?.uppercase()?.let(KLinePeriod::valueOf) ?: KLinePeriod.DAILY
+        return value?.trim()?.uppercase()?.let {
+            runCatching { KLinePeriod.valueOf(it) }.getOrNull()
+                ?: invalidArgs("period must be DAILY, WEEKLY, or MONTHLY")
+        } ?: KLinePeriod.DAILY
     }
 }

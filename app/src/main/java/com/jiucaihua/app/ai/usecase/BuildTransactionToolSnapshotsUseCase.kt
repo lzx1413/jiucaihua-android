@@ -5,6 +5,7 @@ import com.jiucaihua.app.ai.model.PortfolioPerformanceToolSnapshot
 import com.jiucaihua.app.ai.model.TransactionToolItem
 import com.jiucaihua.app.ai.model.TransactionsToolSnapshot
 import com.jiucaihua.app.ai.model.toToolSnapshot
+import com.jiucaihua.app.ai.tool.invalidArgs
 import com.jiucaihua.app.domain.model.InvestmentTransaction
 import com.jiucaihua.app.domain.model.MarketType
 import com.jiucaihua.app.domain.model.TransactionQuery
@@ -28,6 +29,7 @@ class BuildTransactionsToolSnapshotUseCase @Inject constructor(
             total = total,
             limit = boundedQuery.limit,
             offset = boundedQuery.offset,
+            hasMore = boundedQuery.offset.toLong() + transactions.size < total,
             transactions = transactions.map { it.toToolItem() },
         )
     }
@@ -49,7 +51,7 @@ class BuildHoldingTransactionHistorySnapshotUseCase @Inject constructor(
     private val getTransactionSummaryUseCase: GetTransactionSummaryUseCase,
     private val getPortfolioUseCase: GetPortfolioUseCase,
 ) {
-    suspend operator fun invoke(code: String, marketType: MarketType?, limit: Int): HoldingTransactionHistorySnapshot {
+    suspend operator fun invoke(code: String, marketType: MarketType?, limit: Int, offset: Int = 0): HoldingTransactionHistorySnapshot {
         val portfolio = getPortfolioUseCase.getPortfolioWithQuotes()
         val holding = portfolio.holdings.firstOrNull {
             it.code == code && (marketType == null || it.marketType == marketType)
@@ -59,8 +61,9 @@ class BuildHoldingTransactionHistorySnapshotUseCase @Inject constructor(
             code = code,
             marketType = effectiveMarketType,
             limit = limit.coerceIn(1, MAX_LIMIT),
+            offset = offset,
         )
-        val (_, transactions) = getTransactionsUseCase(query)
+        val (totalTransactions, transactions) = getTransactionsUseCase(query)
         val transactionSummary = getTransactionSummaryUseCase(
             query.copy(limit = Int.MAX_VALUE, offset = 0),
         )
@@ -75,6 +78,10 @@ class BuildHoldingTransactionHistorySnapshotUseCase @Inject constructor(
             realizedPnlCny = transactionSummary.realizedPnlCny,
             unrealizedPnlCny = unrealizedPnl,
             totalPnlCny = transactionSummary.realizedPnlCny + unrealizedPnl + transactionSummary.dividendIncomeCny - transactionSummary.feesCny - transactionSummary.taxesCny,
+            totalTransactions = totalTransactions,
+            limit = query.limit,
+            offset = query.offset,
+            hasMore = query.offset.toLong() + transactions.size < totalTransactions,
             transactions = transactions.map { it.toToolItem() },
         )
     }
@@ -131,14 +138,16 @@ fun InvestmentTransaction.toToolItem(): TransactionToolItem {
 }
 
 fun parseTransactionQuery(arguments: Map<String, Any?>): TransactionQuery {
+    val marketType = (arguments["market_type"] as? String)?.trim()?.takeIf { it.isNotEmpty() }?.let {
+        runCatching { MarketType.valueOf(it.uppercase()) }.getOrElse { invalidArgs("market_type is invalid") }
+    }
+    val transactionType = (arguments["type"] as? String)?.trim()?.takeIf { it.isNotEmpty() }?.let {
+        runCatching { TransactionType.valueOf(it.uppercase()) }.getOrElse { invalidArgs("type is invalid") }
+    }
     return TransactionQuery(
         code = (arguments["code"] as? String)?.trim()?.takeIf { it.isNotEmpty() },
-        marketType = (arguments["market_type"] as? String)?.trim()?.takeIf { it.isNotEmpty() }?.let {
-            MarketType.valueOf(it)
-        },
-        type = (arguments["type"] as? String)?.trim()?.takeIf { it.isNotEmpty() }?.let {
-            TransactionType.valueOf(it)
-        },
+        marketType = marketType,
+        type = transactionType,
         from = (arguments["from"] as? Number)?.toLong(),
         to = (arguments["to"] as? Number)?.toLong(),
         limit = (arguments["limit"] as? Number)?.toInt() ?: 50,

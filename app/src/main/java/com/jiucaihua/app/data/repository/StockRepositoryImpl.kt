@@ -123,6 +123,8 @@ class StockRepositoryImpl @Inject constructor(
             } else {
                 getCachedKLineData(code, period, limit, provider)
             }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             getCachedKLineData(code, period, limit, provider)
         }
@@ -182,7 +184,7 @@ class StockRepositoryImpl @Inject constructor(
             .map { entity ->
                 KLinePoint(entity.date, entity.open, entity.close, entity.high, entity.low, entity.volume)
             }
-        return KLineData(code, "", period, points)
+        return KLineData(code, "", period, points, isCached = true)
     }
 
     private suspend fun getUSStockKLineData(code: String, period: KLinePeriod, limit: Int): KLineData {
@@ -592,6 +594,7 @@ class StockRepositoryImpl @Inject constructor(
             changeAmount = changeAmount,
             time = time,
             marketType = MarketType.valueOf(marketType),
+            isCached = true,
         )
     }
 

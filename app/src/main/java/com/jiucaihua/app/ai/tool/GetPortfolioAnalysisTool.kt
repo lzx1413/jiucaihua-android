@@ -8,7 +8,7 @@ class GetPortfolioAnalysisTool @Inject constructor(
 ) : ToolExecutor {
     override val definition: ToolDefinition = ToolDefinition(
         name = "get_portfolio_analysis",
-        description = "获取当前投资组合的全局分析快照，包含组合总览、持仓列表、市场状态、预警摘要和数据新鲜度。",
+        description = "获取当前投资组合的全局分析快照，包含组合总览、持仓列表、市场状态、预警摘要和数据新鲜度；个股新闻请使用get_holding_analysis。",
         inputSchema = mapOf(
             "type" to "object",
             "properties" to emptyMap<String, Any>(),

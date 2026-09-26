@@ -37,7 +37,7 @@ data class HoldingAnalysisSnapshot(
     val marketValueCny: Double,
     val unrealizedPnlCny: Double,
     val unrealizedPnlPercent: Double,
-    val latestQuoteTime: String,
+    val latestQuoteTime: String?,
     val activeAlerts: List<AlertSnapshot>,
     val relatedNews: List<NewsSnapshot>,
     val dataFreshness: DataFreshness,
@@ -45,8 +45,8 @@ data class HoldingAnalysisSnapshot(
 
 data class DataFreshness(
     val quoteUpdatedAt: Long?,
-    val quoteDisplayTime: String,
-    val isQuoteStale: Boolean,
+    val quoteDisplayTime: String?,
+    val isQuoteStale: Boolean?,
     val source: DataSource,
 )
 
@@ -71,11 +71,15 @@ data class NewsSnapshot(
     val title: String,
     val summary: String,
     val source: String,
-    val time: String,
+    val time: String?,
     val sourceType: String = "",
 )
 
 enum class DataSource {
     LIVE,
     CACHE,
+    NETWORK,
+    UNAVAILABLE,
+    UNKNOWN,
+    MIXED,
 }

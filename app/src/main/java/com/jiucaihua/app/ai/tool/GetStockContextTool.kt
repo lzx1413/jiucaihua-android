@@ -7,17 +7,19 @@ import com.jiucaihua.app.domain.repository.SecurityEventRepository
 import com.jiucaihua.app.domain.repository.SecurityInsightRepository
 import com.jiucaihua.app.domain.repository.StockRepository
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
+import com.jiucaihua.app.ai.usecase.toolCurrency
 import javax.inject.Inject
 
 data class StockContextToolSnapshot(
     val code: String,
     val name: String,
     val generatedAt: String,
-    val quote: Map<String, Any?>,
-    val technical: Map<String, Any?>,
-    val events: Map<String, Any?>,
-    val stockFundFlow: Map<String, Any?>,
-    val profile: Map<String, Any?>,
+    val quote: Map<String, Any?>? = null,
+    val technical: Map<String, Any?>? = null,
+    val events: Map<String, Any?>? = null,
+    val stockFundFlow: Map<String, Any?>? = null,
+    val profile: Map<String, Any?>? = null,
     val warnings: List<String>,
 )
 
@@ -28,7 +30,7 @@ class GetStockContextTool @Inject constructor(
 ) : ToolExecutor {
     override val definition = ToolDefinition(
         name = "get_stock_context",
-        description = "一次获取个股行情、K线技术摘要、精确关联事件及个股资金流。每个区块独立报告状态，部分失败不会掩盖其余数据。",
+        description = "默认获取行情与技术摘要；sections可选事件、资金流和公司资料。每个区块独立报告状态，部分失败不会掩盖其余数据。",
         inputSchema = mapOf(
             "type" to "object",
             "properties" to mapOf(
@@ -42,26 +44,28 @@ class GetStockContextTool @Inject constructor(
 
     override suspend fun execute(arguments: Map<String, Any?>): ToolResult {
         val code = GetStockEventsTool.parseSecurityId(arguments["code"])
+        if (code.marketType == MarketType.FUND) unsupportedMarket("stock_context supports stocks; use kline_data or indicator_snapshot for funds")
         val sections = (arguments["sections"] as? List<*>)?.map {
             it as? String ?: invalidArgs("sections must be an array of strings")
-        }?.toSet() ?: setOf("quote", "technical", "events", "stockFundFlow", "profile")
+        }?.toSet() ?: setOf("quote", "technical")
+        if (sections.isEmpty()) invalidArgs("sections must not be empty")
         if (!sections.all { it in VALID_SECTIONS }) invalidArgs("sections contains an unsupported value")
         val eventLimit = (arguments["event_limit"] as? Number)?.toInt()?.coerceIn(1, 50) ?: 10
         val warnings = mutableListOf<String>()
-        val quote = if ("quote" in sections) quoteSection(code.value, code.marketType, warnings) else unavailable("NOT_REQUESTED")
-        val technical = if ("technical" in sections) technicalSection(code.value, warnings) else unavailable("NOT_REQUESTED")
-        val events = if ("events" in sections) eventsSection(code, eventLimit, warnings) else unavailable("NOT_REQUESTED")
-        val flow = if ("stockFundFlow" in sections) flowSection(code, warnings) else unavailable("NOT_REQUESTED")
+        val quote = if ("quote" in sections) quoteSection(code.value, code.marketType, warnings) else null
+        val technical = if ("technical" in sections) technicalSection(code.value, warnings) else null
+        val events = if ("events" in sections) eventsSection(code, eventLimit, warnings) else null
+        val flow = if ("stockFundFlow" in sections) flowSection(code, warnings) else null
         return ToolResult(
             StockContextToolSnapshot(
                 code = code.value,
-                name = quote["name"] as? String ?: "",
+                name = quote?.get("name") as? String ?: "",
                 generatedAt = Instant.now().toString(),
                 quote = quote,
                 technical = technical,
                 events = events,
                 stockFundFlow = flow,
-                profile = if ("profile" in sections) profileSection(code, warnings) else unavailable("NOT_REQUESTED"),
+                profile = if ("profile" in sections) profileSection(code, warnings) else null,
                 warnings = warnings,
             )
         )
@@ -75,15 +79,19 @@ class GetStockContextTool @Inject constructor(
                 MarketType.US_STOCK -> stockRepository.getUSStockQuotes(listOf(code)).firstOrNull()
                 else -> null
             }
-            if (quote == null) unavailable("UNAVAILABLE") else mapOf(
+            if (quote == null || quote.price <= 0) unavailable("UNAVAILABLE") else mapOf(
                 "status" to "ok",
                 "provider" to if (market == MarketType.HK_STOCK) "TENCENT" else "SINA",
                 "sourceUpdatedAt" to quote.time,
                 "name" to quote.name,
                 "price" to quote.price,
+                "currency" to toolCurrency(code),
+                "source" to if (quote.isCached) "CACHE" else "NETWORK",
                 "changePercent" to quote.changePercent,
             )
-        } catch (_: Exception) {
+        } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
             warnings += "QUOTE_UNAVAILABLE"
             unavailable("UNAVAILABLE")
         }
@@ -91,13 +99,16 @@ class GetStockContextTool @Inject constructor(
 
     private suspend fun technicalSection(code: String, warnings: MutableList<String>): Map<String, Any?> {
         return try {
-            val points = stockRepository.getKLineData(code, KLinePeriod.DAILY, 60).points.takeLast(60)
+            val data = stockRepository.getKLineData(code, KLinePeriod.DAILY, 60)
+            val points = data.points.takeLast(60)
             if (points.size < 20) unavailable("INSUFFICIENT_DATA") else {
                 val first = points.first().close
                 val latest = points.last().close
-                mapOf("status" to "ok", "period" to "DAILY", "summary" to mapOf("pointCount" to points.size, "latestClose" to latest, "rangeLow" to points.minOf { it.low }, "rangeHigh" to points.maxOf { it.high }, "changePercent" to if (first == 0.0) null else (latest - first) / first * 100))
+                mapOf("status" to "ok", "period" to "DAILY", "asOf" to points.last().date, "currency" to toolCurrency(code), "source" to if (data.isCached) "CACHE" else "NETWORK", "summary" to mapOf("pointCount" to points.size, "latestClose" to latest, "rangeLow" to points.minOf { it.low }, "rangeHigh" to points.maxOf { it.high }, "changePercent" to if (first == 0.0) null else (latest - first) / first * 100))
             }
-        } catch (_: Exception) {
+        } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
             warnings += "TECHNICAL_UNAVAILABLE"
             unavailable("UNAVAILABLE")
         }
@@ -105,14 +116,18 @@ class GetStockContextTool @Inject constructor(
 
     private suspend fun eventsSection(code: com.jiucaihua.app.domain.model.SecurityId, limit: Int, warnings: MutableList<String>): Map<String, Any?> = try {
         val events = securityEventRepository.getEvents(code, setOf(SecurityEventKind.NEWS, SecurityEventKind.ANNOUNCEMENT, SecurityEventKind.PERIODIC_REPORT, SecurityEventKind.RESEARCH), limit)
-        mapOf("status" to "ok", "items" to events.map { it.toToolSnapshot() })
+        mapOf("status" to "ok", "items" to events.map { it.toToolSnapshot() }, "limit" to limit, "possiblyTruncated" to (events.size >= limit))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
     } catch (_: Exception) {
         warnings += "EVENTS_UNAVAILABLE"
         unavailable("UNAVAILABLE")
     }
 
     private suspend fun flowSection(code: com.jiucaihua.app.domain.model.SecurityId, warnings: MutableList<String>): Map<String, Any?> = try {
-        securityEventRepository.getStockFundFlow(code)?.toToolSnapshot()?.let { mapOf("status" to "ok", "data" to it) } ?: unavailable("UNAVAILABLE")
+        securityEventRepository.getStockFundFlow(code)?.toToolSnapshot("summary")?.let { mapOf("status" to "ok", "data" to it) } ?: unavailable("UNAVAILABLE")
+    } catch (cancelled: CancellationException) {
+        throw cancelled
     } catch (_: Exception) {
         warnings += "STOCK_FUND_FLOW_UNAVAILABLE"
         unavailable("UNAVAILABLE")
@@ -132,6 +147,8 @@ class GetStockContextTool @Inject constructor(
             },
             "warnings" to relations.warnings,
         )
+    } catch (cancelled: CancellationException) {
+        throw cancelled
     } catch (_: Exception) {
         warnings += "PROFILE_UNAVAILABLE"
         unavailable("UNAVAILABLE")
