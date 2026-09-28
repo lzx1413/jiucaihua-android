@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.LinkedHashMap
 
 class CetpToolProvider : ContentProvider() {
 
@@ -19,6 +20,17 @@ class CetpToolProvider : ContentProvider() {
 
     @Volatile
     private var toolRegistry: ToolRegistry? = null
+
+    /**
+     * CETP consumers may retry a side-effecting call when the Binder response
+     * is lost. Keep the successful response for the request id so a retry does
+     * not execute the mutation a second time (or report NOT_FOUND after a
+     * successful delete).
+     */
+    private val mutationReplayCache = object : LinkedHashMap<String, Bundle>(MUTATION_CACHE_SIZE, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bundle>?): Boolean =
+            size > MUTATION_CACHE_SIZE
+    }
 
     private fun getRegistry(): ToolRegistry {
         return toolRegistry ?: EntryPointAccessors
@@ -75,17 +87,48 @@ class CetpToolProvider : ContentProvider() {
         val executor = registry.get(localName)
             ?: return errorBundle("TOOL_NOT_FOUND", "Unknown tool: $toolName")
 
-        return try {
-            val result = runBlocking(Dispatchers.IO) {
-                registry.execute(localName, args)
+        val requestId = extras.getString(EXTRA_REQUEST_ID)?.takeIf { it.isNotBlank() }
+        val replayKey = requestId?.let { "$it\u0000$localName\u0000$argsJson" }
+        if (replayKey != null && localName in MUTATING_TOOLS) {
+            synchronized(mutationReplayCache) {
+                mutationReplayCache[replayKey]?.let { return Bundle(it) }
             }
-            result.error?.let { return errorBundle(it.code, it.message) }
-            successBundle(resultSerializer.toJson(result.content))
+        }
+
+        return try {
+            // Serialize the mutation and its response as one critical section.
+            // This also prevents two concurrent retries from both deleting.
+            val response = if (replayKey != null && localName in MUTATING_TOOLS) {
+                synchronized(mutationReplayCache) {
+                    mutationReplayCache[replayKey]?.let { return Bundle(it) }
+                    executeToolBundle(registry, localName, args)
+                }
+            } else {
+                executeToolBundle(registry, localName, args)
+            }
+            if (replayKey != null && localName in MUTATING_TOOLS && response.getString("status") == "success") {
+                synchronized(mutationReplayCache) {
+                    mutationReplayCache[replayKey] = Bundle(response)
+                }
+            }
+            response
         } catch (error: CancellationException) {
             throw error
         } catch (e: Exception) {
             errorBundle("INTERNAL_ERROR", "Tool execution failed")
         }
+    }
+
+    private fun executeToolBundle(
+        registry: ToolRegistry,
+        localName: String,
+        args: Map<String, Any?>,
+    ): Bundle {
+        val result = runBlocking(Dispatchers.IO) {
+            registry.execute(localName, args)
+        }
+        result.error?.let { return errorBundle(it.code, it.message) }
+        return successBundle(resultSerializer.toJson(result.content))
     }
 
     private fun normalizeJsonValue(value: Any?): Any? = when (value) {
@@ -148,6 +191,10 @@ class CetpToolProvider : ContentProvider() {
 
     companion object {
         const val NAMESPACE_PREFIX = "jiucaihua__"
+        private const val EXTRA_REQUEST_ID = "request_id"
+        private const val MUTATION_CACHE_SIZE = 128
+
+        private val MUTATING_TOOLS = setOf("create_alert", "delete_alert")
 
         val EXTERNAL_TOOLS = setOf(
             "get_portfolio_analysis",
